@@ -74,3 +74,39 @@ export function areaSummary(d: Data, area: AreaId, wn: WeekNumbers): AreaSummary
   if (postponed) health = 'atenção';
   return { progress, realPct, desiredPct, health, focusLabel };
 }
+
+export type PlanSource = 'planejamento' | 'agenda' | 'vazio';
+
+/**
+ * Horas planejadas por área numa semana. É a mesma conta que a tela Planejamento mostra:
+ * 1) o que você definiu no Planejamento para a semana (botões − / +);
+ * 2) senão, as horas dos blocos já agendados naquela semana;
+ * 3) senão, as horas agendadas na semana anterior (ponto de partida).
+ */
+export function planHours(d: Data, ws: string): { hours: Record<AreaId, number>; source: PlanSource } {
+  const stored = d.plans.find((p) => p.weekStart === ws);
+  if (stored) return { hours: { ...stored.hoursByArea }, source: 'planejamento' };
+  const toHours = (min: Record<AreaId, number>) =>
+    Object.fromEntries(Object.entries(min).map(([k, v]) => [k, Math.round(v / 60)])) as Record<AreaId, number>;
+  const own = plannedByArea(occurrencesForWeek(d.tasks, ws));
+  if (sum(own) > 0) return { hours: toHours(own), source: 'agenda' };
+  const prev = plannedByArea(occurrencesForWeek(d.tasks, addDays(ws, -7)));
+  return { hours: toHours(prev), source: sum(prev) > 0 ? 'agenda' : 'vazio' };
+}
+
+/** porcentagens inteiras que somam exatamente 100 (maior resto) */
+export function toPercents(hours: Record<AreaId, number>): Record<AreaId, number> {
+  const entries = Object.entries(hours) as [AreaId, number][];
+  const total = entries.reduce((s, [, v]) => s + Math.max(0, v), 0);
+  const out = Object.fromEntries(entries.map(([k]) => [k, 0])) as Record<AreaId, number>;
+  if (!total) return out;
+  const raw = entries.map(([k, v]) => ({ k, exact: (Math.max(0, v) / total) * 100 }));
+  raw.forEach((r) => (out[r.k] = Math.floor(r.exact)));
+  let left = 100 - raw.reduce((s, r) => s + Math.floor(r.exact), 0);
+  for (const r of [...raw].sort((a, b) => (b.exact % 1) - (a.exact % 1))) {
+    if (left <= 0) break;
+    out[r.k]++;
+    left--;
+  }
+  return out;
+}

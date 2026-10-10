@@ -7,11 +7,13 @@ import { AREAS, AREA, zeroByArea } from '../lib/areas';
 import { useData } from '../lib/data';
 import { db } from '../lib/db';
 import { addDays, ddmm, DOW_LONG, DOW_SHORT, dur, parse, today, weekDays, weekStart } from '../lib/dates';
+import { planHours } from '../lib/derive';
 import { impsForWeek, occurrencesForWeek, plannedByArea, sum, capacityMin } from '../lib/week';
 import type { AreaId, WeekPlan } from '../lib/types';
 
 export function Planejamento() {
-  const { tasks, plans, imprevistos, settings } = useData();
+  const data = useData();
+  const { tasks, plans, imprevistos, settings } = data;
   const ui = useUI();
   const cur = weekStart(today());
   const next = addDays(cur, 7);
@@ -21,11 +23,7 @@ export function Planejamento() {
   const nextOcc = occurrencesForWeek(tasks, next);
   const nextPlanned = plannedByArea(nextOcc);
   const stored = plans.find((p) => p.weekStart === next);
-  const plan: WeekPlan = stored ?? {
-    weekStart: next,
-    hoursByArea: Object.fromEntries(AREAS.map((a) => [a.id, Math.round(curPlanned[a.id] / 60)])) as Record<AreaId, number>,
-    top3: [],
-  };
+  const plan: WeekPlan = stored ?? { weekStart: next, hoursByArea: planHours(data, next).hours, top3: [] };
   const capH = capacityMin(settings) / 60;
   const plannedH = sum(plan.hoursByArea);
   const backlog = tasks.filter((t) => t.status === 'afazer' && !t.date && !t.repeatDays?.length);
@@ -37,9 +35,13 @@ export function Planejamento() {
     await db.plans.put({ ...plan, ...p });
   }
 
-  function bump(a: AreaId, n: number) {
-    const v = Math.max(0, (plan.hoursByArea[a] ?? 0) + n);
-    save({ hoursByArea: { ...plan.hoursByArea, [a]: v } });
+  // lê o valor salvo dentro da transação: cliques rápidos em − / + nunca se perdem
+  async function bump(a: AreaId, n: number) {
+    await db.transaction('rw', db.plans, async () => {
+      const cur = (await db.plans.get(next)) ?? plan;
+      const v = Math.max(0, (cur.hoursByArea[a] ?? 0) + n);
+      await db.plans.put({ ...cur, hoursByArea: { ...cur.hoursByArea, [a]: v } });
+    });
   }
 
   async function schedule(id: number, day: string) {
@@ -101,7 +103,7 @@ export function Planejamento() {
               const t = tasks.find((x) => x.id === plan.top3[i]);
               return (
                 <div key={i} className="card" style={{ background: t ? `color-mix(in srgb, ${AREA[t.area].color} 10%, #121931)` : '#121931', borderColor: t ? `color-mix(in srgb, ${AREA[t.area].color} 40%, transparent)` : undefined, display: 'flex', gap: 14, alignItems: 'center', padding: 14 }}>
-                  <span style={{ font: '40px var(--serif)', color: t ? AREA[t.area].color : 'var(--faint)' }}>{i + 1}</span>
+                  <span style={{ font: '400 2.25rem var(--serif)', color: t ? AREA[t.area].color : 'var(--faint)' }}>{i + 1}</span>
                   <div style={{ flex: 1, minWidth: 0 }} className="list">
                     <select className="input" value={plan.top3[i] ?? ''} aria-label={`Prioridade ${i + 1}`}
                       onChange={(e) => {

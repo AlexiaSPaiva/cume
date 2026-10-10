@@ -108,7 +108,7 @@ export function Imprevistos() {
             <div className="list" style={{ maxHeight: 330, overflow: 'auto' }}>
               {list.map((i) => (
                 <button key={i.id} className="tcard" style={{ cursor: 'pointer' }} onClick={() => ui.openImprevisto(i)}>
-                  <div className="row"><b className="grow">{i.title}</b><span style={{ font: '22px var(--serif)', color: 'var(--imp)' }}>{dur(i.durationMin)}</span></div>
+                  <div className="row"><b className="grow">{i.title}</b><span style={{ font: '400 1.35rem var(--serif)', color: 'var(--imp)' }}>{dur(i.durationMin)}</span></div>
                   <div className="row small"><AreaTag area={i.area} /><span className="muted">{DOW_SHORT[parse(i.date).getDay()].toLowerCase()} {i.date.slice(8)}/{i.date.slice(5, 7)} · {i.start}–{i.end}</span></div>
                 </button>
               ))}

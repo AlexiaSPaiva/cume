@@ -1,7 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import '@fontsource/instrument-serif/400.css';
-import '@fontsource/instrument-serif/400-italic.css';
+// Source Serif 4: serifa de proporção normal (a Instrument Serif era condensada e parecia "esticada").
+// Carregamos os pesos e o itálico realmente usados; font-display: swap já vem no @fontsource.
+import '@fontsource/source-serif-4/400.css';
+import '@fontsource/source-serif-4/400-italic.css';
+import '@fontsource/source-serif-4/600.css';
 import './styles.css';
 import { App } from './App';
 import { db } from './lib/db';

@@ -30,7 +30,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff,woff2}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // offline só precisa das fontes do português; os outros alfabetos o navegador baixa se um dia precisar
+        globIgnores: ['**/*-cyrillic*', '**/*-greek*', '**/*-vietnamese*', '**/*-math*', '**/*-symbols*'],
         navigateFallback: '/index.html',
         // o service worker só mexe nos caches de assets (nomes versionados pelo Workbox);
         // ele nunca toca no IndexedDB, onde ficam os dados e arquivos da usuária

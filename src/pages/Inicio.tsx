@@ -2,7 +2,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Page } from '../components/Layout';
 import { useUI } from '../components/Overlays';
 import { SuggestionBanner } from '../components/SuggestionBanner';
-import { AreaDot, Bar, Donut, Empty, Stat, Stats } from '../components/ui';
+import { FocusCard } from '../components/FocusCard';
+import { AreaDot, Bar, Empty, Stat, Stats } from '../components/ui';
 import { AREAS, AREA, IMPREVISTO_COLOR } from '../lib/areas';
 import { useData } from '../lib/data';
 import { db } from '../lib/db';
@@ -105,20 +106,7 @@ export function Inicio() {
         </div>
 
         <div className="list" style={{ gap: 16 }}>
-          {w('foco') && (
-            <section className="card">
-              <h2>Foco por área</h2>
-              <div className="row" style={{ gap: 22, flexWrap: 'wrap' }}>
-                <Donut size={132} data={AREAS.map((a) => ({ value: settings.desiredFocus[a.id], color: a.color }))}
-                  center={<span className="muted small">foco<br />desejado</span>} />
-                <div className="list" style={{ flex: 1, minWidth: 150 }}>
-                  {AREAS.map((a) => (
-                    <div key={a.id} className="row small"><AreaDot area={a.id} /><span className="grow">{a.name}</span><b>{settings.desiredFocus[a.id]}%</b></div>
-                  ))}
-                </div>
-              </div>
-            </section>
-          )}
+          {w('foco') && <FocusCard />}
           {w('tempo') && (
             <section className="card">
               <h2>Tempo por área · h/semana</h2>
@@ -141,7 +129,8 @@ export function Inicio() {
 
         {w('vida') && (
           <section className="card">
-            <h2>Minha vida agora · <span className="muted" style={{ fontSize: 17 }}>toque para abrir</span></h2>
+            <h2 style={{ marginBottom: 2 }}>Minha vida agora</h2>
+            <p className="muted small" style={{ margin: '0 0 8px' }}>toque numa área para abrir o painel</p>
             <div className="list" style={{ gap: 0 }}>
               {AREAS.map((a) => {
                 const s = areaSummary(d, a.id, wn);

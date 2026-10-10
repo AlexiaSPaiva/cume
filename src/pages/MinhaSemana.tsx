@@ -146,7 +146,7 @@ export function MinhaSemana() {
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ font: '34px var(--serif)' }}>{hours(free)}</div>
+            <div style={{ font: '400 2rem var(--serif)' }}>{hours(free)}</div>
             <span className="muted small">horas livres</span>
           </div>
         </div>
