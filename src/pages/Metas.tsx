@@ -88,7 +88,7 @@ export function GoalRow({ g, onEdit, onRecord }: { g: Goal; onEdit: () => void; 
   return (
     <div className="metric" style={{ '--c': c } as React.CSSProperties}>
       <div className="row">
-        <button style={{ all: 'unset', cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={onEdit} className="grow">{goalLabel(g)}</button>
+        <button style={{ cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={onEdit} className="plain grow">{goalLabel(g)}</button>
         <button className="icon-btn" title="Registrar valor real" onClick={onRecord} style={{ padding: 2, color: c }}>+</button>
         <b>{p}%</b>
       </div>

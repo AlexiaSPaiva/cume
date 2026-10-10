@@ -60,22 +60,22 @@ export function Cofre() {
               {TABS.map((t, i) => <button key={t.label} className={i === tab ? 'on' : ''} onClick={() => setTab(i)}>{t.label}</button>)}
             </div>
             <div style={{ overflowX: 'auto' }}>
-              <table className="table">
+              <table className="table cards">
                 <thead><tr><th>Arquivo</th><th>Tipo</th><th className="hide-m">Data</th><th className="hide-m">Vinculado a</th><th className="num">Valor</th><th /></tr></thead>
                 <tbody>
                   {list.map((d) => (
                     <tr key={d.id}>
-                      <td>
-                        <button className="row" style={{ all: 'unset', display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }} onClick={() => openDoc(attOf(d.attachmentId), ui.toast)} data-testid="doc-open"
+                      <td className="primary">
+                        <button className="plain row" style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }} onClick={() => openDoc(attOf(d.attachmentId), ui.toast)} data-testid="doc-open"
                           title={d.storage === 'drive' ? 'Abrir no Google Drive' : 'Abrir arquivo'}>
                           <Icon name={d.storage === 'drive' ? 'drive' : 'file'} size={15} />{d.name}{attOf(d.attachmentId)?.size ? <small className="faint">&nbsp;{fmtSize(attOf(d.attachmentId)!.size)}</small> : null}
                         </button>
                       </td>
-                      <td className="muted">{d.type}</td>
-                      <td className="muted hide-m">{d.date ? ddmm(d.date) : '—'}</td>
-                      <td className="muted hide-m">{d.linkedTo ?? '—'}</td>
-                      <td className="num">{d.value ? brl(d.value) : '—'}</td>
-                      <td className="num">
+                      <td className="muted" data-label="Tipo">{d.type}</td>
+                      <td className="muted" data-label="Data">{d.date ? ddmm(d.date) : '—'}</td>
+                      <td className="muted" data-label="Vinculado a">{d.linkedTo ?? '—'}</td>
+                      <td className="num" data-label="Valor">{d.value ? brl(d.value) : '—'}</td>
+                      <td className="num act">
                         <button className="icon-btn" aria-label={`Excluir ${d.name}`} onClick={() => ui.remove('docs', d.id!, d.name)}><Icon name="trash" size={14} /></button>
                       </td>
                     </tr>

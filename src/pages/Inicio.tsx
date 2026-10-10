@@ -58,7 +58,7 @@ export function Inicio() {
                 {top3.map((t) => (
                   <div key={t.id} className="row">
                     <AreaDot area={t.area} />
-                    <button className="grow" style={{ all: 'unset', cursor: 'pointer', flex: 1 }} onClick={() => ui.openTask(t)}>{t.title}</button>
+                    <button className="plain grow" style={{ cursor: 'pointer', flex: 1 }} onClick={() => ui.openTask(t)}>{t.title}</button>
                     <span className={`tag ${t.priority}`}>{PRIO[t.priority]}</span>
                   </div>
                 ))}
@@ -94,7 +94,7 @@ export function Inicio() {
               <h2>Imprevistos da semana</h2>
               <div className="list">
                 {weekImps.slice(0, 5).map((i) => (
-                  <button key={i.id} className="row small" style={{ all: 'unset', display: 'flex', gap: 9, cursor: 'pointer' }} onClick={() => ui.openImprevisto(i)}>
+                  <button key={i.id} className="plain row small" style={{ display: 'flex', gap: 9, cursor: 'pointer' }} onClick={() => ui.openImprevisto(i)}>
                     <span className="dotc" style={{ background: IMPREVISTO_COLOR }} /><span className="grow" style={{ flex: 1 }}>{i.title}</span><span className="muted">{dur(i.durationMin)}</span>
                   </button>
                 ))}
@@ -121,7 +121,7 @@ export function Inicio() {
                     <b style={{ width: 44, textAlign: 'right' }}>{hours(wn.total[a.id])}</b>
                   </div>
                 ))}
-                <span className="faint" style={{ fontSize: 10.5 }}>laranja = imprevisto | traço branco = tempo que o foco desejado pede</span>
+                <span className="faint" style={{ fontSize: '0.6562rem' }}>laranja = imprevisto | traço branco = tempo que o foco desejado pede</span>
               </div>
             </section>
           )}

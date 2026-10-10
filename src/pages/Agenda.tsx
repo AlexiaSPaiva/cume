@@ -44,7 +44,7 @@ export function Agenda() {
   const ui = useUI();
   const t0 = today();
   const [ws, setWs] = useState(weekStart(t0));
-  const [view, setView] = useState<'semana' | 'dia'>(() => (window.innerWidth < 860 ? 'dia' : 'semana'));
+  const [view, setView] = useState<'semana' | 'dia'>(() => (window.matchMedia('(max-width: 767.98px)').matches ? 'dia' : 'semana'));
   const [day, setDay] = useState(t0);
   const [over, setOver] = useState<string | null>(null);
 
@@ -116,7 +116,7 @@ export function Agenda() {
           <div className="ag" style={{ '--days': days.length, minWidth: view === 'semana' ? 760 : 0 } as React.CSSProperties}>
             <div />
             {days.map((d) => (
-              <button key={d} className={`ag-h ${d === t0 ? 'today' : ''}`} style={{ all: 'unset', textAlign: 'center', fontWeight: 700, padding: '6px 0 8px', cursor: 'pointer', color: d === t0 ? 'var(--accent)' : undefined }}
+              <button key={d} className={`plain ag-h ${d === t0 ? 'today' : ''}`} style={{ textAlign: 'center', fontWeight: 700, padding: '6px 0 8px', cursor: 'pointer', color: d === t0 ? 'var(--accent)' : undefined }}
                 onClick={() => { setDay(d); setView('dia'); }}>
                 {DOW_SHORT[parse(d).getDay()]} {d.slice(8)}
               </button>

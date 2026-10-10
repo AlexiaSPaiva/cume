@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AREAS, AREA } from '../lib/areas';
 import { useData } from '../lib/data';
 import { addDays, ddmm, DOW_LONG, dur, longDate, relDays, today } from '../lib/dates';
@@ -7,66 +7,116 @@ import { useTemperature } from '../lib/weather';
 import { useAttachmentUrl } from '../lib/attachments';
 import type { RecurringSuggestion } from '../lib/recurrence';
 import { Scenery } from './Scenery';
-import { Icon } from './ui';
+import { Icon, Modal } from './ui';
 import { useUI } from './Overlays';
 
-const SYSTEM = [
-  ['/', 'Início'],
-  ['/semana', 'Minha semana'],
-  ['/agenda', 'Agenda'],
-  ['/tarefas', 'Tarefas'],
-  ['/planejamento', 'Planejamento'],
-  ['/calendario', 'Calendário'],
-  ['/metas', 'Objetivos e Metas'],
-  ['/imprevistos', 'Imprevistos'],
-] as const;
+const SYSTEM: [to: string, label: string, icon: string][] = [
+  ['/', 'Início', 'home'],
+  ['/semana', 'Minha semana', 'week'],
+  ['/agenda', 'Agenda', 'agenda'],
+  ['/tarefas', 'Tarefas', 'tasks'],
+  ['/planejamento', 'Planejamento', 'plan'],
+  ['/calendario', 'Calendário', 'calendar'],
+  ['/metas', 'Objetivos e Metas', 'target'],
+  ['/imprevistos', 'Imprevistos', 'zap'],
+];
 
+/**
+ * Casca do app em três tamanhos:
+ * - ≥ 1200px: menu lateral completo;
+ * - 768–1199px: o menu vira um trilho de ícones (os nomes ficam como dica e para leitores de tela);
+ * - < 768px: sem menu lateral; barra inferior com Início, Semana, + (ação rápida), Tarefas e Mais.
+ */
 export function Layout() {
-  const { settings, suggestions } = useData();
-  const [menu, setMenu] = useState(false);
+  const { settings } = useData();
+  const ui = useUI();
   const loc = useLocation();
   const temp = useTemperature(settings.city.lat, settings.city.lon);
   const photo = useAttachmentUrl(settings.photoAttachmentId);
-  useEffect(() => setMenu(false), [loc.pathname]);
+  const [sheet, setSheet] = useState<null | 'add' | 'more'>(null);
+  useEffect(() => setSheet(null), [loc.pathname]);
+
+  const quick = (fn: () => void) => () => { setSheet(null); fn(); };
 
   return (
     <div className="shell" style={{ '--accent': settings.accent } as React.CSSProperties}>
-      {menu && <div className="scrim" onClick={() => setMenu(false)} />}
-      <aside className={`side ${menu ? 'open' : ''}`}>
+      <aside className="side" aria-label="Menu">
         <div className="brand">
-          <Link to="/" className="name">{settings.name}</Link>
+          <Link to="/" className="name" title={`${settings.name} · Início`}>
+            <span className="full">{settings.name}</span>
+            <span className="initial" aria-hidden="true">{settings.name[0]}</span>
+          </Link>
           <div className="sub">Personal Life OS</div>
           <div className="sub2">Foco · Clareza · Ação</div>
         </div>
-        <nav className="nav" aria-label="Sistema">
-          <div className="nav-h">Sistema</div>
-          {SYSTEM.map(([to, label]) => (
-            <NavLink key={to} to={to} end={to === '/'}>
-              {label}
-              {to === '/imprevistos' && suggestions.length > 0 && <span className="count" title="sugestões de imprevistos recorrentes">{suggestions.length}</span>}
-            </NavLink>
-          ))}
-          <div className="nav-h">Vida · abrir painel</div>
-          {AREAS.map((a) => (
-            <NavLink key={a.id} to={`/area/${a.id}`} className="dot"><span className="d" style={{ background: a.color }} />{a.name}</NavLink>
-          ))}
-        </nav>
-        <Link to="/personalizar" className="me">
+        <NavLinks />
+        <Link to="/personalizar" className="me" title="Personalizar">
           <span className="avatar">{photo ? <img src={photo} alt="" /> : settings.name[0]}</span>
-          <span><b>{settings.fullName}</b><small>personalizar</small></span>
+          <span className="lbl"><b>{settings.fullName}</b><small>personalizar</small></span>
         </Link>
       </aside>
       <div className="main">
         <div className="hero-bg"><Scenery id={settings.scenario} photo={photo} /></div>
         <div className="content">
-          <Outlet context={{ openMenu: () => setMenu(true) }} />
+          <Outlet />
           <footer className="footer">
             <span>{settings.phrase}</span>
             <span>{settings.city.name}{temp != null && ` · ${temp}°C`}</span>
           </footer>
         </div>
       </div>
+
+      <nav className="bottom-nav" aria-label="Atalhos">
+        <NavLink to="/" end><Icon name="home" size={20} /><span>Início</span></NavLink>
+        <NavLink to="/semana"><Icon name="week" size={20} /><span>Semana</span></NavLink>
+        <button type="button" className="fab" onClick={() => setSheet('add')} aria-label="Adicionar"><Icon name="plus" size={24} /></button>
+        <NavLink to="/tarefas"><Icon name="tasks" size={20} /><span>Tarefas</span></NavLink>
+        <button type="button" onClick={() => setSheet('more')} aria-expanded={sheet === 'more'}><Icon name="menu" size={20} /><span>Mais</span></button>
+      </nav>
+
+      {sheet === 'add' && (
+        <Modal title="Adicionar" onClose={() => setSheet(null)}>
+          <div className="list quick">
+            <button className="btn gold" onClick={quick(() => ui.openTask())}><Icon name="tasks" /> Tarefa</button>
+            <button className="btn out" onClick={quick(() => ui.openImprevisto())}><Icon name="zap" /> Imprevisto</button>
+            <button className="btn out" onClick={quick(() => ui.openDoc())}><Icon name="file" /> Documento no Cofre</button>
+          </div>
+        </Modal>
+      )}
+      {sheet === 'more' && (
+        <Modal title="Mais" onClose={() => setSheet(null)}>
+          <Search />
+          <NavLinks />
+          <Link to="/personalizar" className="me" style={{ marginTop: 12 }}>
+            <span className="avatar">{photo ? <img src={photo} alt="" /> : settings.name[0]}</span>
+            <span><b>{settings.fullName}</b><small>personalizar · dados · backup · lixeira</small></span>
+          </Link>
+        </Modal>
+      )}
     </div>
+  );
+}
+
+function NavLinks() {
+  const { suggestions } = useData();
+  return (
+    <nav className="nav" aria-label="Navegação principal">
+      <div className="nav-h">Sistema</div>
+      {SYSTEM.map(([to, label, icon]) => (
+        <NavLink key={to} to={to} end={to === '/'} title={label}>
+          <Icon name={icon} size={18} />
+          <span className="lbl">{label}</span>
+          {to === '/imprevistos' && suggestions.length > 0 && <span className="count" title="sugestões de imprevistos recorrentes">{suggestions.length}</span>}
+        </NavLink>
+      ))}
+      <div className="nav-h">Vida · abrir painel</div>
+      {AREAS.map((a) => (
+        <NavLink key={a.id} to={`/area/${a.id}`} className="dot" title={a.name}>
+          <span className="d" style={{ background: a.color }} />
+          <span className="lbl">{a.name}</span>
+        </NavLink>
+      ))}
+    </nav>
   );
 }
 
@@ -108,7 +158,6 @@ function TopBar({ crumbs, onDoc }: { crumbs: { to?: string; label: string }[]; o
   const nav = useNavigate();
   const [bell, setBell] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const { openMenu } = useOutletCtx();
   const photo = useAttachmentUrl(settings.photoAttachmentId);
 
   useEffect(() => {
@@ -121,7 +170,7 @@ function TopBar({ crumbs, onDoc }: { crumbs: { to?: string; label: string }[]; o
 
   return (
     <div className="top">
-      <button className="icon-btn menu-btn" onClick={openMenu} aria-label="Abrir menu"><Icon name="menu" size={20} /></button>
+      <Link to="/" className="top-brand">{settings.name}</Link>
       <div className="crumbs">
         {crumbs.map((c, i) => (
           <span key={i} style={{ margin: 0, color: 'inherit' }}>
@@ -131,16 +180,16 @@ function TopBar({ crumbs, onDoc }: { crumbs: { to?: string; label: string }[]; o
         ))}
       </div>
       <Search />
-      {onDoc && <button className="btn out doc" onClick={onDoc} aria-label="Adicionar documento">+ <span className="lbl">Documento</span></button>}
-      <button className="btn out" onClick={() => ui.openImprevisto()}>+ <span className="lbl">Imprevisto</span></button>
-      <button className="btn gold" onClick={() => ui.openTask()}>+ <span className="lbl">Tarefa</span></button>
+      {onDoc && <button className="btn out doc top-act" onClick={onDoc}>+ Documento</button>}
+      <button className="btn out top-act" onClick={() => ui.openImprevisto()}>+ Imprevisto</button>
+      <button className="btn gold top-act" onClick={() => ui.openTask()}>+ Tarefa</button>
       <div ref={ref} style={{ position: 'relative' }}>
-        <button className="icon-btn" onClick={() => setBell((b) => !b)} aria-label="Notificações">
+        <button className="icon-btn" onClick={() => setBell((b) => !b)} aria-label="Notificações" aria-expanded={bell}>
           <Icon name="bell" size={19} />{notes.length > 0 && <span className="badge" />}
         </button>
         {bell && (
           <div className="drop">
-            <b style={{ fontSize: 13 }}>Notificações</b>
+            <b style={{ fontSize: '0.8125rem' }}>Notificações</b>
             {notes.length === 0 && <div className="empty">Tudo em dia.</div>}
             {notes.map((n, i) => (
               <button key={i} className="item btn" style={{ textAlign: 'left', fontWeight: 400, whiteSpace: 'normal', display: 'block' }}
@@ -156,10 +205,6 @@ function TopBar({ crumbs, onDoc }: { crumbs: { to?: string; label: string }[]; o
       </Link>
     </div>
   );
-}
-
-function useOutletCtx() {
-  return useOutletContext<{ openMenu: () => void }>() ?? { openMenu: () => {} };
 }
 
 function useNotifications(): { text: ReactNode; to?: string; suggestion?: RecurringSuggestion }[] {

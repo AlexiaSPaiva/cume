@@ -75,7 +75,7 @@ export function Imprevistos() {
           <section className="card">
             <h2>Por tipo</h2>
             <div className="row" style={{ gap: 20, flexWrap: 'wrap' }}>
-              <Donut size={124} data={types.map(([t, m]) => ({ value: m, color: TYPE_COLOR[t] }))} center={<b style={{ fontSize: 17 }}>{dur(totalMin)}</b>} />
+              <Donut size={124} data={types.map(([t, m]) => ({ value: m, color: TYPE_COLOR[t] }))} center={<b style={{ fontSize: '1.0625rem' }}>{dur(totalMin)}</b>} />
               <div className="list" style={{ flex: 1, minWidth: 140 }}>
                 {types.map(([t, m]) => <div key={t} className="row small"><span className="dotc" style={{ background: TYPE_COLOR[t] }} /><span className="grow">{t}</span><b>{hours(m)}</b></div>)}
                 {types.length === 0 && <Empty>Sem imprevistos no período.</Empty>}

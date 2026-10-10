@@ -72,7 +72,7 @@ export function Tarefas() {
           <option value="">Todas as prioridades</option>
           <option value="alta">Alta</option><option value="media">Média</option><option value="baixa">Baixa</option>
         </select>
-        <span className="muted small" style={{ marginLeft: 'auto' }}>arraste os cards entre as colunas</span>
+        <span className="muted small" style={{ marginLeft: 'auto' }}><span className="only-mouse">arraste os cards entre as colunas</span><span className="only-touch">toque num card para mudar a situação · deslize para ver as colunas</span></span>
       </div>
 
       <div className="cols5">

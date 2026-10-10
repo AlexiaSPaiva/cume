@@ -106,12 +106,12 @@ export function Personalizar({ onLogout }: { onLogout: () => void }) {
           </div>
           <label className="field"><span>Frase do rodapé</span><input value={settings.phrase} onChange={(e) => set({ phrase: e.target.value })} /></label>
           <div className="field"><span>Cor de destaque</span>
-            <div className="row">
+            <div className="row" style={{ flexWrap: 'wrap' }}>
               {ACCENTS.map((c) => (
-                <button key={c} aria-label={`cor ${c}`} onClick={() => set({ accent: c })}
-                  style={{ width: 30, height: 30, borderRadius: '50%', background: c, border: settings.accent === c ? '3px solid #fff' : '1px solid var(--line-2)', cursor: 'pointer' }} />
+                <button key={c} aria-label={`cor ${c}`} aria-pressed={settings.accent === c} onClick={() => set({ accent: c })}
+                  className={`swatch ${settings.accent === c ? 'on' : ''}`} style={{ background: c }} />
               ))}
-              <input type="color" value={settings.accent} onChange={(e) => set({ accent: e.target.value })} aria-label="Outra cor" style={{ width: 36, height: 30, background: 'none', border: 0 }} />
+              <input type="color" value={settings.accent} onChange={(e) => set({ accent: e.target.value })} aria-label="Outra cor" className="swatch" style={{ background: 'none', border: 0, padding: 0 }} />
             </div>
           </div>
           <div className="field"><span>Cidade (clima no rodapé)</span>

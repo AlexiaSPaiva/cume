@@ -71,7 +71,7 @@ export function MinhaSemana() {
           <button className="btn sm" onClick={() => setWs(addDays(ws, 7))} aria-label="Próxima semana">›</button>
           {ws !== weekStart(t0) && <button className="btn sm ghost" onClick={() => setWs(weekStart(t0))}>hoje</button>}
         </div>
-        <span className="muted small">arraste um card para outro dia</span>
+        <span className="muted small"><span className="only-mouse">arraste um card para outro dia</span><span className="only-touch">toque num card para mudar o dia</span></span>
       </div>
 
       <div className="week7">
@@ -100,7 +100,7 @@ export function MinhaSemana() {
                   <button key={`i${c.i.id}`} className="tcard imp" onClick={() => ui.openImprevisto(c.i)}>
                     <div className="meta"><span className="tm" style={{ color: IMPREVISTO_COLOR }}>{c.i.start}</span><span>{dur(c.i.durationMin)}</span></div>
                     <b>! {c.i.title}</b>
-                    <span className="muted" style={{ fontSize: 10.5 }}>{AREA[c.i.area].name}</span>
+                    <span className="muted" style={{ fontSize: '0.6562rem' }}>{AREA[c.i.area].name}</span>
                   </button>
                 ) : (
                   <div key={`t${c.o.task.id}-${day}`} className={`tcard ${c.o.task.soft || c.o.task.status === 'adiada' ? 'soft' : ''} ${c.o.task.status === 'concluido' ? 'done' : ''}`}
@@ -118,7 +118,7 @@ export function MinhaSemana() {
                       {!c.o.repeating && (
                         <span className="row" style={{ gap: 2 }} onClick={(e) => e.stopPropagation()}>
                           <button className="icon-btn" title={c.o.task.status === 'concluido' ? 'Desfazer' : 'Marcar como feita'} onClick={() => toggleDone(c.o.task.id!, c.o.task.status === 'concluido')}><Icon name="check" size={13} /></button>
-                          {c.o.task.status !== 'adiada' && c.o.task.status !== 'concluido' && <button className="icon-btn" title="Adiar" style={{ fontSize: 11 }} onClick={() => postpone(c.o.task.id!)}>adiar</button>}
+                          {c.o.task.status !== 'adiada' && c.o.task.status !== 'concluido' && <button className="icon-btn" title="Adiar" style={{ fontSize: '0.6875rem' }} onClick={() => postpone(c.o.task.id!)}>adiar</button>}
                         </span>
                       )}
                     </div>

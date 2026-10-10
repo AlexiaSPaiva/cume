@@ -77,15 +77,15 @@ export function Planejamento() {
             {AREAS.map((a) => (
               <div key={a.id}>
                 <div className="row">
-                  <b style={{ fontSize: 13 }}>{a.name}</b>
+                  <b style={{ fontSize: '0.8125rem' }}>{a.name}</b>
                   <span className="right row" style={{ gap: 6 }}>
                     <button className="btn sm" onClick={() => bump(a.id, -1)} aria-label={`menos horas em ${a.name}`}>-</button>
                     <button className="btn sm" onClick={() => bump(a.id, 1)} aria-label={`mais horas em ${a.name}`}>+</button>
-                    <b style={{ color: a.color, fontSize: 15, width: 38, textAlign: 'right' }}>{plan.hoursByArea[a.id]}h</b>
+                    <b style={{ color: a.color, fontSize: '0.9375rem', width: 38, textAlign: 'right' }}>{plan.hoursByArea[a.id]}h</b>
                   </span>
                 </div>
                 <div style={{ margin: '6px 0 4px' }}><Bar pct={(plan.hoursByArea[a.id] / 36) * 100} color={a.color} /></div>
-                <span className="faint" style={{ fontSize: 10.5 }}>
+                <span className="faint" style={{ fontSize: '0.6562rem' }}>
                   hoje: {Math.round(curPlanned[a.id] / 6) / 10}h · foco desejado: {desiredH(a.id)}h
                   {bufferByArea[a.id] > 0 && ` · inclui ${bufferByArea[a.id]}h de reserva p/ imprevistos`}
                   {nextPlanned[a.id] > 0 && ` · já agendado: ${dur(nextPlanned[a.id])}`}
@@ -127,8 +127,9 @@ export function Planejamento() {
             <h2>Backlog</h2>
             <div className="list">
               {backlog.map((t) => (
-                <div key={t.id} className="tcard soft" draggable onDragStart={(e) => e.dataTransfer.setData('task', String(t.id))}>
-                  <div className="row"><b className="grow">{t.title}</b><span className="faint small">arraste para um dia</span></div>
+                <div key={t.id} className="tcard soft" draggable onDragStart={(e) => e.dataTransfer.setData('task', String(t.id))}
+                  onClick={() => ui.openTask(t)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && ui.openTask(t)}>
+                  <div className="row"><b className="grow">{t.title}</b><span className="faint small"><span className="only-mouse">arraste para um dia</span><span className="only-touch">toque para escolher o dia</span></span></div>
                   <span><AreaTag area={t.area} /></span>
                 </div>
               ))}
@@ -150,7 +151,7 @@ export function Planejamento() {
             <h2>Reservas para imprevistos</h2>
             <div className="list">
               {buffers.map((b) => (
-                <button key={b.id} className="row small" style={{ all: 'unset', display: 'flex', gap: 9, cursor: 'pointer' }} onClick={() => ui.openTask(b)}>
+                <button key={b.id} className="plain row small" style={{ display: 'flex', gap: 9, cursor: 'pointer' }} onClick={() => ui.openTask(b)}>
                   <Icon name="repeat" size={13} /><span className="grow" style={{ flex: 1 }}>{b.title}</span>
                   <span className="muted">{b.repeatDays?.map((x) => DOW_SHORT[x]).join(', ')} {b.start} · {dur(b.durationMin ?? 0)}</span>
                 </button>

@@ -91,7 +91,7 @@ export function Login({ settings, onIn }: { settings?: Settings; onIn: () => voi
             <button type="button" className="btn ghost sm" style={{ alignSelf: 'flex-end' }} onClick={() => { setMode('reset'); setErr(''); setPw(''); }}>Esqueci a senha</button>
           )}
           {err && <div className="err">{err}</div>}
-          <button className="btn gold" style={{ justifyContent: 'center', padding: 13, fontSize: 15 }} disabled={busy}>
+          <button className="btn gold" style={{ justifyContent: 'center', padding: 13, fontSize: '0.9375rem' }} disabled={busy}>
             {mode === 'login' ? 'Entrar' : mode === 'reset' ? 'Salvar nova senha' : 'Criar e entrar'}
           </button>
           {mode === 'reset' && <button type="button" className="btn ghost sm" onClick={() => setMode('login')}>Voltar</button>}

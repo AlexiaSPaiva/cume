@@ -102,7 +102,7 @@ export function AreaPanel() {
           </div>
         </section>
         <section className="card">
-          <h2>Ritmo da semana · <span className="muted" style={{ fontSize: 17 }}>progresso e regresso</span></h2>
+          <h2>Ritmo da semana · <span className="muted" style={{ fontSize: '1.0625rem' }}>progresso e regresso</span></h2>
           <RhythmLine values={rhythm} color={A.color} labels={days.map((x) => DOW_SHORT[parse(x).getDay()][0])} />
           <div className="row small" style={{ gap: 14, marginTop: 6 }}>
             <span style={{ color: 'var(--bad)' }}>queda —</span><span style={{ color: A.color }}>subida —</span>
@@ -115,7 +115,7 @@ export function AreaPanel() {
         <section className="card">
           <h2>Tempo e foco</h2>
           <div className="row" style={{ alignItems: 'baseline' }}>
-            <b style={{ fontSize: 30 }}>{Math.round(wn.total[area] / 6) / 10}h</b>
+            <b style={{ fontSize: '1.875rem' }}>{Math.round(wn.total[area] / 6) / 10}h</b>
             <span className="muted small">na semana ({Math.round(wn.planned[area] / 6) / 10}h plano + {Math.round(imm / 6) / 10}h imprevisto)</span>
           </div>
           <div className="list" style={{ marginTop: 14, gap: 12 }}>
@@ -150,7 +150,7 @@ export function AreaPanel() {
             {plans.map((t) => {
               const [label, cls] = planTag(t);
               return (
-                <button key={t.id} className="row small" style={{ all: 'unset', display: 'flex', gap: 9, cursor: 'pointer', alignItems: 'center' }} onClick={() => ui.openTask(t)}>
+                <button key={t.id} className="plain row small" style={{ display: 'flex', gap: 9, cursor: 'pointer', alignItems: 'center' }} onClick={() => ui.openTask(t)}>
                   <span className="dotc" style={{ background: cls === 'bad' ? 'var(--bad)' : cls === 'ok' ? 'var(--ok)' : cls === 'warn' ? 'var(--warn)' : '#7ea3cc' }} />
                   <span className="grow" style={{ flex: 1 }}>{t.title}{t.start && isTodayTask(t) ? ` ${t.start}` : ''}</span>
                   <span className={`tag ${cls}`}>{label}</span>

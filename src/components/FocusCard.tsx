@@ -57,20 +57,22 @@ export function FocusCard() {
       ) : (
         <div className="row" style={{ gap: 22, flexWrap: 'wrap' }}>
           <Donut size={132} data={AREAS.map((a) => ({ value: pct[a.id], color: a.color }))}
-            center={<span className="small" style={{ lineHeight: 1.2 }}><b style={{ fontSize: 18 }}>{total}h</b><br /><span className="muted">planejadas</span></span>} />
-          <div className="list" style={{ flex: 1, minWidth: 170 }}>
+            center={<span className="small" style={{ lineHeight: 1.2 }}><b style={{ fontSize: '1.125rem' }}>{total}h</b><br /><span className="muted">planejadas</span></span>} />
+          <div className="list" style={{ flex: 1, minWidth: '9rem', gap: 6 }}>
             {AREAS.map((a) => {
               const diff = pct[a.id] - desired[a.id];
               const off = Math.abs(diff) >= 5;
               return (
-                <div key={a.id} className="row small" title={`${hours[a.id]}h planejadas · foco desejado ${desired[a.id]}%`}>
+                <div key={a.id} className="row small" style={{ alignItems: 'flex-start' }} title={`${hours[a.id]}h planejadas · foco desejado ${desired[a.id]}%`}>
                   <AreaDot area={a.id} />
-                  <span className="grow">{a.name}</span>
-                  <span className="faint" style={{ fontSize: 11 }}>
-                    {off && <span style={{ color: diff < 0 ? 'var(--bad)' : 'var(--warn)' }}>{diff < 0 ? '▼' : '▲'} </span>}
-                    desejado {desired[a.id]}%
+                  <span style={{ flex: 1, minWidth: 0, marginTop: -3 }}>
+                    {a.name}
+                    <span className="faint" style={{ display: 'block', fontSize: '0.6875rem' }}>
+                      {off && <span style={{ color: diff < 0 ? 'var(--bad)' : 'var(--warn)' }}>{diff < 0 ? '▼' : '▲'} </span>}
+                      desejado {desired[a.id]}% · {hours[a.id]}h
+                    </span>
                   </span>
-                  <b style={{ width: 36, textAlign: 'right' }}>{pct[a.id]}%</b>
+                  <b style={{ marginTop: -3 }}>{pct[a.id]}%</b>
                 </div>
               );
             })}
