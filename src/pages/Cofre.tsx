@@ -4,9 +4,9 @@ import { DocForm } from '../components/forms';
 import { useUI } from '../components/Overlays';
 import { Empty, Icon, Modal, Stat, Stats } from '../components/ui';
 import { useData } from '../lib/data';
-import { db } from '../lib/db';
 import { addDays, ddmm, relDays, today } from '../lib/dates';
-import type { DocType, VaultDoc } from '../lib/types';
+import type { Attachment, DocType } from '../lib/types';
+import { fmtSize, openAttachment } from '../lib/attachments';
 
 const TABS: { label: string; type?: DocType }[] = [
   { label: 'Todos' }, { label: 'Documentos', type: 'Documento' }, { label: 'Comprovantes', type: 'Comprovante' },
@@ -15,20 +15,13 @@ const TABS: { label: string; type?: DocType }[] = [
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
-function openDoc(d: VaultDoc, toast: (m: string) => void) {
-  if (d.storage === 'drive' && d.driveUrl) {
-    window.open(d.driveUrl, '_blank', 'noopener');
-  } else if (d.blob) {
-    const url = URL.createObjectURL(d.blob);
-    window.open(url, '_blank', 'noopener');
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-  } else {
-    toast('Este item é um exemplo, sem arquivo anexado.');
-  }
+async function openDoc(a: Attachment | undefined, toast: (m: string) => void) {
+  if (!a || !(await openAttachment(a))) toast('Este item é um exemplo, sem arquivo anexado.');
 }
 
 export function Cofre() {
-  const { docs, events } = useData();
+  const { docs, events, attachments } = useData();
+  const attOf = (id?: number) => attachments.find((a) => a.id === id);
   const ui = useUI();
   const [tab, setTab] = useState(0);
   const [q, setQ] = useState('');
@@ -73,9 +66,9 @@ export function Cofre() {
                   {list.map((d) => (
                     <tr key={d.id}>
                       <td>
-                        <button className="row" style={{ all: 'unset', display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }} onClick={() => openDoc(d, ui.toast)}
+                        <button className="row" style={{ all: 'unset', display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }} onClick={() => openDoc(attOf(d.attachmentId), ui.toast)} data-testid="doc-open"
                           title={d.storage === 'drive' ? 'Abrir no Google Drive' : 'Abrir arquivo'}>
-                          <Icon name={d.storage === 'drive' ? 'drive' : 'file'} size={15} />{d.name}
+                          <Icon name={d.storage === 'drive' ? 'drive' : 'file'} size={15} />{d.name}{attOf(d.attachmentId)?.size ? <small className="faint">&nbsp;{fmtSize(attOf(d.attachmentId)!.size)}</small> : null}
                         </button>
                       </td>
                       <td className="muted">{d.type}</td>
@@ -83,10 +76,7 @@ export function Cofre() {
                       <td className="muted hide-m">{d.linkedTo ?? '—'}</td>
                       <td className="num">{d.value ? brl(d.value) : '—'}</td>
                       <td className="num">
-                        <button className="icon-btn" aria-label={`Apagar ${d.name}`} onClick={async () => {
-                          await db.docs.delete(d.id!);
-                          ui.toast(`${d.name} removido do cofre.`, { label: 'Desfazer', run: () => db.docs.add(d) });
-                        }}><Icon name="trash" size={14} /></button>
+                        <button className="icon-btn" aria-label={`Excluir ${d.name}`} onClick={() => ui.remove('docs', d.id!, d.name)}><Icon name="trash" size={14} /></button>
                       </td>
                     </tr>
                   ))}

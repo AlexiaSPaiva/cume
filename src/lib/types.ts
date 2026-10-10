@@ -1,3 +1,11 @@
+/** todo registro guarda criação, última edição e exclusão (lixeira de 30 dias) */
+export interface Stamped {
+  createdAt?: string;
+  updatedAt?: string;
+  /** soft delete: preenchido quando vai para a Lixeira; o purge apaga de verdade após 30 dias */
+  deletedAt?: string;
+}
+
 export type AreaId = 'academica' | 'profissional' | 'saude' | 'pessoal' | 'financeiro' | 'adultices';
 
 export interface Area {
@@ -11,7 +19,7 @@ export interface Area {
 export type TaskStatus = 'afazer' | 'hoje' | 'andamento' | 'aguardando' | 'concluido' | 'adiada';
 export type Priority = 'alta' | 'media' | 'baixa';
 
-export interface Task {
+export interface Task extends Stamped {
   id?: number;
   title: string;
   area: AreaId;
@@ -36,12 +44,11 @@ export interface Task {
   soft?: boolean;
   goalId?: number;
   doneAt?: string;
-  createdAt: string;
 }
 
 export type ImprevistoType = 'Trabalho' | 'Saúde' | 'Burocracia' | 'Infraestrutura' | 'Família' | 'Transporte' | 'Outro';
 
-export interface Imprevisto {
+export interface Imprevisto extends Stamped {
   id?: number;
   title: string;
   area: AreaId;
@@ -53,10 +60,9 @@ export interface Imprevisto {
   durationMin: number;
   postponedTasks: boolean;
   postponedTaskIds?: number[];
-  createdAt: string;
 }
 
-export interface Objective {
+export interface Objective extends Stamped {
   id?: number;
   title: string;
   subtitle: string;
@@ -65,7 +71,7 @@ export interface Objective {
 
 export type GoalMetric = 'valor' | 'páginas' | 'horas' | 'tarefas' | 'frequência' | 'nota' | 'outro';
 
-export interface Goal {
+export interface Goal extends Stamped {
   id?: number;
   objectiveId?: number;
   title: string;
@@ -80,7 +86,7 @@ export interface Goal {
   kpi?: boolean;
 }
 
-export interface GoalRecord {
+export interface GoalRecord extends Stamped {
   id?: number;
   goalId: number;
   value: number;
@@ -90,7 +96,7 @@ export interface GoalRecord {
 
 export type CalendarKind = 'evento' | 'prazo' | 'vencimento';
 
-export interface CalendarEvent {
+export interface CalendarEvent extends Stamped {
   id?: number;
   title: string;
   date: string;
@@ -104,7 +110,7 @@ export interface CalendarEvent {
 
 export type DocType = 'Documento' | 'Comprovante' | 'Contrato' | 'Imposto' | 'Outro';
 
-export interface VaultDoc {
+export interface VaultDoc extends Stamped {
   id?: number;
   name: string;
   type: DocType;
@@ -114,14 +120,38 @@ export interface VaultDoc {
   remind?: boolean;
   renewDate?: string;
   storage: 'arquivo' | 'drive';
-  blob?: Blob;
-  mime?: string;
-  size?: number;
-  driveUrl?: string;
-  createdAt: string;
+  /** o arquivo ou o link ficam num Attachment (o binário em `blobs`) */
+  attachmentId?: number;
 }
 
-export interface WeekPlan {
+export type AttachmentKind = 'notice' | 'boleto' | 'receipt' | 'material' | 'article' | 'file' | 'link' | 'photo';
+
+/** metadados de um arquivo ou link; o binário fica separado em `blobs` (chave `blobKey`) */
+export interface Attachment extends Stamped {
+  id?: number;
+  ownerType: string;
+  ownerId: number | string;
+  kind: AttachmentKind;
+  name: string;
+  size?: number;
+  mime?: string;
+  blobKey?: string;
+  url?: string;
+  meta?: Record<string, unknown>;
+}
+
+export interface StoredBlob {
+  key: string;
+  blob: Blob;
+}
+
+export interface Draft {
+  key: string;
+  value: unknown;
+  updatedAt: string;
+}
+
+export interface WeekPlan extends Stamped {
   /** segunda-feira da semana (YYYY-MM-DD) */
   weekStart: string;
   hoursByArea: Record<AreaId, number>;
@@ -132,14 +162,15 @@ export type ScenarioId = 'por-do-sol' | 'manha' | 'noite' | 'lagoa';
 
 export type WidgetId = 'top3' | 'prazos' | 'imprevistos' | 'foco' | 'tempo' | 'vida' | 'sugestoes';
 
-export interface Settings {
+export interface Settings extends Stamped {
   id: 'me';
   name: string;
   fullName: string;
   phrase: string;
   accent: string;
   scenario: ScenarioId;
-  customPhoto?: string;
+  /** foto própria do cenário (Attachment kind 'photo') */
+  photoAttachmentId?: number;
   widgets: WidgetId[];
   desiredFocus: Record<AreaId, number>;
   city: { name: string; lat: number; lon: number };
@@ -156,7 +187,7 @@ export interface Account {
   salt: string;
 }
 
-export interface SuggestionState {
+export interface SuggestionState extends Stamped {
   key: string;
   status: 'aceita' | 'dispensada';
   until?: string;

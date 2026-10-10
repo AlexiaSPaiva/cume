@@ -4,6 +4,7 @@ import { AREAS, AREA } from '../lib/areas';
 import { useData } from '../lib/data';
 import { addDays, ddmm, DOW_LONG, dur, longDate, relDays, today } from '../lib/dates';
 import { useTemperature } from '../lib/weather';
+import { useAttachmentUrl } from '../lib/attachments';
 import type { RecurringSuggestion } from '../lib/recurrence';
 import { Scenery } from './Scenery';
 import { Icon } from './ui';
@@ -25,6 +26,7 @@ export function Layout() {
   const [menu, setMenu] = useState(false);
   const loc = useLocation();
   const temp = useTemperature(settings.city.lat, settings.city.lon);
+  const photo = useAttachmentUrl(settings.photoAttachmentId);
   useEffect(() => setMenu(false), [loc.pathname]);
 
   return (
@@ -50,12 +52,12 @@ export function Layout() {
           ))}
         </nav>
         <Link to="/personalizar" className="me">
-          <span className="avatar">{settings.customPhoto ? <img src={settings.customPhoto} alt="" /> : settings.name[0]}</span>
+          <span className="avatar">{photo ? <img src={photo} alt="" /> : settings.name[0]}</span>
           <span><b>{settings.fullName}</b><small>personalizar</small></span>
         </Link>
       </aside>
       <div className="main">
-        <div className="hero-bg"><Scenery id={settings.scenario} photo={settings.customPhoto} /></div>
+        <div className="hero-bg"><Scenery id={settings.scenario} photo={photo} /></div>
         <div className="content">
           <Outlet context={{ openMenu: () => setMenu(true) }} />
           <footer className="footer">
@@ -107,6 +109,7 @@ function TopBar({ crumbs, onDoc }: { crumbs: { to?: string; label: string }[]; o
   const [bell, setBell] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { openMenu } = useOutletCtx();
+  const photo = useAttachmentUrl(settings.photoAttachmentId);
 
   useEffect(() => {
     const h = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setBell(false);
@@ -149,7 +152,7 @@ function TopBar({ crumbs, onDoc }: { crumbs: { to?: string; label: string }[]; o
         )}
       </div>
       <Link to="/personalizar" className="avatar" aria-label="Configurações">
-        {settings.customPhoto ? <img src={settings.customPhoto} alt="" /> : settings.name[0]}
+        {photo ? <img src={photo} alt="" /> : settings.name[0]}
       </Link>
     </div>
   );

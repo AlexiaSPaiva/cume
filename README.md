@@ -26,8 +26,21 @@ Objetivos e Metas · Imprevistos · painéis das 6 áreas · Cofre de documentos
 - **Link do Google Drive no Cofre**: além de enviar arquivo, dá para guardar o link de um documento
   do Drive (validado para `drive.google.com` / `docs.google.com`).
 
-## Dados
+## Dados (regras que não podem ser quebradas)
 
-Tudo fica no aparelho (IndexedDB via Dexie). A conta é local: a senha protege o acesso neste
-aparelho, não há servidor. Backup/restauração em Personalizar. Para o Google Calendar, informe um
-OAuth Client ID (Aplicativo da Web) em Calendário.
+- Tudo fica no IndexedDB (Dexie, `src/lib/db.ts`). Arquivos: binário em `blobs`, metadados em `attachments`
+  (`src/lib/attachments.ts`). Nunca em memória nem em `localStorage`; URLs de arquivo são criadas na hora de exibir.
+- **Schema versionado**: toda mudança de estrutura = nova `db.version(n)` com `.upgrade()` que transforma os dados.
+  Proibido apagar/recriar o banco. Os testes em `tests/unit/migration.test.ts` provam isso.
+- **Exclusão** = soft delete (`deletedAt`) + "Desfazer" (6 s) + Lixeira de 30 dias (`src/lib/trash.ts`).
+- **Formulários**: rascunho (novo) ou autosave (edição) com debounce, "salvo às HH:MM" (`src/lib/drafts.ts`).
+- **Service worker** em modo `prompt`: só limpa caches de assets antigos; mostra "Nova versão disponível · Atualizar".
+- **Backup** `.zip` (JSON + arquivos) em Configurações; importar soma, nunca apaga (`src/lib/backup.ts`).
+- Dados de exemplo só entram com o banco vazio.
+
+## Testes
+
+```sh
+pnpm test        # Vitest + fake-indexeddb: migração, lixeira, backup, seed
+pnpm test:e2e    # Playwright com o Chrome instalado: recarregar, troca de versão do SW, reabrir o app, layout 360/768/1280
+```

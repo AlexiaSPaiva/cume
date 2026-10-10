@@ -88,9 +88,13 @@ export async function syncCalendars(cals: { id: string; name: string; area: Area
         externalId: `${c.id}:${e.id}`,
       };
     });
+    // atualiza pelo id do Google (externalId); nunca apaga eventos locais
     await db.transaction('rw', db.events, async () => {
-      await db.events.where('source').equals('google').and((e) => e.calendarName === c.name).delete();
-      await db.events.bulkAdd(events);
+      for (const ev of events) {
+        const cur = await db.events.where('externalId').equals(ev.externalId!).first();
+        if (cur) await db.events.update(cur.id!, ev);
+        else await db.events.add(ev);
+      }
     });
     n += events.length;
   }

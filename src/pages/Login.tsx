@@ -4,6 +4,7 @@ import { db } from '../lib/db';
 import { defaultSettings, seedExample } from '../lib/seed';
 import type { ScenarioId, Settings } from '../lib/types';
 import { SCENES, Scenery } from '../components/Scenery';
+import { useAttachmentUrl } from '../lib/attachments';
 
 export function Login({ settings, onIn }: { settings?: Settings; onIn: () => void }) {
   const [mode, setMode] = useState<'login' | 'signup' | 'reset' | null>(null);
@@ -16,6 +17,7 @@ export function Login({ settings, onIn }: { settings?: Settings; onIn: () => voi
   const [example, setExample] = useState(true);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const photo = useAttachmentUrl(settings?.photoAttachmentId);
 
   useEffect(() => {
     hasAccount().then((h) => setMode(h ? 'login' : 'signup'));
@@ -24,7 +26,7 @@ export function Login({ settings, onIn }: { settings?: Settings; onIn: () => voi
 
   async function pickScene(id: ScenarioId) {
     setScene(id);
-    if (settings) await db.settings.update('me', { scenario: id, customPhoto: undefined });
+    if (settings) await db.settings.update('me', { scenario: id, photoAttachmentId: undefined });
   }
 
   async function submit(e: FormEvent) {
@@ -45,7 +47,7 @@ export function Login({ settings, onIn }: { settings?: Settings; onIn: () => voi
         }
         if (!name.trim()) return setErr('Como você quer ser chamada?');
         await createAccount(email, pw);
-        await db.settings.put({ ...defaultSettings(name.trim(), fullName.trim() || name.trim()), scenario: scene });
+        if (!(await db.settings.get('me'))) await db.settings.put({ ...defaultSettings(name.trim(), fullName.trim() || name.trim()), scenario: scene });
         if (example) await seedExample();
         onIn();
       }
@@ -58,7 +60,7 @@ export function Login({ settings, onIn }: { settings?: Settings; onIn: () => voi
 
   return (
     <div className="login">
-      <div className="hero-bg"><Scenery id={scene} photo={scene === settings?.scenario ? settings?.customPhoto : undefined} /></div>
+      <div className="hero-bg"><Scenery id={scene} photo={scene === settings?.scenario ? photo : undefined} /></div>
       <div className="brandL">
         <div className="name">{displayName}</div>
         <p>Personal Life OS &nbsp;·&nbsp; Foco · Clareza · Ação</p>

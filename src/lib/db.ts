@@ -1,9 +1,17 @@
-import Dexie, { type EntityTable } from 'dexie';
+import Dexie, { type EntityTable, type Transaction } from 'dexie';
 import type {
-  Account, CalendarEvent, Goal, GoalRecord, Imprevisto, Objective, Settings, SuggestionState, Task, VaultDoc, WeekPlan,
+  Account, Attachment, CalendarEvent, Draft, Goal, GoalRecord, Imprevisto, Objective, Settings, StoredBlob,
+  SuggestionState, Task, VaultDoc, WeekPlan,
 } from './types';
 
-export const db = new Dexie('meuplano') as Dexie & {
+/**
+ * Banco local (IndexedDB). REGRAS:
+ * - toda mudança de estrutura ganha uma nova `db.version(n)` com `.upgrade()` que TRANSFORMA os dados antigos;
+ * - nunca apagar, recriar ou resetar o banco numa atualização;
+ * - versões antigas ficam declaradas aqui para sempre (o Dexie precisa delas para migrar).
+ */
+
+export type MeuPlanoDB = Dexie & {
   tasks: EntityTable<Task, 'id'>;
   imprevistos: EntityTable<Imprevisto, 'id'>;
   objectives: EntityTable<Objective, 'id'>;
@@ -15,9 +23,24 @@ export const db = new Dexie('meuplano') as Dexie & {
   settings: EntityTable<Settings, 'id'>;
   account: EntityTable<Account, 'email'>;
   suggestions: EntityTable<SuggestionState, 'key'>;
+  attachments: EntityTable<Attachment, 'id'>;
+  blobs: EntityTable<StoredBlob, 'key'>;
+  drafts: EntityTable<Draft, 'key'>;
+  meta: EntityTable<{ key: string; value: unknown }, 'key'>;
 };
 
-db.version(1).stores({
+export const DB_NAME = 'meuplano';
+
+/** tabelas com createdAt/updatedAt/deletedAt */
+export const STAMPED_TABLES = [
+  'tasks', 'imprevistos', 'objectives', 'goals', 'records', 'events', 'docs', 'plans', 'settings', 'suggestions', 'attachments',
+] as const;
+
+/** tabelas cujos itens podem ir para a Lixeira */
+export const TRASHABLE_TABLES = ['tasks', 'imprevistos', 'objectives', 'goals', 'records', 'events', 'docs', 'attachments'] as const;
+export type TrashableTable = (typeof TRASHABLE_TABLES)[number];
+
+export const SCHEMA_V1 = {
   tasks: '++id, area, status, date, deadline',
   imprevistos: '++id, area, date, type',
   objectives: '++id, area',
@@ -29,16 +52,108 @@ db.version(1).stores({
   settings: 'id',
   account: 'email',
   suggestions: 'key',
-});
+};
 
-export async function clearAllData() {
-  await db.transaction('rw', [db.tasks, db.imprevistos, db.objectives, db.goals, db.records, db.events, db.docs, db.plans, db.suggestions], async () => {
-    await Promise.all([
-      db.tasks.clear(), db.imprevistos.clear(), db.objectives.clear(), db.goals.clear(), db.records.clear(),
-      db.events.clear(), db.docs.clear(), db.plans.clear(), db.suggestions.clear(),
-    ]);
-  });
+export const SCHEMA_V2 = {
+  tasks: '++id, area, status, date, deadline, deletedAt',
+  imprevistos: '++id, area, date, type, deletedAt',
+  objectives: '++id, area, deletedAt',
+  goals: '++id, objectiveId, area, deletedAt',
+  records: '++id, goalId, date, deletedAt',
+  events: '++id, date, area, kind, source, externalId, deletedAt',
+  docs: '++id, type, date, deletedAt',
+  plans: 'weekStart',
+  settings: 'id',
+  account: 'email',
+  suggestions: 'key',
+  attachments: '++id, [ownerType+ownerId], kind, blobKey, deletedAt',
+  blobs: 'key',
+  drafts: 'key',
+  meta: 'key',
+};
+
+export function newKey(): string {
+  return crypto.randomUUID();
 }
+
+export function dataUrlToBlob(dataUrl: string): Blob {
+  const [head, body] = dataUrl.split(',');
+  const mime = /data:([^;]+)/.exec(head)?.[1] ?? 'application/octet-stream';
+  const bin = atob(body);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+/**
+ * v1 → v2: os arquivos saem de dentro dos registros e viram Attachment + blob separado;
+ * todo registro ganha createdAt/updatedAt. Nada é apagado.
+ */
+export async function migrateV1toV2(tx: Transaction) {
+  const now = new Date().toISOString();
+
+  for (const t of STAMPED_TABLES) {
+    if (t === 'attachments') continue;
+    await tx.table(t).toCollection().modify((r: Record<string, unknown>) => {
+      r.createdAt ??= now;
+      r.updatedAt ??= r.createdAt;
+    });
+  }
+
+  const docs = await tx.table('docs').toArray();
+  for (const d of docs) {
+    const base = { ownerType: 'doc', ownerId: d.id, name: d.name, createdAt: d.createdAt ?? now, updatedAt: now };
+    let attachmentId: number | undefined;
+    if (d.blob instanceof Blob) {
+      const key = newKey();
+      await tx.table('blobs').add({ key, blob: d.blob });
+      attachmentId = await tx.table('attachments').add({
+        ...base, kind: 'file', blobKey: key, mime: d.mime ?? d.blob.type, size: d.size ?? d.blob.size,
+      });
+    } else if (d.driveUrl) {
+      attachmentId = await tx.table('attachments').add({ ...base, kind: 'link', url: d.driveUrl });
+    }
+    const { blob: _b, mime: _m, size: _s, driveUrl: _u, ...rest } = d;
+    await tx.table('docs').put({ ...rest, attachmentId, updatedAt: now });
+  }
+
+  const s = await tx.table('settings').get('me');
+  if (s?.customPhoto && typeof s.customPhoto === 'string' && s.customPhoto.startsWith('data:')) {
+    const blob = dataUrlToBlob(s.customPhoto);
+    const key = newKey();
+    await tx.table('blobs').add({ key, blob });
+    const photoAttachmentId = await tx.table('attachments').add({
+      ownerType: 'settings', ownerId: 'me', kind: 'photo', name: 'cenario.jpg', mime: blob.type, size: blob.size, blobKey: key, createdAt: now, updatedAt: now,
+    });
+    const { customPhoto: _p, ...rest } = s;
+    await tx.table('settings').put({ ...rest, photoAttachmentId, updatedAt: now });
+  }
+}
+
+export function defineSchema(d: Dexie) {
+  d.version(1).stores(SCHEMA_V1);
+  d.version(2).stores(SCHEMA_V2).upgrade(migrateV1toV2);
+}
+
+function stampHooks(d: Dexie) {
+  for (const t of STAMPED_TABLES) {
+    d.table(t).hook('creating', (_pk, obj: Record<string, unknown>) => {
+      const n = new Date().toISOString();
+      obj.createdAt ??= n;
+      obj.updatedAt ??= n;
+    });
+    d.table(t).hook('updating', ((mods: Record<string, unknown>) => ('updatedAt' in mods ? undefined : { updatedAt: new Date().toISOString() })) as never);
+  }
+}
+
+export function openDb(name = DB_NAME): MeuPlanoDB {
+  const d = new Dexie(name) as MeuPlanoDB;
+  defineSchema(d);
+  stampHooks(d);
+  return d;
+}
+
+export const db = openDb();
 
 /** registra um valor real numa meta e atualiza o progresso */
 export async function addRecord(goalId: number, value: number, note?: string, date = new Date().toISOString().slice(0, 10)) {

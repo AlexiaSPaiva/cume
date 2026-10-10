@@ -1,11 +1,14 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { db } from '../lib/db';
+import { useFormModel } from '../lib/drafts';
+import { addFileAttachment, addLinkAttachment } from '../lib/attachments';
 import { AREAS, AREA } from '../lib/areas';
 import { addDays, DOW_LONG, DOW_SHORT, dur, fromMin, toMin, today } from '../lib/dates';
 import { similarCount, type RecurringSuggestion } from '../lib/recurrence';
 import { useData } from '../lib/data';
 import type { AreaId, DocType, Imprevisto, ImprevistoType, Priority, Task, TaskStatus, VaultDoc } from '../lib/types';
 import { AreaDot, Icon } from './ui';
+import { useUI } from './Overlays';
 
 export const STATUS_LABEL: Record<TaskStatus, string> = {
   afazer: 'A fazer', hoje: 'Hoje', andamento: 'Em andamento', aguardando: 'Aguardando', concluido: 'Concluído', adiada: 'Adiada',
@@ -26,34 +29,55 @@ function AreaSelect({ value, onChange }: { value: AreaId; onChange: (a: AreaId) 
 
 /* ------------------------------------------------------------------ tarefa */
 
+/** "salvo às HH:MM" (rascunho ou registro) */
+export function SavedNote({ at, draft }: { at?: string; draft?: boolean }) {
+  if (!at) return null;
+  return <span className="hint" role="status">{draft ? 'rascunho salvo' : 'salvo'} às {at}</span>;
+}
+
+function normalizeTask(t: Partial<Task>): Task {
+  return {
+    ...(t as Task),
+    title: (t.title ?? '').trim(),
+    date: t.date || undefined,
+    start: t.start || undefined,
+    deadline: t.deadline || undefined,
+    durationMin: t.durationMin ? Number(t.durationMin) : undefined,
+    doneAt: t.status === 'concluido' ? (t.doneAt ?? today()) : undefined,
+    progress: t.status === 'concluido' ? 100 : t.progress,
+  };
+}
+
 export function TaskForm({ task, onDone }: { task?: Partial<Task>; onDone: () => void }) {
   const { goals } = useData();
-  const [t, setT] = useState<Partial<Task>>({ area: 'academica', priority: 'media', status: 'afazer', ...task });
-  const set = (p: Partial<Task>) => setT((o) => ({ ...o, ...p }));
+  const ui = useUI();
+  const editing = !!task?.id;
+  const draftKey = `task:new:${task?.date ?? ''}:${task?.status ?? ''}`;
+  const model = useFormModel<Partial<Task>>(draftKey, { area: 'academica', priority: 'media', status: 'afazer', ...task },
+    editing ? async (v) => { if (v.title?.trim()) await db.tasks.put(normalizeTask(v)); } : undefined);
+  const t = model.value;
+  const set = model.set;
   const repeating = !!t.repeatDays?.length;
 
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!t.title?.trim()) return;
-    const rec: Task = {
-      ...(t as Task),
-      createdAt: t.createdAt ?? new Date().toISOString(),
-      title: t.title.trim(),
-      date: t.date || undefined,
-      start: t.start || undefined,
-      deadline: t.deadline || undefined,
-      durationMin: t.durationMin ? Number(t.durationMin) : undefined,
-      doneAt: t.status === 'concluido' ? (t.doneAt ?? today()) : undefined,
-      progress: t.status === 'concluido' ? 100 : t.progress,
-    };
-    if (rec.id) await db.tasks.put(rec);
-    else await db.tasks.add(rec);
+    if (!editing) {
+      await db.tasks.add(normalizeTask(t));
+      await model.clear();
+    }
+    onDone();
+  }
+
+  async function discard() {
+    await model.clear();
     onDone();
   }
 
   async function remove() {
-    if (t.id) await db.tasks.delete(t.id);
+    if (!t.id) return;
     onDone();
+    await ui.remove('tasks', t.id, `“${t.title}”`);
   }
 
   return (
@@ -117,10 +141,11 @@ export function TaskForm({ task, onDone }: { task?: Partial<Task>; onDone: () =>
         </label>
       )}
       <label className="check"><input type="checkbox" checked={!!t.soft} onChange={(e) => set({ soft: e.target.checked })} /> Bloco livre / descanso (aparece tracejado)</label>
-      <div className="actions">
-        <button className="btn gold" type="submit">{t.id ? 'Salvar' : 'Criar tarefa'}</button>
-        <button className="btn" type="button" onClick={onDone}>Cancelar</button>
-        {t.id && <button className="btn danger" type="button" style={{ marginLeft: 'auto' }} onClick={remove}><Icon name="trash" size={14} /> Apagar</button>}
+      <div className="actions" style={{ alignItems: 'center' }}>
+        <button className="btn gold" type="submit">{editing ? 'Pronto' : 'Criar tarefa'}</button>
+        {!editing && <button className="btn" type="button" onClick={discard}>{model.hasDraft ? 'Descartar rascunho' : 'Cancelar'}</button>}
+        <SavedNote at={model.savedAt} draft={!editing} />
+        {editing && <button className="btn danger" type="button" style={{ marginLeft: 'auto' }} onClick={remove}><Icon name="trash" size={14} /> Excluir</button>}
       </div>
     </form>
   );
@@ -140,9 +165,14 @@ export function ImprevistoForm({ initial, onDone, onSaved, compact }: {
     area: 'profissional', type: 'Trabalho', date: today(),
     start: fromMin(Math.max(0, now.getHours() * 60 - 60)), end: fromMin(now.getHours() * 60), postponedTasks: false,
   });
-  const [f, setF] = useState<Partial<Imprevisto>>({ ...blank(), ...initial });
-  const [postpone, setPostpone] = useState<number[]>(initial?.postponedTaskIds ?? []);
-  const set = (p: Partial<Imprevisto>) => setF((o) => ({ ...o, ...p }));
+  const ui = useUI();
+  const editing = !!initial?.id;
+  const model = useFormModel<Partial<Imprevisto>>('imp:new', { ...blank(), postponedTaskIds: [], ...initial },
+    editing ? async (v) => { if (v.title?.trim()) await persist(v); } : undefined);
+  const f = model.value;
+  const set = model.set;
+  const postpone = f.postponedTaskIds ?? [];
+  const setPostpone = (fn: (p: number[]) => number[]) => set({ postponedTaskIds: fn(postpone) });
 
   const duration = f.start && f.end ? toMin(f.end) - toMin(f.start) : 0;
   const similar = useMemo(
@@ -153,37 +183,47 @@ export function ImprevistoForm({ initial, onDone, onSaved, compact }: {
   // tarefas daquele dia que podem ter sido atrapalhadas
   const dayTasks = tasks.filter((t) => t.date === f.date && !t.repeatDays?.length && t.status !== 'concluido');
 
-  async function save(e: FormEvent) {
-    e.preventDefault();
-    if (!f.title?.trim() || duration <= 0) return;
+  async function persist(v: Partial<Imprevisto>): Promise<Imprevisto> {
+    const dm = v.start && v.end ? toMin(v.end) - toMin(v.start) : 0;
     const rec: Imprevisto = {
-      ...(f as Imprevisto),
-      createdAt: f.createdAt ?? new Date().toISOString(),
-      title: f.title.trim(),
-      durationMin: duration,
-      postponedTasks: !!f.postponedTasks,
-      postponedTaskIds: f.postponedTasks ? postpone : [],
+      ...(v as Imprevisto),
+      title: (v.title ?? '').trim(),
+      durationMin: Math.max(0, dm),
+      postponedTasks: !!v.postponedTasks,
+      postponedTaskIds: v.postponedTasks ? v.postponedTaskIds ?? [] : [],
     };
     if (rec.id) await db.imprevistos.put(rec);
     else rec.id = await db.imprevistos.add(rec);
     if (rec.postponedTasks) {
-      for (const id of postpone) {
+      for (const id of rec.postponedTaskIds ?? []) {
         const t = await db.tasks.get(id);
         if (t && t.status !== 'adiada') await db.tasks.update(id, { status: 'adiada', postponedCount: (t.postponedCount ?? 0) + 1 });
       }
     }
-    const becameRecurring = !initial?.id && similar + 1 >= settings.recurrenceThreshold;
-    onSaved?.(rec, becameRecurring);
-    if (!initial?.id) {
-      setF(blank());
-      setPostpone([]);
-    }
+    return rec;
+  }
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (!f.title?.trim() || duration <= 0) return;
+    if (editing) { onDone?.(); return; }
+    const rec = await persist(f);
+    await model.clear();
+    onSaved?.(rec, similar + 1 >= settings.recurrenceThreshold);
+    model.reset({ ...blank(), postponedTaskIds: [] });
+    onDone?.();
+  }
+
+  async function discard() {
+    await model.clear();
+    model.reset({ ...blank(), postponedTaskIds: [] });
     onDone?.();
   }
 
   async function remove() {
-    if (f.id) await db.imprevistos.delete(f.id);
+    if (!f.id) return;
     onDone?.();
+    await ui.remove('imprevistos', f.id, `Imprevisto “${f.title}”`);
   }
 
   return (
@@ -231,10 +271,11 @@ export function ImprevistoForm({ initial, onDone, onSaved, compact }: {
           ))}
         </div>
       )}
-      <div className="actions">
-        <button className="btn imp" type="submit">{f.id ? 'Salvar' : 'Salvar imprevisto'}</button>
-        {onDone && <button className="btn" type="button" onClick={onDone}>Cancelar</button>}
-        {f.id && <button className="btn danger" type="button" style={{ marginLeft: 'auto' }} onClick={remove}><Icon name="trash" size={14} /> Apagar</button>}
+      <div className="actions" style={{ alignItems: 'center' }}>
+        <button className="btn imp" type="submit">{editing ? 'Pronto' : 'Salvar imprevisto'}</button>
+        {!editing && (onDone || model.hasDraft) && <button className="btn" type="button" onClick={discard}>{model.hasDraft ? 'Descartar rascunho' : 'Cancelar'}</button>}
+        <SavedNote at={model.savedAt} draft={!editing} />
+        {editing && <button className="btn danger" type="button" style={{ marginLeft: 'auto' }} onClick={remove}><Icon name="trash" size={14} /> Excluir</button>}
       </div>
     </form>
   );
@@ -306,14 +347,35 @@ export function isDriveUrl(u: string): boolean {
   }
 }
 
+interface DocDraft {
+  mode: 'arquivo' | 'drive';
+  url?: string;
+  name?: string;
+  type: DocType;
+  date?: string;
+  linkedTo?: string;
+  value?: number;
+  remind?: boolean;
+  renewDate?: string;
+}
+
+/**
+ * Novo documento no Cofre. O arquivo vai para `blobs` (IndexedDB) e os metadados para um Attachment
+ * ligado ao documento; o link do Drive também vira um Attachment (kind 'link').
+ * Os campos ficam em rascunho até guardar; o arquivo escolhido precisa ser escolhido de novo se a página recarregar.
+ */
 export function DocForm({ onDone, initial }: { onDone: (msg?: string) => void; initial?: Partial<VaultDoc> }) {
-  const [mode, setMode] = useState<'arquivo' | 'drive'>(initial?.storage ?? 'arquivo');
   const [file, setFile] = useState<File | null>(null);
   const [over, setOver] = useState(false);
-  const [f, setF] = useState<Partial<VaultDoc>>({ type: 'Comprovante', date: today(), ...initial });
   const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
-  const set = (p: Partial<VaultDoc>) => setF((o) => ({ ...o, ...p }));
+  const model = useFormModel<DocDraft>(`doc:new:${initial?.linkedTo ?? ''}`, {
+    mode: initial?.storage ?? 'arquivo', type: 'Comprovante', date: today(),
+    ...(initial?.name ? { name: initial.name } : {}), ...(initial?.type ? { type: initial.type } : {}), ...(initial?.linkedTo ? { linkedTo: initial.linkedTo } : {}),
+  });
+  const f = model.value;
+  const set = model.set;
 
   function pick(fl: File | undefined) {
     if (!fl) return;
@@ -326,46 +388,61 @@ export function DocForm({ onDone, initial }: { onDone: (msg?: string) => void; i
 
   async function save(e: FormEvent) {
     e.preventDefault();
-    if (mode === 'arquivo' && !file && !initial?.id) return setErr('Escolha um arquivo.');
-    if (mode === 'drive' && !isDriveUrl(f.driveUrl ?? '')) return setErr('Cole um link do Google Drive (drive.google.com ou docs.google.com).');
+    if (f.mode === 'arquivo' && !file) return setErr('Escolha um arquivo.');
+    if (f.mode === 'drive' && !isDriveUrl(f.url ?? '')) return setErr('Cole um link do Google Drive (drive.google.com ou docs.google.com).');
     if (!f.name?.trim()) return setErr('Dê um nome ao documento.');
-    const rec: VaultDoc = {
-      ...(f as VaultDoc),
-      createdAt: f.createdAt ?? new Date().toISOString(),
-      name: f.name.trim(),
-      storage: mode,
-      driveUrl: mode === 'drive' ? f.driveUrl!.trim() : undefined,
-      ...(mode === 'arquivo' && file ? { blob: file, mime: file.type, size: file.size } : {}),
-      ...(mode === 'drive' ? { blob: undefined, mime: undefined, size: undefined } : {}),
-      value: f.value ? Number(f.value) : undefined,
-    };
-    if (rec.id) await db.docs.put(rec);
-    else await db.docs.add(rec);
-    if (rec.remind && rec.renewDate) {
-      await db.events.add({ title: `Renovar ${rec.name.replace(/\.\w+$/, '')}`, date: rec.renewDate, area: 'adultices', kind: 'vencimento', source: 'local' });
+    setBusy(true);
+    try {
+      const name = f.name.trim();
+      await db.transaction('rw', [db.docs, db.attachments, db.blobs, db.events], async () => {
+        const docId = (await db.docs.add({
+          name, type: f.type, date: f.date || undefined, linkedTo: f.linkedTo || undefined, value: f.value ? Number(f.value) : undefined,
+          remind: f.remind, renewDate: f.remind ? f.renewDate : undefined, storage: f.mode,
+        })) as number;
+        const owner = { type: 'doc', id: docId };
+        const kind = f.type === 'Comprovante' ? 'receipt' : 'file';
+        const attachmentId = f.mode === 'arquivo'
+          ? await addFileAttachment(owner, kind, file!, { name })
+          : await addLinkAttachment(owner, 'link', f.url!.trim(), name);
+        await db.docs.update(docId, { attachmentId });
+        if (f.remind && f.renewDate) {
+          await db.events.add({ title: `Renovar ${name.replace(/\.\w+$/, '')}`, date: f.renewDate, area: 'adultices', kind: 'vencimento', source: 'local' });
+        }
+      });
+      await model.clear();
+      onDone(f.mode === 'drive' ? 'Link do Drive guardado no cofre.' : 'Documento guardado no cofre.');
+    } catch (ex) {
+      setErr(`Não consegui guardar: ${(ex as Error).message}. Nada foi perdido; tente de novo.`);
+    } finally {
+      setBusy(false);
     }
-    onDone(mode === 'drive' ? 'Link do Drive guardado no cofre.' : 'Documento guardado no cofre.');
+  }
+
+  async function discard() {
+    await model.clear();
+    onDone();
   }
 
   return (
     <form className="form" onSubmit={save}>
       <div className="seg" role="tablist">
-        <button type="button" className={mode === 'arquivo' ? 'on' : ''} onClick={() => setMode('arquivo')}><Icon name="file" size={13} /> Enviar arquivo</button>
-        <button type="button" className={mode === 'drive' ? 'on' : ''} onClick={() => setMode('drive')}><Icon name="drive" size={13} /> Link do Google Drive</button>
+        <button type="button" role="tab" aria-selected={f.mode === 'arquivo'} className={f.mode === 'arquivo' ? 'on' : ''} onClick={() => set({ mode: 'arquivo' })}><Icon name="file" size={13} /> Enviar arquivo</button>
+        <button type="button" role="tab" aria-selected={f.mode === 'drive'} className={f.mode === 'drive' ? 'on' : ''} onClick={() => set({ mode: 'drive' })}><Icon name="drive" size={13} /> Link do Google Drive</button>
       </div>
-      {mode === 'arquivo' ? (
-        <div className={`dropzone ${over ? 'over' : ''}`} onClick={() => input.current?.click()}
+      {f.mode === 'arquivo' ? (
+        <div className={`dropzone ${over ? 'over' : ''}`} onClick={() => input.current?.click()} role="button" tabIndex={0}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && input.current?.click()}
           onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
           onDrop={(e) => { e.preventDefault(); setOver(false); pick(e.dataTransfer.files[0]); }}>
           <div className="up"><Icon name="up" /></div>
           <b>{file ? file.name : 'Arraste o arquivo aqui'}</b>
           <span className="muted small">ou escolha no computador</span>
           <span className="faint small">PDF, JPG ou PNG · até 20 MB</span>
-          <input ref={input} type="file" hidden accept=".pdf,image/png,image/jpeg,image/webp" onChange={(e) => pick(e.target.files?.[0])} />
+          <input ref={input} type="file" hidden accept=".pdf,image/png,image/jpeg,image/webp" data-testid="doc-file" onChange={(e) => pick(e.target.files?.[0])} />
         </div>
       ) : (
         <label className="field"><span>Link do Google Drive</span>
-          <input type="url" inputMode="url" placeholder="https://drive.google.com/file/d/…" value={f.driveUrl ?? ''} onChange={(e) => set({ driveUrl: e.target.value })} />
+          <input type="url" inputMode="url" placeholder="https://drive.google.com/file/d/…" value={f.url ?? ''} onChange={(e) => set({ url: e.target.value })} />
           <span className="hint">O arquivo continua no seu Drive; o cofre guarda o link. No Drive, use “Compartilhar → Copiar link”.</span>
         </label>
       )}
@@ -380,10 +457,11 @@ export function DocForm({ onDone, initial }: { onDone: (msg?: string) => void; i
       </div>
       <label className="check"><input type="checkbox" checked={!!f.remind} onChange={(e) => set({ remind: e.target.checked })} /> Lembrar de renovar este documento</label>
       {f.remind && <label className="field"><span>Renovar em</span><input type="date" value={f.renewDate ?? ''} onChange={(e) => set({ renewDate: e.target.value })} /></label>}
-      {err && <div className="err">{err}</div>}
-      <div className="actions">
-        <button className="btn gold" type="submit">Guardar no cofre</button>
-        <button className="btn" type="button" onClick={() => onDone()}>Cancelar</button>
+      {err && <div className="err" role="alert">{err}</div>}
+      <div className="actions" style={{ alignItems: 'center' }}>
+        <button className="btn gold" type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Guardar no cofre'}</button>
+        <button className="btn" type="button" onClick={discard}>{model.hasDraft ? 'Descartar rascunho' : 'Cancelar'}</button>
+        <SavedNote at={model.savedAt} draft />
       </div>
     </form>
   );

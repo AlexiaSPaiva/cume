@@ -30,7 +30,8 @@ export function Metas() {
 
   const ranked = objectives.map((o) => ({ o, p: objectivePct(o, goals) })).sort((a, b) => b.p - a.p);
   const nextDeadline = goals.filter((g) => g.deadline && goalPct(g) < 100).sort((a, b) => a.deadline!.localeCompare(b.deadline!))[0];
-  const loose = goals.filter((g) => !g.objectiveId);
+  // metas sem objetivo (ou cujo objetivo está na Lixeira) continuam visíveis aqui
+  const loose = goals.filter((g) => !g.objectiveId || !objectives.some((o) => o.id === g.objectiveId));
 
   return (
     <Page title="Objetivos e Metas" sub="A direção da vida e os números que provam que você está chegando lá.">
@@ -98,6 +99,7 @@ export function GoalRow({ g, onEdit, onRecord }: { g: Goal; onEdit: () => void; 
 
 function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
   const { objectives } = useData();
+  const ui = useUI();
   const [f, setF] = useState<Partial<Goal>>({ metric: 'tarefas', initial: 0, current: 0, ...g });
   const set = (p: Partial<Goal>) => setF((o) => ({ ...o, ...p }));
   async function save(e: FormEvent) {
@@ -139,13 +141,14 @@ function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
       <div className="actions">
         <button className="btn gold">Salvar</button>
         <button className="btn" type="button" onClick={onDone}>Cancelar</button>
-        {f.id && <button className="btn danger" type="button" style={{ marginLeft: 'auto' }} onClick={async () => { await db.goals.delete(f.id!); onDone(); }}><Icon name="trash" size={14} /> Apagar</button>}
+        {f.id && <button className="btn danger" type="button" style={{ marginLeft: 'auto' }} onClick={async () => { onDone(); await ui.remove('goals', f.id!, `Meta “${f.title}”`); }}><Icon name="trash" size={14} /> Excluir</button>}
       </div>
     </form>
   );
 }
 
 function ObjectiveForm({ o, onDone }: { o: Partial<Objective>; onDone: () => void }) {
+  const ui = useUI();
   const [f, setF] = useState<Partial<Objective>>({ subtitle: '', ...o });
   async function save(e: FormEvent) {
     e.preventDefault();
@@ -165,10 +168,9 @@ function ObjectiveForm({ o, onDone }: { o: Partial<Objective>; onDone: () => voi
         <button className="btn gold">Salvar</button>
         <button className="btn" type="button" onClick={onDone}>Cancelar</button>
         {f.id && <button className="btn danger" type="button" style={{ marginLeft: 'auto' }} onClick={async () => {
-          await db.goals.where('objectiveId').equals(f.id!).modify({ objectiveId: undefined });
-          await db.objectives.delete(f.id!);
           onDone();
-        }}><Icon name="trash" size={14} /> Apagar</button>}
+          await ui.remove('objectives', f.id!, `Objetivo “${f.title}”`);
+        }}><Icon name="trash" size={14} /> Excluir</button>}
       </div>
     </form>
   );

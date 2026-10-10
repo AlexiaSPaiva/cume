@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import type { Imprevisto, Task } from '../lib/types';
 import type { RecurringSuggestion } from '../lib/recurrence';
 import { useData } from '../lib/data';
+import { db, type TrashableTable } from '../lib/db';
+import { restore, softDelete } from '../lib/trash';
 import { DocForm, ImprevistoForm, SuggestionForm, TaskForm } from './forms';
 import { Modal } from './ui';
 
@@ -19,6 +21,8 @@ interface UI {
   openDoc(): void;
   openSuggestion(s: RecurringSuggestion): void;
   toast(msg: string, action?: { label: string; run: () => void }): void;
+  /** exclusão padrão: vai para a Lixeira (30 dias) e mostra "Desfazer" por 6 s, que devolve o MESMO item */
+  remove(table: TrashableTable, id: number, label: string): Promise<void>;
   /** chamado depois de salvar um imprevisto: avisa se ele virou recorrente */
   afterImprevisto(becameRecurring: boolean): void;
 }
@@ -33,7 +37,7 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!toastMsg) return;
-    const t = setTimeout(() => setToast(null), toastMsg.action ? 9000 : 4500);
+    const t = setTimeout(() => setToast(null), toastMsg.action ? 6000 : 4500);
     return () => clearTimeout(t);
   }, [toastMsg]);
 
@@ -48,12 +52,18 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
     }
   }, [nav, toast]);
 
+  const remove = useCallback(async (table: TrashableTable, id: number, label: string) => {
+    await softDelete(db, table, id);
+    toast(`${label} foi para a Lixeira.`, { label: 'Desfazer', run: () => { void restore(db, table, id); } });
+  }, [toast]);
+
   const ui: UI = {
     openTask: (task) => setOpen({ kind: 'task', task }),
     openImprevisto: (imp) => setOpen({ kind: 'imp', imp }),
     openDoc: () => setOpen({ kind: 'doc' }),
     openSuggestion: (s) => setOpen({ kind: 'suggest', s }),
     toast,
+    remove,
     afterImprevisto,
   };
 

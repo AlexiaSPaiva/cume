@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { OverlayProvider } from './components/Overlays';
+import { UpdateBanner } from './components/UpdateBanner';
 import { hasSession } from './lib/auth';
 import { DataProvider } from './lib/data';
 import { db } from './lib/db';
@@ -24,11 +25,12 @@ export function App() {
   // null = ainda carregando; undefined = sem configurações (primeiro acesso)
   const settings = useLiveQuery(async () => (await db.settings.get('me')) ?? null, []);
 
-  if (settings === undefined) return null;
-  if (!session || !settings) return <Login settings={settings ?? undefined} onIn={() => setSession(true)} />;
+  if (settings === undefined) return <UpdateBanner />;
+  if (!session || !settings) return <><Login settings={settings ?? undefined} onIn={() => setSession(true)} /><UpdateBanner /></>;
 
   return (
     <BrowserRouter>
+      <UpdateBanner />
       <DataProvider settings={settings}>
         <OverlayProvider>
           <Routes>

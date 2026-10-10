@@ -84,6 +84,7 @@ function DayDetail({ day, items, onAdded }: { day: string; items: CalendarEvent[
   const [area, setArea] = useState<AreaId>('pessoal');
   const [kind, setKind] = useState<CalendarKind>('evento');
   const [start, setStart] = useState('');
+  const ui = useUI();
 
   async function add(e: FormEvent) {
     e.preventDefault();
@@ -102,7 +103,7 @@ function DayDetail({ day, items, onAdded }: { day: string; items: CalendarEvent[
             <AreaDot area={e.area} /><span className="grow">{e.start && <b>{e.start} </b>}{e.title}</span>
             <span className={`tag ${e.kind === 'vencimento' ? 'warn' : e.kind === 'prazo' ? 'bad' : 'info'}`}>{e.kind}</span>
             {e.source === 'google' && <Icon name="drive" size={12} />}
-            {e.id && e.source === 'local' && <button className="icon-btn" aria-label="Apagar" onClick={() => db.events.delete(e.id!)}><Icon name="trash" size={13} /></button>}
+            {e.id && e.source === 'local' && <button className="icon-btn" aria-label={`Excluir ${e.title}`} onClick={() => ui.remove('events', e.id!, `Evento “${e.title}”`)}><Icon name="trash" size={13} /></button>}
           </div>
         ))}
         {items.length === 0 && <Empty>Nada neste dia.</Empty>}

@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db, type MeuPlanoDB } from './db';
 import { addDays, today, weekStart } from './dates';
 import type { AreaId, CalendarEvent, Goal, Imprevisto, ImprevistoType, Settings, Task, VaultDoc } from './types';
 
@@ -17,8 +17,20 @@ export function defaultSettings(name: string, fullName = name): Settings {
   };
 }
 
-/** dados de exemplo baseados no MeuPlano_Design_v6, ancorados na semana atual */
-export async function seedExample() {
+/** o banco não tem nenhum dado da usuária (só então os exemplos podem entrar) */
+export async function isEmpty(target: MeuPlanoDB = db): Promise<boolean> {
+  const t = target;
+  const counts = await Promise.all([t.tasks, t.imprevistos, t.objectives, t.goals, t.records, t.events, t.docs, t.attachments].map((x) => x.count()));
+  return counts.every((c) => c === 0);
+}
+
+/**
+ * Dados de exemplo baseados no design, ancorados na semana atual.
+ * Só entram com o banco vazio: nunca sobrescrevem nem se misturam com dados reais.
+ */
+export async function seedExample(target: MeuPlanoDB = db): Promise<boolean> {
+  if (!(await isEmpty(target))) return false;
+  const db = target;
   const now = new Date().toISOString();
   const mon = weekStart(today());
   const d = (n: number) => addDays(mon, n);
@@ -117,10 +129,10 @@ export async function seedExample() {
     { name: 'Contrato aluguel.pdf', type: 'Contrato', date: addDays(mon, -200), linkedTo: 'Moradia', storage: 'arquivo', createdAt: now },
     { name: 'Comprovante aluguel.pdf', type: 'Comprovante', date: addDays(mon, -24), linkedTo: 'Aluguel', value: 1200, storage: 'arquivo', createdAt: now },
     { name: 'Comprovante Nubank.pdf', type: 'Comprovante', date: addDays(mon, -19), linkedTo: 'Cartão Nubank', value: 450, storage: 'arquivo', createdAt: now },
-    { name: 'Mensalidade Mackenzie', type: 'Comprovante', date: addDays(mon, -28), linkedTo: 'Faculdade', value: 650, storage: 'drive', driveUrl: 'https://drive.google.com/file/d/EXEMPLO/view', createdAt: now },
+    { name: 'Mensalidade Mackenzie', type: 'Comprovante', date: addDays(mon, -28), linkedTo: 'Faculdade', value: 650, storage: 'drive', createdAt: now },
   ];
 
-  await db.transaction('rw', [db.tasks, db.imprevistos, db.objectives, db.goals, db.events, db.docs, db.plans], async () => {
+  await db.transaction('rw', [db.tasks, db.imprevistos, db.objectives, db.goals, db.events, db.docs, db.attachments, db.plans], async () => {
     await db.tasks.bulkAdd(tasks);
     await db.imprevistos.bulkAdd(imprevistos);
     const [fin, prof, acad, bem] = (await db.objectives.bulkAdd(objectives, { allKeys: true })) as number[];
@@ -149,11 +161,17 @@ export async function seedExample() {
       g({ title: 'Documentos pessoais', metric: 'tarefas', current: 1, target: 1, area: 'adultices' }),
     ]);
     await db.events.bulkAdd(events);
-    await db.docs.bulkAdd(docs);
+    const docIds = (await db.docs.bulkAdd(docs, { allKeys: true })) as number[];
+    const driveDoc = docIds[docs.length - 1];
+    const attachmentId = await db.attachments.add({
+      ownerType: 'doc', ownerId: driveDoc, kind: 'link', name: 'Mensalidade Mackenzie', url: 'https://drive.google.com/file/d/EXEMPLO/view',
+    });
+    await db.docs.update(driveDoc, { attachmentId });
     await db.plans.put({
       weekStart: addDays(mon, 7),
       hoursByArea: { academica: 18, profissional: 30, saude: 4, pessoal: 6, financeiro: 2, adultices: 3 },
       top3: [],
     });
   });
+  return true;
 }
