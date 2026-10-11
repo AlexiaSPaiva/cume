@@ -1,7 +1,7 @@
 import Dexie, { type EntityTable, type Transaction } from 'dexie';
 import type {
-  Account, Attachment, CalendarEvent, Draft, Goal, GoalRecord, Imprevisto, Objective, Settings, StoredBlob,
-  SuggestionState, Task, VaultDoc, WeekPlan,
+  Account, Attachment, CalendarEvent, Client, Draft, FinanceTx, FreelanceEntry, FreelanceProject, Goal, GoalRecord,
+  Imprevisto, Objective, Settings, StoredBlob, SuggestionState, Task, VaultDoc, WeekPlan,
 } from './types';
 
 /**
@@ -27,17 +27,27 @@ export type MeuPlanoDB = Dexie & {
   blobs: EntityTable<StoredBlob, 'key'>;
   drafts: EntityTable<Draft, 'key'>;
   meta: EntityTable<{ key: string; value: unknown }, 'key'>;
+  clients: EntityTable<Client, 'id'>;
+  freelanceProjects: EntityTable<FreelanceProject, 'id'>;
+  freelanceEntries: EntityTable<FreelanceEntry, 'id'>;
+  financeTxs: EntityTable<FinanceTx, 'id'>;
 };
 
 export const DB_NAME = 'meuplano';
 
-/** tabelas com createdAt/updatedAt/deletedAt */
-export const STAMPED_TABLES = [
+/** tabelas que existiam na v2 (a migração v1→v2 só conhece estas) */
+const STAMPED_V2 = [
   'tasks', 'imprevistos', 'objectives', 'goals', 'records', 'events', 'docs', 'plans', 'settings', 'suggestions', 'attachments',
 ] as const;
 
+/** tabelas com createdAt/updatedAt/deletedAt */
+export const STAMPED_TABLES = [...STAMPED_V2, 'clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs'] as const;
+
 /** tabelas cujos itens podem ir para a Lixeira */
-export const TRASHABLE_TABLES = ['tasks', 'imprevistos', 'objectives', 'goals', 'records', 'events', 'docs', 'attachments'] as const;
+export const TRASHABLE_TABLES = [
+  'tasks', 'imprevistos', 'objectives', 'goals', 'records', 'events', 'docs', 'attachments',
+  'clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs',
+] as const;
 export type TrashableTable = (typeof TRASHABLE_TABLES)[number];
 
 export const SCHEMA_V1 = {
@@ -72,6 +82,16 @@ export const SCHEMA_V2 = {
   meta: 'key',
 };
 
+/** v3 (v7, renda extra no Financeiro): só ACRESCENTA tabelas e o índice de tarefas por registro */
+export const SCHEMA_V3 = {
+  ...SCHEMA_V2,
+  tasks: '++id, area, status, date, deadline, deletedAt, freelanceEntryId',
+  clients: '++id, name, deletedAt',
+  freelanceProjects: '++id, clientId, status, deletedAt',
+  freelanceEntries: '++id, clientId, projectId, dateStart, status, dueDate, deletedAt',
+  financeTxs: '++id, date, account, sourceId, deletedAt',
+};
+
 export function newKey(): string {
   return crypto.randomUUID();
 }
@@ -92,7 +112,7 @@ export function dataUrlToBlob(dataUrl: string): Blob {
 export async function migrateV1toV2(tx: Transaction) {
   const now = new Date().toISOString();
 
-  for (const t of STAMPED_TABLES) {
+  for (const t of STAMPED_V2) {
     if (t === 'attachments') continue;
     await tx.table(t).toCollection().modify((r: Record<string, unknown>) => {
       r.createdAt ??= now;
@@ -133,6 +153,8 @@ export async function migrateV1toV2(tx: Transaction) {
 export function defineSchema(d: Dexie) {
   d.version(1).stores(SCHEMA_V1);
   d.version(2).stores(SCHEMA_V2).upgrade(migrateV1toV2);
+  // nada a transformar: as tabelas novas começam vazias e os registros antigos continuam iguais
+  d.version(3).stores(SCHEMA_V3);
 }
 
 function stampHooks(d: Dexie) {

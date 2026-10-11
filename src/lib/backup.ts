@@ -8,7 +8,10 @@ import type { MeuPlanoDB } from './db';
  */
 
 const FORMAT = 'meuplano-backup';
-const NUMERIC_TABLES = ['objectives', 'goals', 'tasks', 'records', 'imprevistos', 'events', 'docs', 'attachments'] as const;
+const NUMERIC_TABLES = [
+  'objectives', 'goals', 'tasks', 'records', 'imprevistos', 'events', 'docs', 'attachments',
+  'clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs',
+] as const;
 const KEYED_TABLES = ['plans', 'suggestions', 'settings'] as const;
 type NumTable = (typeof NUMERIC_TABLES)[number];
 type Row = Record<string, unknown> & { id?: number; createdAt?: string; updatedAt?: string };
@@ -89,7 +92,15 @@ export async function importBackup(d: MeuPlanoDB, zip: Uint8Array): Promise<Impo
       if (t !== 'settings' && t !== 'plans' && t !== 'suggestions') o.id = maps[t as NumTable].get(r.id!) ?? r.id;
       if (t === 'goals') o.objectiveId = m('objectives', r.objectiveId);
       if (t === 'records') o.goalId = m('goals', r.goalId);
-      if (t === 'tasks') o.goalId = m('goals', r.goalId);
+      if (t === 'tasks') { o.goalId = m('goals', r.goalId); o.freelanceEntryId = m('freelanceEntries', r.freelanceEntryId); }
+      if (t === 'freelanceProjects') o.clientId = m('clients', r.clientId);
+      if (t === 'freelanceEntries') {
+        o.clientId = m('clients', r.clientId);
+        o.projectId = m('freelanceProjects', r.projectId);
+        o.financeTxId = m('financeTxs', r.financeTxId);
+        o.invoiceDocId = m('docs', r.invoiceDocId);
+      }
+      if (t === 'financeTxs' && r.source === 'renda_extra') o.sourceId = m('freelanceEntries', r.sourceId);
       if (t === 'imprevistos' && Array.isArray(r.postponedTaskIds)) o.postponedTaskIds = r.postponedTaskIds.map((x) => m('tasks', x));
       if (t === 'docs') o.attachmentId = m('attachments', r.attachmentId);
       if (t === 'attachments' && typeof r.ownerType === 'string' && ownerTable[r.ownerType]) o.ownerId = m(ownerTable[r.ownerType], r.ownerId);

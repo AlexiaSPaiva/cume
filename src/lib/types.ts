@@ -44,6 +44,10 @@ export interface Task extends Stamped {
   soft?: boolean;
   goalId?: number;
   doneAt?: string;
+  /** detalhe dentro da área (ex.: renda extra conta no Financeiro) */
+  subcategory?: 'renda_extra';
+  /** bloco de agenda criado por um registro de renda extra */
+  freelanceEntryId?: number;
 }
 
 export type ImprevistoType = 'Trabalho' | 'Saúde' | 'Burocracia' | 'Infraestrutura' | 'Família' | 'Transporte' | 'Outro';
@@ -181,6 +185,73 @@ export interface Settings extends Stamped {
   googleClientId?: string;
   /** menu lateral recolhido no desktop (« / ») */
   sideCollapsed?: boolean;
+  /** horas de 1 dia de freela (padrão 7); só muda a exibição dias ↔ horas */
+  hoursPerDay?: number;
+  /** como a renda extra aparece por padrão */
+  freelanceUnit?: FreelanceUnit;
+  /** meta de faturamento da renda extra por mês (R$) */
+  freelanceGoal?: number;
+}
+
+/* ---------- renda extra (aba do Financeiro) ---------- */
+export type FreelanceUnit = 'days' | 'hours';
+export type Billing = 'day' | 'hour' | 'fixed';
+export type PayStatus = 'paid' | 'receivable' | 'negotiating';
+export type ProjectStatus = 'negociacao' | 'andamento' | 'entregue' | 'concluido';
+
+export interface Client extends Stamped {
+  id?: number;
+  name: string;
+  contact?: string;
+}
+
+export interface FreelanceProject extends Stamped {
+  id?: number;
+  clientId: number;
+  title: string;
+  status: ProjectStatus;
+  /** 0–100 */
+  progress?: number;
+  dueDate?: string;
+}
+
+export interface FreelanceEntry extends Stamped {
+  id?: number;
+  clientId: number;
+  projectId?: number;
+  dateStart: string;
+  dateEnd: string;
+  /** unidade em que o trabalho foi contado */
+  unit: FreelanceUnit;
+  quantity: number;
+  /** horas de 1 dia de freela NO MOMENTO do registro (mudar a configuração depois não altera este registro) */
+  hoursPerDay: number;
+  billing: Billing;
+  /** valor por dia/hora, ou o total quando "fechado" */
+  rate: number;
+  /** total cobrado (R$) */
+  amount: number;
+  status: PayStatus;
+  dueDate?: string;
+  paidAt?: string;
+  /** quando pago: entra no saldo; com toReserve, vai direto para a Reserva */
+  toBalance: boolean;
+  toReserve?: boolean;
+  financeTxId?: number;
+  /** blocos na Agenda (tarefas da área Financeiro, subcategoria renda_extra) */
+  blockAgenda: boolean;
+  invoiceDocId?: number;
+}
+
+export interface FinanceTx extends Stamped {
+  id?: number;
+  date: string;
+  /** positivo = entrada */
+  amount: number;
+  account: 'saldo' | 'reserva';
+  description: string;
+  source?: 'renda_extra' | 'manual';
+  sourceId?: number;
 }
 
 export interface Account {

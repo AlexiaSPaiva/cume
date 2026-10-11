@@ -9,6 +9,14 @@ async function dependents(d: MeuPlanoDB, table: TrashableTable, id: number): Pro
     const doc = await d.docs.get(id);
     return doc?.attachmentId ? [['attachments', doc.attachmentId]] : [];
   }
+  if (table === 'freelanceEntries') {
+    // o lançamento no saldo e os blocos da Agenda pertencem ao registro: saem e voltam juntos
+    const e = await d.freelanceEntries.get(id);
+    const out: [TrashableTable, number][] = [];
+    if (e?.financeTxId) out.push(['financeTxs', e.financeTxId]);
+    for (const t of await d.tasks.where('freelanceEntryId').equals(id).toArray()) out.push(['tasks', t.id!]);
+    return out;
+  }
   const ownerType = table === 'tasks' ? 'task' : table === 'goals' ? 'goal' : null;
   if (!ownerType) return [];
   const atts = await d.attachments.where('[ownerType+ownerId]').equals([ownerType, id]).toArray();
@@ -55,6 +63,7 @@ export interface TrashItem {
 const LABEL: Record<TrashableTable, string> = {
   tasks: 'Tarefa', imprevistos: 'Imprevisto', objectives: 'Objetivo', goals: 'Meta', records: 'Registro',
   events: 'Evento', docs: 'Documento', attachments: 'Arquivo',
+  clients: 'Cliente', freelanceProjects: 'Projeto de renda extra', freelanceEntries: 'Trabalho de renda extra', financeTxs: 'Lançamento',
 };
 
 export function daysLeft(deletedAt: string, now = Date.now()): number {
@@ -68,7 +77,9 @@ export async function listTrash(d: MeuPlanoDB): Promise<TrashItem[]> {
     for (const r of rows) {
       // anexos que foram junto com o documento aparecem só pelo documento
       if (t === 'attachments' && r.ownerType === 'doc') continue;
-      out.push({ table: t, id: r.id, label: `${LABEL[t]} · ${r.title ?? r.name ?? r.note ?? `#${r.id}`}`, deletedAt: r.deletedAt, daysLeft: daysLeft(r.deletedAt) });
+      // blocos de agenda e lançamentos de um trabalho de renda extra aparecem só pelo trabalho
+      if ((t === 'tasks' && r.freelanceEntryId) || (t === 'financeTxs' && r.source === 'renda_extra')) continue;
+      out.push({ table: t, id: r.id, label: `${LABEL[t]} · ${r.title ?? r.name ?? r.description ?? r.note ?? `#${r.id}`}`, deletedAt: r.deletedAt, daysLeft: daysLeft(r.deletedAt) });
     }
   }
   return out.sort((a, b) => b.deletedAt.localeCompare(a.deletedAt));

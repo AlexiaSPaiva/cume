@@ -9,6 +9,7 @@ function data(p: { tasks?: Task[]; plans?: WeekPlan[] }): Data {
   return {
     settings: defaultSettings('Teste'), tasks: p.tasks ?? [], plans: p.plans ?? [], imprevistos: [], objectives: [], goals: [],
     events: [], docs: [], attachments: [], suggestionStates: [], suggestions: [],
+    clients: [], projects: [], entries: [], txs: [],
   };
 }
 

@@ -93,3 +93,34 @@ test('capturas etapa 3', async ({ page }) => {
   await page.getByRole('heading', { name: /Meus arquivos/ }).scrollIntoViewIfNeeded();
   await shot('3m-cofre');
 });
+
+test('capturas renda extra', async ({ page }) => {
+  const dir = process.env.SHOTS;
+  const shot = async (name: string, full = false) => {
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: `${dir}/${name}.png`, fullPage: full });
+  };
+  await useBuild(page, 'a');
+  await page.goto('/');
+  await page.getByLabel('Como quer ser chamada').fill('Alexia');
+  await page.getByLabel('E-mail').fill('teste@meuplano.test');
+  await page.getByLabel('Senha', { exact: true }).fill('senha-de-teste-123');
+  await page.getByLabel('Confirmar senha').fill('senha-de-teste-123');
+  await page.getByRole('button', { name: 'Criar e entrar' }).click();
+  await expect(page.getByRole('heading', { name: /Olá, Alexia/ })).toBeVisible();
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/area/financeiro?aba=renda-extra');
+  await shot('4d-renda', true);
+  await page.goto('/area/financeiro');
+  await shot('4d-visao');
+  await page.goto('/area/financeiro?aba=reserva');
+  await shot('4d-reserva');
+  await page.setViewportSize({ width: 900, height: 1000 });
+  await page.goto('/area/financeiro?aba=renda-extra');
+  await shot('4t-renda', true);
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto('/area/financeiro?aba=renda-extra');
+  await shot('4m-renda', true);
+});

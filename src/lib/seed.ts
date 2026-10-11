@@ -1,6 +1,7 @@
 import { db, type MeuPlanoDB } from './db';
-import { addDays, today, weekStart } from './dates';
-import type { AreaId, CalendarEvent, Goal, Imprevisto, ImprevistoType, Settings, Task, VaultDoc } from './types';
+import { addDays, iso, parse, today, weekStart } from './dates';
+import { saveEntry } from './freelance';
+import type { AreaId, CalendarEvent, FreelanceProject, Goal, Imprevisto, ImprevistoType, Settings, Task, VaultDoc } from './types';
 
 export function defaultSettings(name: string, fullName = name): Settings {
   return {
@@ -20,7 +21,9 @@ export function defaultSettings(name: string, fullName = name): Settings {
 /** o banco não tem nenhum dado da usuária (só então os exemplos podem entrar) */
 export async function isEmpty(target: MeuPlanoDB = db): Promise<boolean> {
   const t = target;
-  const counts = await Promise.all([t.tasks, t.imprevistos, t.objectives, t.goals, t.records, t.events, t.docs, t.attachments].map((x) => x.count()));
+  const counts = await Promise.all([
+    t.tasks, t.imprevistos, t.objectives, t.goals, t.records, t.events, t.docs, t.attachments, t.clients, t.freelanceEntries, t.financeTxs,
+  ].map((x) => x.count()));
   return counts.every((c) => c === 0);
 }
 
@@ -173,5 +176,46 @@ export async function seedExample(target: MeuPlanoDB = db): Promise<boolean> {
       top3: [],
     });
   });
+  await seedFreelance(target);
   return true;
+}
+
+/** renda extra de exemplo (aba do Financeiro): meses anteriores pagos + trabalhos deste mês */
+async function seedFreelance(target: MeuPlanoDB) {
+  const settings = { ...defaultSettings('exemplo'), hoursPerDay: 7 };
+  const t0 = today();
+  const monthsAgo = (n: number, day: number) => {
+    const x = parse(t0);
+    return iso(new Date(x.getFullYear(), x.getMonth() - n, day));
+  };
+  const past: [number, number][] = [[5, 800], [4, 950], [3, 500], [2, 1300], [1, 1600]];
+  for (const [n, amount] of past) {
+    await saveEntry({
+      clientName: n % 2 ? 'Studio Lume' : 'Café Arpoador', projectTitle: n % 2 ? 'Site institucional' : 'Relatórios mensais',
+      dateStart: monthsAgo(n, 10), dateEnd: monthsAgo(n, 11), unit: 'days', quantity: amount / 400, billing: 'day', rate: 400,
+      status: 'paid', blockAgenda: false, toBalance: true,
+    }, settings, target);
+  }
+  const base = { blockAgenda: true, toBalance: true } as const;
+  await saveEntry({ ...base, clientName: 'Studio Lume', projectTitle: 'Landing page', dateStart: addDays(t0, -2), dateEnd: t0,
+    unit: 'days', quantity: 2.5, billing: 'day', rate: 400, status: 'receivable', dueDate: addDays(t0, 9) }, settings, target);
+  await saveEntry({ ...base, clientName: 'Café Arpoador', projectTitle: 'Dashboard Power BI', dateStart: addDays(t0, -6), dateEnd: addDays(t0, -5),
+    unit: 'hours', quantity: 12, billing: 'fixed', rate: 700, status: 'paid' }, settings, target);
+  await saveEntry({ ...base, clientName: 'Clínica Sol', projectTitle: 'Bot de agendamento', dateStart: addDays(t0, -4), dateEnd: addDays(t0, -4),
+    unit: 'days', quantity: 1, billing: 'fixed', rate: 400, status: 'receivable', dueDate: addDays(t0, 4) }, settings, target);
+  await saveEntry({ ...base, blockAgenda: false, clientName: 'Ana R.', projectTitle: 'Site portfólio', dateStart: t0, dateEnd: t0,
+    unit: 'days', quantity: 3, billing: 'fixed', rate: 1200, status: 'negotiating' }, settings, target);
+
+  const p = await target.freelanceProjects.toArray();
+  const set = (title: string, patch: Partial<FreelanceProject>) => {
+    const x = p.find((y) => y.title === title);
+    return x ? target.freelanceProjects.update(x.id!, patch) : undefined;
+  };
+  await set('Landing page', { progress: 60, dueDate: addDays(t0, 3) });
+  await set('Dashboard Power BI', { status: 'entregue', progress: 100 });
+  await set('Bot de agendamento', { status: 'entregue', progress: 100 });
+  await set('Site portfólio', { status: 'negociacao', progress: 10 });
+  await set('Site institucional', { status: 'concluido', progress: 100 });
+  await set('Relatórios mensais', { status: 'concluido', progress: 100 });
+  if (await target.settings.get('me')) await target.settings.update('me', { freelanceGoal: 1500 });
 }

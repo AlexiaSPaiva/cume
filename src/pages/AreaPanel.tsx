@@ -11,6 +11,7 @@ import { ddmm, DOW_LONG, DOW_SHORT, dur, iso, parse, relDays, today, weekDays, w
 import { areaSummary, isTodayTask, upcomingDeadlines, weekNumbers } from '../lib/derive';
 import { goalPct, impsForWeek, occurrencesForWeek } from '../lib/week';
 import type { AreaId, Goal, Task } from '../lib/types';
+import { FinanceiroAba, FinTabs, SaldoStats, useFinTab } from './Financeiro';
 import { GoalRow, RecordForm } from './Metas';
 import { fmtGoal } from './Inicio';
 
@@ -19,8 +20,11 @@ export function AreaPanel() {
   const d = useData();
   const ui = useUI();
   const [record, setRecord] = useState<Goal | null>(null);
+  const finTab = useFinTab();
   if (!AREAS.some((a) => a.id === id)) return <Navigate to="/" replace />;
   const area = id as AreaId;
+  const isFin = area === 'financeiro';
+  if (isFin && finTab !== 'visao-geral') return <FinanceiroAba tab={finTab} />;
   const A = AREA[area];
   const t0 = today();
   const ws = weekStart(t0);
@@ -77,7 +81,9 @@ export function AreaPanel() {
 
   return (
     <Page title={A.name} sub={A.tagline} crumbs={[{ to: '/', label: 'Início' }, { label: A.name }]} docButton={isAdult}>
-      <Stats n={Math.min(5, kpis.length + 1 + (isAdult ? 2 : 0))}>
+      {isFin && <FinTabs active="visao-geral" />}
+      <Stats n={Math.min(5, kpis.length + 1 + (isAdult ? 2 : 0) + (isFin ? 1 : 0))}>
+        {isFin && <SaldoStats />}
         {kpis.map((g) => (
           <Stat key={g.id} k={g.title} onClick={() => setRecord(g)}
             v={g.metric === 'nota' ? `${fmtGoal(g.current)}` : g.unit === 'R$' ? `${goalPct(g)}%` : `${fmtGoal(g.current)} / ${fmtGoal(g.target)}${g.unit === 'h' ? 'h' : ''}`}

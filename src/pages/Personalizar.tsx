@@ -154,6 +154,18 @@ export function Personalizar({ onLogout }: { onLogout: () => void }) {
             </label>
           ))}
           <span className={focusTotal === 100 ? 'hint' : 'err'}>Total: {focusTotal}%{focusTotal !== 100 && ' (o ideal é somar 100%)'}</span>
+          <h2 id="renda-extra" style={{ marginTop: 12 }}>Renda extra</h2>
+          <div className="cols">
+            <label className="field"><span>1 dia de freela tem (horas)</span>
+              <input type="number" min={1} max={16} step={0.5} value={settings.hoursPerDay ?? 7}
+                onChange={(e) => set({ hoursPerDay: Math.min(16, Math.max(1, Number(e.target.value) || 7)) })} />
+            </label>
+            <label className="field"><span>Meta de faturamento por mês (R$)</span>
+              <input type="number" min={0} step={100} value={settings.freelanceGoal ?? ''} placeholder="ex.: 1500"
+                onChange={(e) => set({ freelanceGoal: Number(e.target.value) || undefined })} />
+            </label>
+          </div>
+          <span className="hint">Mudar as horas do dia só muda como os dias aparecem; os trabalhos já registrados não mudam.</span>
         </Card>
 
         <Card title="Blocos da Início" className="form">

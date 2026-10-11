@@ -2,7 +2,10 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
 import { findRecurring, type RecurringSuggestion } from './recurrence';
-import type { Attachment, CalendarEvent, Goal, Imprevisto, Objective, Settings, SuggestionState, Task, VaultDoc, WeekPlan } from './types';
+import type {
+  Attachment, CalendarEvent, Client, FinanceTx, FreelanceEntry, FreelanceProject, Goal, Imprevisto, Objective, Settings,
+  SuggestionState, Task, VaultDoc, WeekPlan,
+} from './types';
 
 export interface Data {
   settings: Settings;
@@ -16,6 +19,12 @@ export interface Data {
   plans: WeekPlan[];
   suggestionStates: SuggestionState[];
   suggestions: RecurringSuggestion[];
+  /** renda extra (aba do Financeiro) */
+  clients: Client[];
+  projects: FreelanceProject[];
+  entries: FreelanceEntry[];
+  /** lançamentos do saldo e da Reserva */
+  txs: FinanceTx[];
 }
 
 const Ctx = createContext<Data | null>(null);
@@ -32,15 +41,23 @@ export function DataProvider({ settings, fallback = null, children }: { settings
   const attachments = useLiveQuery(() => db.attachments.toArray().then(live), []);
   const plans = useLiveQuery(() => db.plans.toArray(), []);
   const suggestionStates = useLiveQuery(() => db.suggestions.toArray(), []);
+  const clients = useLiveQuery(() => db.clients.toArray().then(live), []);
+  const projects = useLiveQuery(() => db.freelanceProjects.toArray().then(live), []);
+  const entries = useLiveQuery(() => db.freelanceEntries.toArray().then(live), []);
+  const txs = useLiveQuery(() => db.financeTxs.toArray().then(live), []);
 
   const suggestions = useMemo(
     () => (imprevistos && suggestionStates && tasks ? findRecurring(imprevistos, suggestionStates, tasks, settings.recurrenceThreshold) : []),
     [imprevistos, suggestionStates, tasks, settings.recurrenceThreshold],
   );
 
-  if (!tasks || !imprevistos || !objectives || !goals || !events || !docs || !attachments || !plans || !suggestionStates) return fallback;
+  if (!tasks || !imprevistos || !objectives || !goals || !events || !docs || !attachments || !plans || !suggestionStates
+    || !clients || !projects || !entries || !txs) return fallback;
   return (
-    <Ctx.Provider value={{ settings, tasks, imprevistos, objectives, goals, events, docs, attachments, plans, suggestionStates, suggestions }}>
+    <Ctx.Provider value={{
+      settings, tasks, imprevistos, objectives, goals, events, docs, attachments, plans, suggestionStates, suggestions,
+      clients, projects, entries, txs,
+    }}>
       {children}
     </Ctx.Provider>
   );
