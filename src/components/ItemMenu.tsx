@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { today } from '../lib/dates';
-import { duplicateTask, moveTask } from '../lib/tasks';
+import { duplicateTask } from '../lib/tasks';
 import type { Task } from '../lib/types';
 import { useUI } from './Overlays';
 import { Icon } from './ui';
@@ -95,12 +94,8 @@ export function TaskMenu({ t }: { t: Task }) {
   return (
     <ItemMenu label={t.title} actions={{
       edit: () => ui.openTask(t),
-      move: open && !(t.status === 'hoje' && t.date === today())
-        ? { label: 'Mover para hoje', run: () => void moveTask(id, 'hoje').then(() => ui.toast(`“${t.title}” foi para hoje.`)) }
-        : undefined,
-      postpone: open && t.status !== 'adiada'
-        ? () => void moveTask(id, 'adiada').then(() => ui.toast(`“${t.title}” adiada.`))
-        : undefined,
+      move: open ? { label: 'Realocar…', run: () => ui.openReschedule(t) } : undefined,
+      postpone: open && t.status !== 'adiada' ? () => ui.openPostpone(t) : undefined,
       duplicate: () => void duplicateTask(t).then(() => ui.toast('Tarefa duplicada.')),
       delete: () => void ui.remove('tasks', id, `“${t.title}”`),
     }} />

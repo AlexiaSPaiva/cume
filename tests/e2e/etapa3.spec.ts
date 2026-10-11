@@ -95,7 +95,7 @@ test('menu ⋯ segue a ordem padrão e excluir mostra Desfazer', async ({ page }
   const title = (await first.locator('b').first().innerText()).trim();
   await first.getByRole('button', { name: `Ações: ${title}` }).click();
   const items = await page.getByRole('menuitem').allInnerTexts();
-  const order = ['Abrir', 'Editar', 'Mover', 'Adiar', 'Duplicar', 'Excluir'];
+  const order = ['Abrir', 'Editar', 'Realocar', 'Adiar', 'Duplicar', 'Excluir'];
   const idx = items.map((t) => order.findIndex((o) => t.trim().startsWith(o)));
   expect(idx.every((v) => v >= 0)).toBe(true);
   expect([...idx].sort((a, b) => a - b)).toEqual(idx);

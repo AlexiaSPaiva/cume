@@ -128,7 +128,12 @@ export function kpis(d: HistData, range: Range, area?: AreaId): Kpis {
   const done = d.tasks.filter((t) => !t.repeatDays?.length && !t.freelanceEntryId && t.status === 'concluido' && inR(t.doneAt) && (!area || t.area === area));
   const withDue = done.filter((t) => t.deadline || t.date);
   const onTime = withDue.length ? Math.round((withDue.filter((t) => t.doneAt! <= (t.deadline ?? t.date)!).length / withDue.length) * 100) : null;
-  const postponed = d.tasks.filter((t) => t.status === 'adiada' && inR(t.date ?? t.updatedAt?.slice(0, 10)) && (!area || t.area === area)).length;
+  // adiamentos: cada registro do histórico de adiamentos no período (tarefas antigas, sem histórico: pela situação)
+  const postponed = d.tasks.filter((t) => !area || t.area === area).reduce((n, t) => {
+    const log = (t.postponeLog ?? []).filter((e) => e.kind === 'adiada');
+    if (log.length) return n + log.filter((e) => inR(e.at.slice(0, 10))).length;
+    return n + (t.status === 'adiada' && inR(t.date ?? t.updatedAt?.slice(0, 10)) ? 1 : 0);
+  }, 0);
   const imps = d.imprevistos.filter((i) => inR(i.date) && (!area || i.area === area));
   const byType = new Map<string, number>();
   for (const i of imps) byType.set(i.type, (byType.get(i.type) ?? 0) + i.durationMin);

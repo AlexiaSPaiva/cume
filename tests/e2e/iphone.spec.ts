@@ -6,7 +6,7 @@ import { useBuild } from './helpers';
  * e nenhum texto pode vazar do próprio botão. Roda em 375 (iPhone SE/mini) e 390 px (iPhone 12–15).
  */
 const ROUTES = [
-  '/', '/semana', '/agenda', '/tarefas', '/planejamento', '/calendario', '/metas', '/imprevistos', '/historico',
+  '/', '/semana', '/agenda', '/tarefas', '/tarefas?aba=lista', '/tarefas?aba=adiadas', '/tarefas?aba=lixeira', '/planejamento', '/calendario', '/metas', '/imprevistos', '/historico',
   '/area/academica', '/area/financeiro', '/area/financeiro?aba=renda-extra', '/area/financeiro?aba=reserva', '/area/adultices',
   '/area/adultices/cofre', '/personalizar',
 ];

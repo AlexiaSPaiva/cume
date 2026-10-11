@@ -7,6 +7,7 @@ import { useData } from '../lib/data';
 import { db } from '../lib/db';
 import { addDays, ddmm, DOW_SHORT, dur, hours, parse, today, weekDays, weekStart } from '../lib/dates';
 import { impByArea, impsForWeek, occurrencesForWeek, plannedByArea, sum, capacityMin } from '../lib/week';
+import { postponeTask, rescheduleTask } from '../lib/tasks';
 
 export function MinhaSemana() {
   const { tasks, imprevistos, plans, settings } = useData();
@@ -34,12 +35,9 @@ export function MinhaSemana() {
     if (!id) return;
     const t = await db.tasks.get(id);
     if (!t || t.repeatDays?.length) return;
-    const moved = t.date && t.date < day;
-    await db.tasks.update(id, {
-      date: day,
-      status: t.status === 'adiada' ? 'afazer' : t.status,
-      postponedCount: moved ? (t.postponedCount ?? 0) + 1 : t.postponedCount,
-    });
+    // arrastar para outro dia = realocar a mesma tarefa (fica no histórico)
+    if (t.date === day) return;
+    await rescheduleTask(id, { kind: 'dia', date: day });
   }
 
   async function toggleDone(id: number, done: boolean) {
@@ -47,9 +45,7 @@ export function MinhaSemana() {
   }
 
   async function postpone(id: number) {
-    const t = await db.tasks.get(id);
-    if (!t) return;
-    await db.tasks.update(id, { status: 'adiada', postponedCount: (t.postponedCount ?? 0) + 1 });
+    await postponeTask(id, { text: 'adiada em Minha semana' });
   }
 
   const rangeLabel = `${ddmm(days[0])} – ${ddmm(days[6])}`;

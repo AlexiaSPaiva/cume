@@ -99,7 +99,7 @@ export function RhythmLine({ values, color, labels, highlightLast = true }: { va
  * Janela de diálogo. No celular (< 768px) vira folha que sobe de baixo (bottom sheet):
  * arrastar a alça para baixo fecha. Esc fecha em qualquer tamanho; o foco fica preso dentro.
  */
-export function Modal({ title, onClose, children, wide }: { title: ReactNode; onClose: () => void; children: ReactNode; wide?: boolean }) {
+export function Modal({ title, onClose, children, wide, drawer }: { title: ReactNode; onClose: () => void; children: ReactNode; wide?: boolean; drawer?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   const drag = useRef<{ y: number; dy: number } | null>(null);
   const closeRef = useRef(onClose);
@@ -140,8 +140,8 @@ export function Modal({ title, onClose, children, wide }: { title: ReactNode; on
   };
 
   return (
-    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={box} tabIndex={-1} className={`modal ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
+    <div className={`overlay ${drawer ? 'has-drawer' : ''}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={box} tabIndex={-1} className={`modal ${wide ? 'wide' : ''} ${drawer ? 'drawer' : ''}`} role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
         <div className="sheet-handle" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} aria-hidden="true"><i /></div>
         <h2>{title}<button className="icon-btn x" onClick={onClose} aria-label="Fechar"><Icon name="x" /></button></h2>
         {children}

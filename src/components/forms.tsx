@@ -9,6 +9,7 @@ import { useData } from '../lib/data';
 import type { AreaId, DocType, Imprevisto, ImprevistoType, Priority, Task, TaskStatus, VaultDoc } from '../lib/types';
 import { AreaDot, Icon } from './ui';
 import { useUI } from './Overlays';
+import { postponeTask } from '../lib/tasks';
 
 export const STATUS_LABEL: Record<TaskStatus, string> = {
   afazer: 'A fazer', hoje: 'Hoje', andamento: 'Em andamento', aguardando: 'Aguardando', concluido: 'Concluído', adiada: 'Adiada',
@@ -195,10 +196,8 @@ export function ImprevistoForm({ initial, onDone, onSaved, compact }: {
     if (rec.id) await db.imprevistos.put(rec);
     else rec.id = await db.imprevistos.add(rec);
     if (rec.postponedTasks) {
-      for (const id of rec.postponedTaskIds ?? []) {
-        const t = await db.tasks.get(id);
-        if (t && t.status !== 'adiada') await db.tasks.update(id, { status: 'adiada', postponedCount: (t.postponedCount ?? 0) + 1 });
-      }
+      // motivo do adiamento = este imprevisto (aparece em Tarefas → Adiadas)
+      for (const id of rec.postponedTaskIds ?? []) await postponeTask(id, { text: rec.title, imprevistoId: rec.id });
     }
     return rec;
   }

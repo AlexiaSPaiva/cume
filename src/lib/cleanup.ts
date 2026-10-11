@@ -61,6 +61,8 @@ export async function removeExampleData(d: MeuPlanoDB): Promise<number> {
   const removed: Record<string, Row[]> = {};
   let total = 0;
   await d.transaction('rw', [...TRASHABLE_TABLES, 'plans', 'blobs', 'meta', 'settings'], async () => {
+    // confere de novo dentro da transação: um exemplo pedido de propósito pode ter começado a entrar agora
+    if (await d.meta.get(SEEDED_KEY)) { total = -1; return; }
     for (const t of TRASHABLE_TABLES) {
       // na v6 metas, objetivos e eventos de exemplo não tinham data de criação: aí vale o nome exato do exemplo
       const byName = NAMED.has(t) ? sig.get(t)! : new Set<string>();
@@ -79,5 +81,6 @@ export async function removeExampleData(d: MeuPlanoDB): Promise<number> {
     await d.meta.put({ key: 'exemplos-removidos-copia', value: { at: new Date().toISOString(), seedAt, removed } });
     await d.meta.put({ key: DONE_KEY, value: `${total} itens de exemplo removidos` });
   });
+  if (total < 0) { await d.meta.put({ key: DONE_KEY, value: 'exemplo pedido de propósito' }); return 0; }
   return total;
 }

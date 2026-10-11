@@ -13,6 +13,7 @@ import { DragClose, useFocusMode } from './Card';
 import { sceneMode, useScene } from '../lib/scene';
 import { BrandMark, SceneBg } from './Brand';
 import { Welcome, WELCOME_SESSION_KEY } from './Welcome';
+import { useReminders } from '../lib/reminders';
 import { ErrorBoundary, OfflineBadge } from './States';
 import { Icon, Modal } from './ui';
 import { useUI } from './Overlays';
@@ -46,6 +47,7 @@ export function Layout() {
   const { settings } = data;
   const ui = useUI();
   const loc = useLocation();
+  useReminders(data.tasks, ui.toast);
   // fechamento automático do mês (dia 1º às 08:00): roda ao abrir o app
   useEffect(() => { void closeMonth(data).catch((e) => console.error('[meuplano] fechamento', e)); }, [data]);
   const temp = useTemperature(settings.city.lat, settings.city.lon);

@@ -7,12 +7,15 @@ import { db, type TrashableTable } from '../lib/db';
 import { restore, softDelete } from '../lib/trash';
 import { DocForm, ImprevistoForm, SuggestionForm, TaskForm } from './forms';
 import { Modal } from './ui';
+import { PostponeForm, RescheduleForm } from './Reschedule';
 
 type Open =
   | { kind: 'task'; task?: Partial<Task> }
   | { kind: 'imp'; imp?: Partial<Imprevisto> }
   | { kind: 'doc' }
   | { kind: 'suggest'; s: RecurringSuggestion }
+  | { kind: 'resched'; task: Task }
+  | { kind: 'postpone'; task: Task }
   | null;
 
 interface UI {
@@ -20,6 +23,10 @@ interface UI {
   openImprevisto(imp?: Partial<Imprevisto>): void;
   openDoc(): void;
   openSuggestion(s: RecurringSuggestion): void;
+  /** Realocar: a mesma tarefa vai para um dia, para o Planejamento ou para o backlog */
+  openReschedule(task: Task): void;
+  /** Adiar com motivo */
+  openPostpone(task: Task): void;
   toast(msg: string, action?: { label: string; run: () => void }): void;
   /** exclusão padrão: vai para a Lixeira (30 dias) e mostra "Desfazer" por 6 s, que devolve o MESMO item */
   remove(table: TrashableTable, id: number, label: string): Promise<void>;
@@ -62,6 +69,8 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
     openImprevisto: (imp) => setOpen({ kind: 'imp', imp }),
     openDoc: () => setOpen({ kind: 'doc' }),
     openSuggestion: (s) => setOpen({ kind: 'suggest', s }),
+    openReschedule: (task) => setOpen({ kind: 'resched', task }),
+    openPostpone: (task) => setOpen({ kind: 'postpone', task }),
     toast,
     remove,
     afterImprevisto,
@@ -91,6 +100,17 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
       {open?.kind === 'suggest' && !suggestStale && (
         <Modal title="Imprevisto recorrente" onClose={close}>
           <SuggestionForm s={open.s} onDone={(m) => { close(); if (m) toast(m); }} />
+        </Modal>
+      )}
+      {open?.kind === 'resched' && (
+        <Modal title="Realocar tarefa" onClose={close} drawer>
+          <RescheduleForm task={open.task} onDone={(m) => { close(); if (m) toast(m); }}
+            onDelete={() => { close(); void remove('tasks', open.task.id!, `“${open.task.title}”`); }} />
+        </Modal>
+      )}
+      {open?.kind === 'postpone' && (
+        <Modal title="Adiar tarefa" onClose={close}>
+          <PostponeForm task={open.task} onDone={(m) => { close(); if (m) toast(m); }} />
         </Modal>
       )}
       {toastMsg && (

@@ -9,6 +9,7 @@ import { db } from '../lib/db';
 import { addDays, ddmm, DOW_SHORT, dur, fromMin, parse, toMin, today, weekDays, weekStart } from '../lib/dates';
 import { impByArea, impsForWeek, occurrencesForWeek, plannedByArea, sum, capacityMin, type Occurrence } from '../lib/week';
 import type { Imprevisto } from '../lib/types';
+import { rescheduleTask } from '../lib/tasks';
 
 const FROM = 7 * 60;
 const TO = 23 * 60;
@@ -75,7 +76,8 @@ export function Agenda() {
       await db.tasks.update(id, { start });
       ui.toast('Horário do bloco fixo alterado em todas as semanas.');
     } else {
-      await db.tasks.update(id, { date: d, start, status: t.status === 'adiada' ? 'afazer' : t.status });
+      if (t.date !== d || t.status === 'adiada') await rescheduleTask(id, { kind: 'dia', date: d, start });
+      else await db.tasks.update(id, { start });
     }
   }
 

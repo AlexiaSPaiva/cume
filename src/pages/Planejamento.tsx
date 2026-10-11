@@ -12,6 +12,7 @@ import { planHours } from '../lib/derive';
 import { impsForWeek, occurrencesForWeek, plannedByArea, sum, capacityMin } from '../lib/week';
 import { TaskMenu } from '../components/ItemMenu';
 import type { AreaId, WeekPlan } from '../lib/types';
+import { rescheduleTask } from '../lib/tasks';
 
 export function Planejamento() {
   const data = useData();
@@ -28,7 +29,9 @@ export function Planejamento() {
   const plan: WeekPlan = stored ?? { weekStart: next, hoursByArea: planHours(data, next).hours, top3: [] };
   const capH = capacityMin(settings) / 60;
   const plannedH = sum(plan.hoursByArea);
-  const backlog = tasks.filter((t) => t.status === 'afazer' && !t.date && !t.repeatDays?.length);
+  // backlog: sem dia + as adiadas (com o selo "adiada Nx"), para encaixar na semana que vem
+  const backlog = tasks.filter((t) => !t.repeatDays?.length && ((t.status === 'afazer' && !t.date) || t.status === 'adiada'))
+    .sort((a, b) => (b.postponedCount ?? 0) - (a.postponedCount ?? 0));
   const buffers = tasks.filter((t) => t.bufferFor);
   const bufferByArea = zeroByArea();
   for (const b of buffers) bufferByArea[b.area] += ((b.durationMin ?? 0) * (b.repeatDays?.length ?? 1)) / 60;
@@ -47,7 +50,8 @@ export function Planejamento() {
   }
 
   async function schedule(id: number, day: string) {
-    await db.tasks.update(id, { date: day });
+    // a mesma tarefa (adiada ou do backlog) ganha o dia; fica no histórico de realocações
+    await rescheduleTask(id, { kind: 'dia', date: day });
     ui.toast(`Agendada para ${DOW_LONG[parse(day).getDay()]}, ${ddmm(day)}.`);
   }
 
@@ -129,7 +133,7 @@ export function Planejamento() {
                 <div key={t.id} className="tcard soft" draggable onDragStart={(e) => e.dataTransfer.setData('task', String(t.id))}
                   onClick={() => ui.openTask(t)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && ui.openTask(t)}>
                   <div className="row"><b className="grow">{t.title}</b><span className="faint small"><span className="only-mouse">arraste para um dia</span><span className="only-touch">toque para escolher o dia</span></span><TaskMenu t={t} /></div>
-                  <span><AreaTag area={t.area} /></span>
+                  <span className="row" style={{ gap: 6 }}><AreaTag area={t.area} />{(t.postponedCount ?? 0) > 0 && <span className="tag bad">adiada {t.postponedCount}x</span>}</span>
                 </div>
               ))}
               {backlog.length === 0 && <Empty action={{ label: '+ Nova tarefa', run: () => ui.openTask({ status: 'andamento' }) }}>Backlog vazio: tudo já tem dia marcado.</Empty>}

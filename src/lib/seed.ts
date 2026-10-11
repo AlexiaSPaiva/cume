@@ -34,6 +34,9 @@ export async function isEmpty(target: MeuPlanoDB = db): Promise<boolean> {
  */
 export async function seedExample(target: MeuPlanoDB = db): Promise<boolean> {
   if (!(await isEmpty(target))) return false;
+  // exemplo pedido de propósito (demonstração/testes): marcado ANTES de gravar, para a limpeza automática
+  // dos exemplos antigos (cleanup.ts) nunca apagar um exemplo que está entrando agora
+  await target.meta.put({ key: 'exemplos', value: new Date().toISOString() });
   const db = target;
   const now = new Date().toISOString();
   const mon = weekStart(today());
@@ -179,8 +182,6 @@ export async function seedExample(target: MeuPlanoDB = db): Promise<boolean> {
   });
   await seedFreelance(target);
   await seedMetrics(target);
-  // exemplo pedido de propósito (demonstração/testes): a limpeza automática não remove (ver cleanup.ts)
-  await target.meta.put({ key: 'exemplos', value: new Date().toISOString() });
   // conta de demonstração já entra direto (as boas-vindas continuam em Personalizar)
   if (await target.settings.get('me')) await target.settings.update('me', { welcomeDismissed: true });
   return true;

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { TabAdiadas, TabLista, TabLixeira } from './TarefasAbas';
 import { Page } from '../components/Layout';
 import { useUI } from '../components/Overlays';
 import { TaskMenu } from '../components/ItemMenu';
@@ -18,7 +20,7 @@ const COLS: { id: TaskStatus; label: string; color: string }[] = [
   { id: 'adiada', label: 'Adiada', color: '#d29b72' },
 ];
 
-export function Tarefas() {
+function Quadro() {
   const d = useData();
   const ui = useUI();
   const [area, setArea] = useState<AreaId | ''>('');
@@ -45,7 +47,7 @@ export function Tarefas() {
   const next = upcomingDeadlines(d, 30)[0];
 
   return (
-    <Page title="Tarefas" sub="O que precisa de você agora, o que está andando e o que está parado.">
+    <>
       <Stats>
         <Stat k="Hoje" v={col('hoje').length} s="prioridades" />
         <Stat k="Em andamento" v={col('andamento').length} s="projetos" />
@@ -126,6 +128,36 @@ export function Tarefas() {
           </p>
         </section>
       </div>
+    </>
+  );
+}
+
+const TABS = [['quadro', 'Quadro'], ['lista', 'Lista'], ['adiadas', 'Adiadas'], ['lixeira', 'Lixeira']] as const;
+type Tab = (typeof TABS)[number][0];
+
+/** /tarefas?aba=quadro|lista|adiadas|lixeira */
+export function Tarefas() {
+  const [q, setQ] = useSearchParams();
+  const tab = (TABS.find(([k]) => k === q.get('aba'))?.[0] ?? 'quadro') as Tab;
+  const label = TABS.find(([k]) => k === tab)![1];
+  return (
+    <Page title={tab === 'adiadas' ? 'Tarefas adiadas' : 'Tarefas'}
+      sub={tab === 'adiadas' ? 'Nada se perde: veja o que ficou para trás e devolva ao plano sem recriar a tarefa.'
+        : tab === 'lixeira' ? 'O que foi excluído fica aqui por 30 dias e pode voltar.'
+        : 'O que precisa de você agora, o que está andando e o que está parado.'}
+      crumbs={tab === 'quadro' ? [{ to: '/', label: 'Início' }, { label: 'Tarefas' }] : [{ to: '/', label: 'Início' }, { to: '/tarefas', label: 'Tarefas' }, { label }]}>
+      <nav className="fin-tabs" aria-label="Abas de Tarefas">
+        {TABS.map(([k, l]) => (
+          <button key={k} type="button" className={`tab-btn ${k === tab ? 'on' : ''}`} aria-current={k === tab ? 'page' : undefined}
+            onClick={() => setQ(k === 'quadro' ? {} : { aba: k })}>
+            {l}{k === 'adiadas' && <span className="novo">novo</span>}
+          </button>
+        ))}
+      </nav>
+      {tab === 'quadro' && <Quadro />}
+      {tab === 'lista' && <TabLista />}
+      {tab === 'adiadas' && <TabAdiadas />}
+      {tab === 'lixeira' && <TabLixeira />}
     </Page>
   );
 }

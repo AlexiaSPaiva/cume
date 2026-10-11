@@ -48,6 +48,30 @@ export interface Task extends Stamped {
   subcategory?: 'renda_extra';
   /** bloco de agenda criado por um registro de renda extra */
   freelanceEntryId?: number;
+  /** cada adiamento e cada realocação (a tarefa nunca é copiada: o mesmo id carrega a história) */
+  postponeLog?: PostponeEntry[];
+  /** avisar X minutos antes do início */
+  remindMin?: number;
+  /** segunda parte de uma tarefa quebrada em sessões */
+  sessionOf?: number;
+  /** estudo: bloco de uma trilha (o mesmo evento aparece na Agenda e no Cronograma) */
+  trackId?: number;
+  subjectId?: number;
+  topicId?: number;
+  /** revisão espaçada gerada automaticamente (24h, 7d, 30d) */
+  reviewOf?: number;
+}
+
+export interface PostponeEntry {
+  kind: 'adiada' | 'realocada';
+  /** dia em que estava ('' = backlog) */
+  from?: string;
+  /** para onde foi: "AAAA-MM-DD HH:MM", "AAAA-MM-DD", "planejamento" ou "backlog" */
+  to?: string;
+  reasonText?: string;
+  /** imprevisto que causou o adiamento */
+  reasonId?: number;
+  at: string;
 }
 
 export type ImprevistoType = 'Trabalho' | 'Saúde' | 'Burocracia' | 'Infraestrutura' | 'Família' | 'Transporte' | 'Outro';

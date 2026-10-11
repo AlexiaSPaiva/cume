@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { useBuild } from './helpers';
 
 const ROUTES = [
-  '/', '/semana', '/agenda', '/tarefas', '/planejamento', '/calendario', '/metas', '/imprevistos',
+  '/', '/semana', '/agenda', '/tarefas', '/tarefas?aba=lista', '/tarefas?aba=adiadas', '/tarefas?aba=lixeira', '/planejamento', '/calendario', '/metas', '/imprevistos',
   '/area/academica', '/area/profissional', '/area/saude', '/area/pessoal', '/area/financeiro', '/area/adultices',
   '/area/adultices/cofre', '/personalizar',
 ];
