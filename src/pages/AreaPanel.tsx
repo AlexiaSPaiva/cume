@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { Page } from '../components/Layout';
+import { Card } from '../components/Card';
 import { useUI } from '../components/Overlays';
 import { Bar, Empty, Modal, RhythmLine, Stat, Stats } from '../components/ui';
 import { AREA, AREAS } from '../lib/areas';
@@ -94,15 +95,13 @@ export function AreaPanel() {
       )}
 
       <div className="grid g3">
-        <section className="card">
-          <h2>Progresso</h2>
+        <Card title="Progresso">
           <div className="list" style={{ gap: 14 }}>
             {goals.map((g) => <GoalRow key={g.id} g={g} onEdit={() => setRecord(g)} onRecord={() => setRecord(g)} />)}
             {goals.length === 0 && <Empty>Sem metas nesta área. Crie em <Link to="/metas">Objetivos e Metas</Link>.</Empty>}
           </div>
-        </section>
-        <section className="card">
-          <h2>Ritmo da semana · <span className="muted" style={{ fontSize: '1.0625rem' }}>progresso e regresso</span></h2>
+        </Card>
+        <Card title={<>Ritmo da semana · <span className="muted" style={{ fontSize: '1.0625rem' }}>progresso e regresso</span></>}>
           <RhythmLine values={rhythm} color={A.color} labels={days.map((x) => DOW_SHORT[parse(x).getDay()][0])} />
           <div className="row small" style={{ gap: 14, marginTop: 6 }}>
             <span style={{ color: 'var(--bad)' }}>queda —</span><span style={{ color: A.color }}>subida —</span>
@@ -111,9 +110,8 @@ export function AreaPanel() {
             {dropImp ? `Queda na ${DOW_LONG[parse(days[dropIdx]).getDay()]}: ${dropImp.title.toLowerCase()} (${dur(dropImp.durationMin)}).`
               : 'Calculado pelas horas planejadas, tarefas concluídas e imprevistos de cada dia.'}
           </p>
-        </section>
-        <section className="card">
-          <h2>Tempo e foco</h2>
+        </Card>
+        <Card title="Tempo e foco">
           <div className="row" style={{ alignItems: 'baseline' }}>
             <b style={{ fontSize: '1.875rem' }}>{Math.round(wn.total[area] / 6) / 10}h</b>
             <span className="muted small">na semana ({Math.round(wn.planned[area] / 6) / 10}h plano + {Math.round(imm / 6) / 10}h imprevisto)</span>
@@ -123,18 +121,16 @@ export function AreaPanel() {
             <div><div className="row small"><span>Tempo real</span><b className="right" style={{ color: A.color }}>{sum.realPct}%</b></div><div style={{ marginTop: 6 }}><Bar pct={sum.realPct * 2} color={A.color} /></div></div>
           </div>
           <span className={`tag ${sum.focusLabel.startsWith('abaixo') ? 'bad' : sum.focusLabel.startsWith('acima') ? 'warn' : 'ok'}`} style={{ marginTop: 14 }}>{sum.focusLabel}</span>
-        </section>
-        <section className="card">
-          <h2>Prazos</h2>
+        </Card>
+        <Card title="Prazos">
           <div className="list">
             {deadlines.slice(0, 6).map((x, i) => (
               <div key={i} className="row small"><span className="dotc" style={{ background: A.color }} /><b>{ddmm(x.date)}</b><span className="grow">{x.title}</span><span className="muted">{relDays(x.date)}</span></div>
             ))}
             {deadlines.length === 0 && <Empty>Nenhum prazo à vista.</Empty>}
           </div>
-        </section>
-        <section className="card">
-          <h2>Falhas, regressos e imprevistos</h2>
+        </Card>
+        <Card title="Falhas, regressos e imprevistos">
           <div className="list">
             {failures.slice(0, 4).map((f, i) => (
               <div key={i} className="tcard" style={{ cursor: 'default', background: f.cls === 'bad' ? '#221a26' : f.cls === 'imp' ? '#221c1e' : undefined }}>
@@ -143,9 +139,8 @@ export function AreaPanel() {
             ))}
             {failures.length === 0 && <Empty>Nada preocupante por aqui.</Empty>}
           </div>
-        </section>
-        <section className="card">
-          <h2>Planos e projetos em andamento</h2>
+        </Card>
+        <Card title="Planos e projetos em andamento">
           <div className="list">
             {plans.map((t) => {
               const [label, cls] = planTag(t);
@@ -157,10 +152,10 @@ export function AreaPanel() {
                 </button>
               );
             })}
-            {plans.length === 0 && <Empty>Nenhum plano em andamento.</Empty>}
+            {plans.length === 0 && <Empty action={{ label: '+ Novo plano', run: () => ui.openTask({ area, status: 'andamento' }) }}>Nenhum plano em andamento.</Empty>}
             <button className="add-link" onClick={() => ui.openTask({ area })}>+ tarefa em {A.name}</button>
           </div>
-        </section>
+        </Card>
       </div>
 
       {record && (

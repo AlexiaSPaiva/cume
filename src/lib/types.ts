@@ -179,6 +179,8 @@ export interface Settings extends Stamped {
   /** horas por semana disponíveis para planejar (padrão 80) */
   weekCapacityH?: number;
   googleClientId?: string;
+  /** menu lateral recolhido no desktop (« / ») */
+  sideCollapsed?: boolean;
 }
 
 export interface Account {

@@ -20,7 +20,7 @@ export interface Data {
 
 const Ctx = createContext<Data | null>(null);
 
-export function DataProvider({ settings, children }: { settings: Settings; children: ReactNode }) {
+export function DataProvider({ settings, fallback = null, children }: { settings: Settings; fallback?: ReactNode; children: ReactNode }) {
   // itens na Lixeira (deletedAt) não aparecem em nenhuma tela
   const live = <T extends { deletedAt?: string }>(rows: T[]) => rows.filter((r) => !r.deletedAt);
   const tasks = useLiveQuery(() => db.tasks.toArray().then(live), []);
@@ -38,7 +38,7 @@ export function DataProvider({ settings, children }: { settings: Settings; child
     [imprevistos, suggestionStates, tasks, settings.recurrenceThreshold],
   );
 
-  if (!tasks || !imprevistos || !objectives || !goals || !events || !docs || !attachments || !plans || !suggestionStates) return null;
+  if (!tasks || !imprevistos || !objectives || !goals || !events || !docs || !attachments || !plans || !suggestionStates) return fallback;
   return (
     <Ctx.Provider value={{ settings, tasks, imprevistos, objectives, goals, events, docs, attachments, plans, suggestionStates, suggestions }}>
       {children}

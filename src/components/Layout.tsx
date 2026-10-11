@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AREAS, AREA } from '../lib/areas';
 import { useData } from '../lib/data';
 import { addDays, ddmm, DOW_LONG, dur, longDate, relDays, today } from '../lib/dates';
 import { useTemperature } from '../lib/weather';
 import { useAttachmentUrl } from '../lib/attachments';
+import { db } from '../lib/db';
 import type { RecurringSuggestion } from '../lib/recurrence';
+import { DragClose, useFocusMode } from './Card';
 import { Scenery } from './Scenery';
+import { ErrorBoundary, OfflineBadge } from './States';
 import { Icon, Modal } from './ui';
 import { useUI } from './Overlays';
 
@@ -21,9 +24,12 @@ const SYSTEM: [to: string, label: string, icon: string][] = [
   ['/imprevistos', 'Imprevistos', 'zap'],
 ];
 
+/** modo foco da página inteira (⛶ no topo): esconde menu, cenário e rodapé */
+const PageFocus = createContext<ReturnType<typeof useFocusMode> | null>(null);
+
 /**
  * Casca do app em três tamanhos:
- * - ≥ 1200px: menu lateral completo;
+ * - ≥ 1200px: menu lateral completo, recolhível com « (a escolha fica salva no perfil);
  * - 768–1199px: o menu vira um trilho de ícones (os nomes ficam como dica e para leitores de tela);
  * - < 768px: sem menu lateral; barra inferior com Início, Semana, + (ação rápida), Tarefas e Mais.
  */
@@ -35,12 +41,19 @@ export function Layout() {
   const photo = useAttachmentUrl(settings.photoAttachmentId);
   const [sheet, setSheet] = useState<null | 'add' | 'more'>(null);
   useEffect(() => setSheet(null), [loc.pathname]);
+  const main = useRef<HTMLDivElement>(null);
+  const focus = useFocusMode(main);
+  const collapsed = !!settings.sideCollapsed;
 
   const quick = (fn: () => void) => () => { setSheet(null); fn(); };
 
   return (
-    <div className="shell" style={{ '--accent': settings.accent } as React.CSSProperties}>
+    <div className={`shell ${collapsed ? 'collapsed' : ''} ${focus.on ? 'page-focus' : ''}`} style={{ '--accent': settings.accent } as React.CSSProperties}>
       <aside className="side" aria-label="Menu">
+        <button type="button" className="icon-btn side-toggle" onClick={() => db.settings.update('me', { sideCollapsed: !collapsed })}
+          aria-label={collapsed ? 'Abrir menu' : 'Recolher menu'} aria-expanded={!collapsed} title={collapsed ? 'Abrir menu' : 'Recolher menu'}>
+          <Icon name={collapsed ? 'uncollapse' : 'collapse'} size={16} />
+        </button>
         <div className="brand">
           <Link to="/" className="name" title={`${settings.name} · Início`}>
             <span className="full">{settings.name}</span>
@@ -55,10 +68,14 @@ export function Layout() {
           <span className="lbl"><b>{settings.fullName}</b><small>personalizar</small></span>
         </Link>
       </aside>
-      <div className="main">
+      <div className="main" ref={main} tabIndex={focus.on ? -1 : undefined}
+        role={focus.on ? 'dialog' : undefined} aria-modal={focus.on || undefined} aria-label={focus.on ? 'Modo foco' : undefined}>
+        {focus.on && <DragClose onClose={focus.close} target={main} />}
         <div className="hero-bg"><Scenery id={settings.scenario} photo={photo} /></div>
         <div className="content">
-          <Outlet />
+          <PageFocus.Provider value={focus}>
+            <ErrorBoundary resetKey={loc.pathname}><Outlet /></ErrorBoundary>
+          </PageFocus.Provider>
           <footer className="footer">
             <span>{settings.phrase}</span>
             <span>{settings.city.name}{temp != null && ` · ${temp}°C`}</span>
@@ -134,9 +151,19 @@ export function Page({ title, sub, crumbs, children, docButton }: {
 }) {
   const now = useClock();
   const ui = useUI();
+  const focus = useContext(PageFocus);
   return (
     <>
-      <TopBar crumbs={crumbs ?? [{ label: 'Início' }]} onDoc={docButton ? ui.openDoc : undefined} />
+      {focus?.on
+        ? (
+          <div className="top focus-top">
+            <span className="focus-chip">Modo foco</span>
+            <div className="crumbs">{typeof title === 'string' ? title : (crumbs ?? [{ label: 'Início' }]).map((c) => c.label).join(' / ')}</div>
+            <OfflineBadge />
+            <button className="icon-btn" onClick={focus.close} aria-label="Fechar modo foco" title="Fechar (Esc)"><Icon name="x" size={20} /></button>
+          </div>
+        )
+        : <TopBar crumbs={crumbs ?? [{ label: 'Início' }]} onDoc={docButton ? ui.openDoc : undefined} onFocus={focus?.open} />}
       <header className="head">
         <div>
           <h1>{title}</h1>
@@ -152,7 +179,7 @@ export function Page({ title, sub, crumbs, children, docButton }: {
   );
 }
 
-function TopBar({ crumbs, onDoc }: { crumbs: { to?: string; label: string }[]; onDoc?: () => void }) {
+function TopBar({ crumbs, onDoc, onFocus }: { crumbs: { to?: string; label: string }[]; onDoc?: () => void; onFocus?: () => void }) {
   const ui = useUI();
   const { settings } = useData();
   const nav = useNavigate();
@@ -179,10 +206,12 @@ function TopBar({ crumbs, onDoc }: { crumbs: { to?: string; label: string }[]; o
           </span>
         ))}
       </div>
+      <OfflineBadge />
       <Search />
       {onDoc && <button className="btn out doc top-act" onClick={onDoc}>+ Documento</button>}
       <button className="btn out top-act" onClick={() => ui.openImprevisto()}>+ Imprevisto</button>
       <button className="btn gold top-act" onClick={() => ui.openTask()}>+ Tarefa</button>
+      {onFocus && <button className="icon-btn top-focus" onClick={onFocus} aria-label="Abrir a tela em modo foco" title="Modo foco"><Icon name="expand" size={18} /></button>}
       <div ref={ref} style={{ position: 'relative' }}>
         <button className="icon-btn" onClick={() => setBell((b) => !b)} aria-label="Notificações" aria-expanded={bell}>
           <Icon name="bell" size={19} />{notes.length > 0 && <span className="badge" />}

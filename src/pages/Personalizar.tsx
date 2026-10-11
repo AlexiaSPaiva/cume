@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Page } from '../components/Layout';
+import { Card } from '../components/Card';
 import { useUI } from '../components/Overlays';
 import { SCENES, Scenery } from '../components/Scenery';
 import { AreaDot, Icon } from '../components/ui';
@@ -98,8 +99,7 @@ export function Personalizar({ onLogout }: { onLogout: () => void }) {
   return (
     <Page title="Personalizar" sub="Seu nome, seu cenário, seu jeito." crumbs={[{ to: '/', label: 'Início' }, { label: 'Personalizar' }]}>
       <div className="grid g2">
-        <section className="card form">
-          <h2>Você</h2>
+        <Card title="Você" className="form">
           <div className="cols">
             <label className="field"><span>Nome no app</span><input value={settings.name} onChange={(e) => set({ name: e.target.value || 'Você' })} /></label>
             <label className="field"><span>Nome completo</span><input value={settings.fullName} onChange={(e) => set({ fullName: e.target.value })} /></label>
@@ -123,10 +123,9 @@ export function Personalizar({ onLogout }: { onLogout: () => void }) {
               }}>Salvar</button>
             </div>
           </div>
-        </section>
+        </Card>
 
-        <section className="card form">
-          <h2>Cenário</h2>
+        <Card title="Cenário" className="form">
           <div className="grid g2" style={{ gap: 10 }}>
             {SCENES.map((s) => (
               <button key={s.id} className={`scene ${!settings.photoAttachmentId && settings.scenario === s.id ? 'on' : ''}`} style={{ height: 84 }}
@@ -143,10 +142,9 @@ export function Personalizar({ onLogout }: { onLogout: () => void }) {
               if (f) await setPhoto(f);
             }} />
           </div>
-        </section>
+        </Card>
 
-        <section className="card form">
-          <h2>Foco desejado por área</h2>
+        <Card title="Foco desejado por área" className="form">
           {AREAS.map((a) => (
             <label key={a.id} className="row small">
               <AreaDot area={a.id} /><span style={{ width: 90 }}>{a.name}</span>
@@ -156,10 +154,9 @@ export function Personalizar({ onLogout }: { onLogout: () => void }) {
             </label>
           ))}
           <span className={focusTotal === 100 ? 'hint' : 'err'}>Total: {focusTotal}%{focusTotal !== 100 && ' (o ideal é somar 100%)'}</span>
-        </section>
+        </Card>
 
-        <section className="card form">
-          <h2>Blocos da Início</h2>
+        <Card title="Blocos da Início" className="form">
           {WIDGETS.map(([id, label]) => (
             <label key={id} className="check">
               <input type="checkbox" checked={settings.widgets.includes(id)}
@@ -175,10 +172,9 @@ export function Personalizar({ onLogout }: { onLogout: () => void }) {
           <label className="field"><span>Horas por semana disponíveis para planejar</span>
             <input type="number" min={10} max={120} value={settings.weekCapacityH ?? 80} onChange={(e) => set({ weekCapacityH: Number(e.target.value) || 80 })} />
           </label>
-        </section>
+        </Card>
 
-        <section className="card form span2">
-          <h2>Seus dados</h2>
+        <Card title="Seus dados" className="form span2">
           <p className="muted small" style={{ margin: 0 }}>
             Tudo fica guardado neste aparelho (IndexedDB), inclusive PDFs e fotos, e continua aqui depois de recarregar, atualizar o app ou fechar o PWA.
           </p>
@@ -202,10 +198,9 @@ export function Personalizar({ onLogout }: { onLogout: () => void }) {
           {settings.googleClientId && (
             <div className="row small"><span className="muted">Google Client ID configurado.</span><button className="btn sm ghost" onClick={() => set({ googleClientId: undefined })}>remover</button></div>
           )}
-        </section>
+        </Card>
 
-        <section className="card form span2" id="lixeira">
-          <h2>Lixeira <span className="muted small" style={{ fontFamily: 'var(--sans)' }}>itens excluídos ficam 30 dias e podem voltar</span></h2>
+        <Card title={<>Lixeira <span className="muted small" style={{ fontFamily: 'var(--sans)' }}>itens excluídos ficam 30 dias e podem voltar</span></>} className="form span2" id="lixeira">
           <div className="list">
             {(trash ?? []).map((t) => (
               <div key={`${t.table}-${t.id}`} className="row small">
@@ -216,7 +211,7 @@ export function Personalizar({ onLogout }: { onLogout: () => void }) {
             ))}
             {trash?.length === 0 && <span className="empty">A Lixeira está vazia.</span>}
           </div>
-        </section>
+        </Card>
       </div>
     </Page>
   );

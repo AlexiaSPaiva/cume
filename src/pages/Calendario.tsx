@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Page } from '../components/Layout';
+import { Card } from '../components/Card';
 import { useUI } from '../components/Overlays';
 import { AreaDot, Empty, Icon, Stat, Stats } from '../components/ui';
 import { AREAS, AREA } from '../lib/areas';
@@ -7,6 +8,7 @@ import { useData } from '../lib/data';
 import { db } from '../lib/db';
 import { addDays, ddmm, DOW_SHORT, iso, MONTHS, monthYear, parse, today } from '../lib/dates';
 import { connectGoogle, isConnected, listCalendars, syncCalendars, type GCal } from '../lib/google';
+import { ItemMenu } from '../components/ItemMenu';
 import type { AreaId, CalendarEvent, CalendarKind } from '../lib/types';
 
 export function Calendario() {
@@ -40,12 +42,11 @@ export function Calendario() {
       </Stats>
 
       <div className="grid g3">
-        <section className="card span2">
-          <h2>
+        <Card wide className="span2" title={<span className="row" style={{ gap: 8 }}>
             <button className="btn sm" onClick={() => setMonth(iso(new Date(y, m - 1, 1)))} aria-label="Mês anterior">‹</button>
             {monthYear(month)}
             <button className="btn sm" onClick={() => setMonth(iso(new Date(y, m + 1, 1)))} aria-label="Próximo mês">›</button>
-          </h2>
+          </span>}>
           <div className="month">
             {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => <div key={i} className="dh">{d}</div>)}
             {cells.map((d, i) => {
@@ -60,19 +61,18 @@ export function Calendario() {
             })}
           </div>
           <DayDetail day={sel} items={byDay(sel)} onAdded={() => ui.toast('Evento criado.')} />
-        </section>
+        </Card>
 
         <div className="list" style={{ gap: 16 }}>
           <GoogleCard />
-          <section className="card">
-            <h2>Próximos 7 dias</h2>
+          <Card title="Próximos 7 dias">
             <div className="list">
               {next7.map((e, i) => (
                 <div key={i} className="row small"><AreaDot area={e.area} /><b>{ddmm(e.date)}</b><span className="grow">{e.title}</span><span className="muted">{DOW_SHORT[parse(e.date).getDay()]}</span></div>
               ))}
               {next7.length === 0 && <Empty>Semana tranquila.</Empty>}
             </div>
-          </section>
+          </Card>
         </div>
       </div>
     </Page>
@@ -103,7 +103,7 @@ function DayDetail({ day, items, onAdded }: { day: string; items: CalendarEvent[
             <AreaDot area={e.area} /><span className="grow">{e.start && <b>{e.start} </b>}{e.title}</span>
             <span className={`tag ${e.kind === 'vencimento' ? 'warn' : e.kind === 'prazo' ? 'bad' : 'info'}`}>{e.kind}</span>
             {e.source === 'google' && <Icon name="drive" size={12} />}
-            {e.id && e.source === 'local' && <button className="icon-btn" aria-label={`Excluir ${e.title}`} onClick={() => ui.remove('events', e.id!, `Evento “${e.title}”`)}><Icon name="trash" size={13} /></button>}
+            {e.id && e.source === 'local' && <ItemMenu label={e.title} actions={{ delete: () => void ui.remove('events', e.id!, `Evento “${e.title}”`) }} />}
           </div>
         ))}
         {items.length === 0 && <Empty>Nada neste dia.</Empty>}
@@ -165,8 +165,7 @@ function GoogleCard() {
   const synced = [...new Set(events.filter((e) => e.source === 'google').map((e) => e.calendarName))];
 
   return (
-    <section className="card">
-      <h2>Conexão com o Google</h2>
+    <Card title="Conexão com o Google">
       <div className="steps">
         {['Conectar conta', 'Autorizar', 'Escolher calendários', 'Sincronizar'].map((s, i) => (
           <div key={s} className={`step ${i <= step ? '' : 'off'}`}><b>{i + 1}</b>{s}</div>
@@ -201,6 +200,6 @@ function GoogleCard() {
         {synced.length > 0 && <div className="row small" style={{ flexWrap: 'wrap' }}>{synced.map((n) => <span key={n} className="tag ok">{n} · sincronizado</span>)}</div>}
         {err && <div className="err">{err}</div>}
       </div>
-    </section>
+    </Card>
   );
 }

@@ -1,3 +1,4 @@
+import { Card } from './Card';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AREAS } from '../lib/areas';
@@ -38,8 +39,7 @@ export function FocusCard() {
   const desired = d.settings.desiredFocus;
 
   return (
-    <section className="card">
-      <h2 style={{ marginBottom: 6 }}>Foco por área</h2>
+    <Card title="Foco por área">
       <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
         <span className="seg" role="tablist" aria-label="Semana">
           <button role="tab" aria-selected={which === 'esta'} className={which === 'esta' ? 'on' : ''} onClick={() => pick('esta')}>Esta semana</button>
@@ -80,6 +80,6 @@ export function FocusCard() {
         </div>
       )}
       <Link to="/planejamento" className="add-link" style={{ display: 'inline-block', marginTop: 10, textDecoration: 'none' }}>Ajustar no Planejamento ›</Link>
-    </section>
+    </Card>
   );
 }

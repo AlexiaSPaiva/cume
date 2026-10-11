@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Page } from '../components/Layout';
+import { Card } from '../components/Card';
 import { DocForm } from '../components/forms';
 import { useUI } from '../components/Overlays';
 import { Empty, Icon, Modal, Stat, Stats } from '../components/ui';
 import { useData } from '../lib/data';
 import { addDays, ddmm, relDays, today } from '../lib/dates';
 import type { Attachment, DocType } from '../lib/types';
+import { ItemMenu } from '../components/ItemMenu';
 import { fmtSize, openAttachment } from '../lib/attachments';
 
 const TABS: { label: string; type?: DocType }[] = [
@@ -51,11 +53,8 @@ export function Cofre() {
 
       <div className="grid g3">
         <div className="list span2" style={{ gap: 16 }}>
-          <section className="card">
-            <div className="row" style={{ flexWrap: 'wrap', marginBottom: 10 }}>
-              <h2 style={{ margin: 0 }}>Meus arquivos</h2>
-              <input className="input" style={{ marginLeft: 'auto', width: 220 }} placeholder="Buscar arquivo..." value={q} onChange={(e) => setQ(e.target.value)} aria-label="Buscar arquivo" />
-            </div>
+          <Card wide title="Meus arquivos" act={
+            <input className="input" style={{ width: 'min(220px, 100%)' }} placeholder="Buscar arquivo..." value={q} onChange={(e) => setQ(e.target.value)} aria-label="Buscar arquivo" />}>
             <div className="pill-tabs" style={{ marginBottom: 8 }}>
               {TABS.map((t, i) => <button key={t.label} className={i === tab ? 'on' : ''} onClick={() => setTab(i)}>{t.label}</button>)}
             </div>
@@ -76,19 +75,21 @@ export function Cofre() {
                       <td className="muted" data-label="Vinculado a">{d.linkedTo ?? '—'}</td>
                       <td className="num" data-label="Valor">{d.value ? brl(d.value) : '—'}</td>
                       <td className="num act">
-                        <button className="icon-btn" aria-label={`Excluir ${d.name}`} onClick={() => ui.remove('docs', d.id!, d.name)}><Icon name="trash" size={14} /></button>
+                        <ItemMenu label={d.name} actions={{
+                          open: () => openDoc(attOf(d.attachmentId), ui.toast),
+                          delete: () => void ui.remove('docs', d.id!, d.name),
+                        }} />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {list.length === 0 && <Empty>Nenhum arquivo aqui.</Empty>}
+              {list.length === 0 && <Empty action={q ? undefined : { label: '+ Adicionar documento', run: () => ui.openDoc() }}>{q ? 'Nenhum arquivo com esse nome.' : 'Nenhum arquivo aqui.'}</Empty>}
             </div>
             <p className="faint small" style={{ margin: '10px 0 0' }}><Icon name="drive" size={11} /> = guardado no seu Google Drive (abre o link) · <Icon name="file" size={11} /> = arquivo salvo neste aparelho</p>
-          </section>
+          </Card>
 
-          <section className="card">
-            <h2>Vencimentos e renovações</h2>
+          <Card title="Vencimentos e renovações">
             <div className="list">
               {dues.map((e) => (
                 <div key={e.id} className="row small">
@@ -100,13 +101,12 @@ export function Cofre() {
               ))}
               {dues.length === 0 && <Empty>Nada vence nos próximos 30 dias.</Empty>}
             </div>
-          </section>
+          </Card>
         </div>
 
-        <section className="card">
-          <h2>Adicionar documento</h2>
+        <Card title="Adicionar documento">
           <DocForm key={formKey} onDone={(m) => { setFormKey((k) => k + 1); if (m) ui.toast(m); }} />
-        </section>
+        </Card>
       </div>
 
       {attach && (

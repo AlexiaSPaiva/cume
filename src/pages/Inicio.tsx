@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Page } from '../components/Layout';
+import { Card } from '../components/Card';
 import { useUI } from '../components/Overlays';
 import { SuggestionBanner } from '../components/SuggestionBanner';
 import { FocusCard } from '../components/FocusCard';
@@ -10,6 +11,7 @@ import { db } from '../lib/db';
 import { ddmm, dur, greeting, hours, relDays, today, weekStart } from '../lib/dates';
 import { areaSummary, isTodayTask, upcomingDeadlines, weekNumbers } from '../lib/derive';
 import { goalPct, impsForWeek, occurrencesForWeek } from '../lib/week';
+import { TaskMenu } from '../components/ItemMenu';
 import type { Task } from '../lib/types';
 
 const PRIO = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
@@ -52,17 +54,19 @@ export function Inicio() {
       <div className="grid g3">
         <div className="list" style={{ gap: 16 }}>
           {w('top3') && (
-            <section className="card">
-              <h2>Top 3 de hoje</h2>
+            <Card title="Top 3 de hoje">
               <div className="list">
                 {top3.map((t) => (
                   <div key={t.id} className="row">
                     <AreaDot area={t.area} />
                     <button className="plain grow" style={{ cursor: 'pointer', flex: 1 }} onClick={() => ui.openTask(t)}>{t.title}</button>
                     <span className={`tag ${t.priority}`}>{PRIO[t.priority]}</span>
+                    <TaskMenu t={t} />
                   </div>
                 ))}
-                {top3.length === 0 && <Empty>Marque até 3 tarefas de hoje com ☆.</Empty>}
+                {top3.length === 0 && (todayTasks.length
+                  ? <Empty>Escolha até 3 tarefas de hoje logo abaixo.</Empty>
+                  : <Empty action={{ label: '+ Tarefa para hoje', run: () => ui.openTask({ status: 'hoje', date: today() }) }}>Nenhuma tarefa para hoje ainda.</Empty>)}
               </div>
               {todayTasks.filter((t) => !t.top3Today).length > 0 && (
                 <details style={{ marginTop: 10 }}>
@@ -76,22 +80,20 @@ export function Inicio() {
                   </div>
                 </details>
               )}
-            </section>
+            </Card>
           )}
           {w('prazos') && (
-            <section className="card">
-              <h2>Próximos prazos</h2>
+            <Card title="Próximos prazos">
               <div className="list">
                 {deadlines.slice(0, 5).map((x, i) => (
                   <div key={i} className="row small"><AreaDot area={x.area} /><b>{ddmm(x.date)}</b><span className="grow">{x.title}</span><span className="muted">{relDays(x.date)}</span></div>
                 ))}
                 {deadlines.length === 0 && <Empty>Nada nos próximos 7 dias.</Empty>}
               </div>
-            </section>
+            </Card>
           )}
           {w('imprevistos') && (
-            <section className="card">
-              <h2>Imprevistos da semana</h2>
+            <Card title="Imprevistos da semana">
               <div className="list">
                 {weekImps.slice(0, 5).map((i) => (
                   <button key={i.id} className="plain row small" style={{ display: 'flex', gap: 9, cursor: 'pointer' }} onClick={() => ui.openImprevisto(i)}>
@@ -101,15 +103,14 @@ export function Inicio() {
                 {weekImps.length === 0 && <Empty>Nenhum imprevisto nesta semana.</Empty>}
                 {weekImps.length > 0 && <b className="small" style={{ color: 'var(--imp)' }}>total: {dur(wn.impMin)} fora do plano</b>}
               </div>
-            </section>
+            </Card>
           )}
         </div>
 
         <div className="list" style={{ gap: 16 }}>
           {w('foco') && <FocusCard />}
           {w('tempo') && (
-            <section className="card">
-              <h2>Tempo por área · h/semana</h2>
+            <Card title="Tempo por área · h/semana">
               <div className="list" style={{ gap: 11 }}>
                 {AREAS.map((a) => (
                   <div key={a.id} className="row small">
@@ -123,13 +124,12 @@ export function Inicio() {
                 ))}
                 <span className="faint" style={{ fontSize: '0.6562rem' }}>laranja = imprevisto | traço branco = tempo que o foco desejado pede</span>
               </div>
-            </section>
+            </Card>
           )}
         </div>
 
         {w('vida') && (
-          <section className="card">
-            <h2 style={{ marginBottom: 2 }}>Minha vida agora</h2>
+          <Card title="Minha vida agora">
             <p className="muted small" style={{ margin: '0 0 8px' }}>toque numa área para abrir o painel</p>
             <div className="list" style={{ gap: 0 }}>
               {AREAS.map((a) => {
@@ -148,7 +148,7 @@ export function Inicio() {
                 );
               })}
             </div>
-          </section>
+          </Card>
         )}
       </div>
     </Page>

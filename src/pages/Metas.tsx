@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react';
+import { ItemMenu } from '../components/ItemMenu';
 import { Page } from '../components/Layout';
+import { Card } from '../components/Card';
 import { useUI } from '../components/Overlays';
 import { Bar, Empty, Icon, Modal, Ring, Stat, Stats } from '../components/ui';
 import { AREAS, AREA } from '../lib/areas';
@@ -24,6 +26,7 @@ export function goalLabel(g: Goal): string {
 
 export function Metas() {
   const { objectives, goals } = useData();
+  const ui = useUI();
   const [goalEdit, setGoalEdit] = useState<Partial<Goal> | null>(null);
   const [objEdit, setObjEdit] = useState<Partial<Objective> | null>(null);
   const [record, setRecord] = useState<Goal | null>(null);
@@ -51,7 +54,10 @@ export function Metas() {
             <section key={o.id} className="card obj" style={{ '--c': c } as React.CSSProperties}>
               <div className="row" style={{ alignItems: 'flex-start' }}>
                 <div className="grow" style={{ whiteSpace: 'normal' }}><h3>{o.title}</h3><span className="muted small">{o.subtitle}</span></div>
-                <button className="icon-btn" aria-label="Editar objetivo" onClick={() => setObjEdit(o)}>⋯</button>
+                <ItemMenu label={o.title} actions={{
+                  edit: () => setObjEdit(o),
+                  delete: () => void ui.remove('objectives', o.id!, `Objetivo “${o.title}”`),
+                }} />
               </div>
               <div className="ring"><Ring pct={objectivePct(o, goals)} color={c} /></div>
               {gs.map((g) => <GoalRow key={g.id} g={g} onEdit={() => setGoalEdit(g)} onRecord={() => setRecord(g)} />)}
@@ -59,14 +65,13 @@ export function Metas() {
             </section>
           );
         })}
-        {objectives.length === 0 && <section className="card"><Empty>Comece criando um objetivo: a direção que você quer dar à vida.</Empty></section>}
+        {objectives.length === 0 && <section className="card"><Empty action={{ label: '+ Novo objetivo', run: () => setObjEdit({ area: 'academica' }) }}>Comece criando um objetivo: a direção que você quer dar à vida.</Empty></section>}
       </div>
 
       {loose.length > 0 && (
-        <section className="card">
-          <h2>Metas das áreas</h2>
+        <Card title="Metas das áreas">
           <div className="grid g3">{loose.map((g) => <GoalRow key={g.id} g={g} onEdit={() => setGoalEdit(g)} onRecord={() => setRecord(g)} />)}</div>
-        </section>
+        </Card>
       )}
 
       <div className="card row" style={{ flexWrap: 'wrap', padding: '14px 20px' }}>

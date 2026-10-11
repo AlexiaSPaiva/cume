@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Page } from '../components/Layout';
+import { Card } from '../components/Card';
 import { useUI } from '../components/Overlays';
 import { Stat, Stats } from '../components/ui';
 import { AREAS, AREA, IMPREVISTO_COLOR } from '../lib/areas';
@@ -97,12 +98,13 @@ export function Agenda() {
         <Stat k="Descanso" v={`${rest} blocos`} s="planejados" />
       </Stats>
 
-      <section className="card" style={{ paddingBottom: 12 }}>
-        <div className="row" style={{ flexWrap: 'wrap', marginBottom: 10 }}>
+      <Card wide style={{ paddingBottom: 12 }} title={<span className="row" style={{ gap: 8 }}>
           <button className="btn sm" onClick={() => shift(-1)} aria-label="Anterior">‹</button>
-          <h2 style={{ margin: 0 }}>{view === 'semana' ? `Semana ${ddmm(ws)} – ${ddmm(addDays(ws, 6))}` : `${DOW_SHORT[parse(day).getDay()]} ${ddmm(day)}`}</h2>
+          {view === 'semana' ? `Semana ${ddmm(ws)} – ${ddmm(addDays(ws, 6))}` : `${DOW_SHORT[parse(day).getDay()]} ${ddmm(day)}`}
           <button className="btn sm" onClick={() => shift(1)} aria-label="Próximo">›</button>
-          <div className="seg" style={{ marginLeft: 8 }}>
+        </span>}>
+        <div className="row" style={{ flexWrap: 'wrap', marginBottom: 10 }}>
+          <div className="seg">
             <button className={view === 'dia' ? 'on' : ''} onClick={() => setView('dia')}>Dia</button>
             <button className={view === 'semana' ? 'on' : ''} onClick={() => setView('semana')}>Semana</button>
           </div>
@@ -181,7 +183,7 @@ export function Agenda() {
           </div>
         </div>
         <p className="faint small" style={{ margin: '10px 0 0' }}>Arraste um bloco para mudar dia e horário · duplo clique num horário vazio cria um compromisso · blocos listrados são reservas para imprevistos recorrentes.</p>
-      </section>
+      </Card>
     </Page>
   );
 }

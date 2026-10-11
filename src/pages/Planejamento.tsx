@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Page } from '../components/Layout';
+import { Card } from '../components/Card';
 import { useUI } from '../components/Overlays';
 import { SuggestionBanner } from '../components/SuggestionBanner';
 import { AreaDot, AreaTag, Bar, Empty, Icon, Stat, Stats } from '../components/ui';
@@ -9,6 +10,7 @@ import { db } from '../lib/db';
 import { addDays, ddmm, DOW_LONG, DOW_SHORT, dur, parse, today, weekDays, weekStart } from '../lib/dates';
 import { planHours } from '../lib/derive';
 import { impsForWeek, occurrencesForWeek, plannedByArea, sum, capacityMin } from '../lib/week';
+import { TaskMenu } from '../components/ItemMenu';
 import type { AreaId, WeekPlan } from '../lib/types';
 
 export function Planejamento() {
@@ -71,8 +73,7 @@ export function Planejamento() {
       <SuggestionBanner />
 
       <div className="grid g3">
-        <section className="card">
-          <h2>Horas por área · semana que vem</h2>
+        <Card title="Horas por área · semana que vem">
           <div className="list" style={{ gap: 14 }}>
             {AREAS.map((a) => (
               <div key={a.id}>
@@ -94,10 +95,9 @@ export function Planejamento() {
             ))}
             {below.length > 0 && <b className="small" style={{ color: 'var(--bad)' }}>{below.map((a) => a.name).join(' e ')} {below.length > 1 ? 'estão' : 'está'} abaixo do foco desejado</b>}
           </div>
-        </section>
+        </Card>
 
-        <section className="card">
-          <h2>Top 3 da semana</h2>
+        <Card title="Top 3 da semana">
           <div className="list" style={{ gap: 12 }}>
             {[0, 1, 2].map((i) => {
               const t = tasks.find((x) => x.id === plan.top3[i]);
@@ -120,20 +120,19 @@ export function Planejamento() {
               );
             })}
           </div>
-        </section>
+        </Card>
 
         <div className="list" style={{ gap: 16 }}>
-          <section className="card">
-            <h2>Backlog</h2>
+          <Card title="Backlog">
             <div className="list">
               {backlog.map((t) => (
                 <div key={t.id} className="tcard soft" draggable onDragStart={(e) => e.dataTransfer.setData('task', String(t.id))}
                   onClick={() => ui.openTask(t)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && ui.openTask(t)}>
-                  <div className="row"><b className="grow">{t.title}</b><span className="faint small"><span className="only-mouse">arraste para um dia</span><span className="only-touch">toque para escolher o dia</span></span></div>
+                  <div className="row"><b className="grow">{t.title}</b><span className="faint small"><span className="only-mouse">arraste para um dia</span><span className="only-touch">toque para escolher o dia</span></span><TaskMenu t={t} /></div>
                   <span><AreaTag area={t.area} /></span>
                 </div>
               ))}
-              {backlog.length === 0 && <Empty>Backlog vazio.</Empty>}
+              {backlog.length === 0 && <Empty action={{ label: '+ Nova tarefa', run: () => ui.openTask({ status: 'andamento' }) }}>Backlog vazio: tudo já tem dia marcado.</Empty>}
               <div className="row" style={{ gap: 4, flexWrap: 'wrap' }}>
                 {weekDays(next).map((d) => (
                   <div key={d} className="tag" style={{ padding: '8px 9px', outline: over === d ? '2px dashed var(--accent)' : undefined, flex: 1, textAlign: 'center' }}
@@ -145,10 +144,9 @@ export function Planejamento() {
               </div>
               <button className="add-link" onClick={() => ui.openTask({ status: 'afazer' })}>+ item no backlog</button>
             </div>
-          </section>
+          </Card>
 
-          <section className="card">
-            <h2>Reservas para imprevistos</h2>
+          <Card title="Reservas para imprevistos">
             <div className="list">
               {buffers.map((b) => (
                 <button key={b.id} className="plain row small" style={{ display: 'flex', gap: 9, cursor: 'pointer' }} onClick={() => ui.openTask(b)}>
@@ -158,10 +156,9 @@ export function Planejamento() {
               ))}
               {buffers.length === 0 && <Empty>Quando um imprevisto se repetir {settings.recurrenceThreshold}x em 30 dias, a sugestão de reserva aparece aqui.</Empty>}
             </div>
-          </section>
+          </Card>
 
-          <section className="card">
-            <h2>Fechamento da semana</h2>
+          <Card title="Fechamento da semana">
             <div className="list" style={{ gap: 12 }}>
               <div className="row" style={{ alignItems: 'flex-start' }}><span className="dotc" style={{ background: 'var(--ok)', width: 12, height: 12, marginTop: 3 }} />
                 <div><b>Avançou</b><div className="muted small">{done.length ? done.slice(0, 3).map((t) => t.title).join(', ') : 'nada concluído ainda'}</div></div></div>
@@ -170,7 +167,7 @@ export function Planejamento() {
               <div className="row" style={{ alignItems: 'flex-start' }}><span className="dotc" style={{ background: 'var(--imp)', width: 12, height: 12, marginTop: 3 }} />
                 <div><b>Imprevistos</b><div className="muted small">{dur(curImps.reduce((a, i) => a + i.durationMin, 0))} fora do plano</div></div></div>
             </div>
-          </section>
+          </Card>
         </div>
       </div>
       <div className="row small muted"><AreaDot area="academica" /> As horas por área são a sua meta para a semana; os blocos agendados aparecem na Agenda e em Minha semana.</div>

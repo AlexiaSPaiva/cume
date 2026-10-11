@@ -172,6 +172,9 @@ const PATHS: Record<string, string> = {
   zap: 'M13 3 5 14h6l-1 7 8-11h-6z',
   plus: 'M12 5v14M5 12h14',
   more: 'M5 12h.01M12 12h.01M19 12h.01',
+  expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
+  collapse: 'M15 6l-6 6 6 6M20 6l-6 6 6 6',
+  uncollapse: 'M9 6l6 6-6 6M4 6l6 6-6 6',
   gear: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm7.4 3a7.4 7.4 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14.5 3h-5l-.4 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6a7.4 7.4 0 0 0 0 2.4l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2l.4 2.6h5l.4-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2Z',
 };
 
@@ -193,6 +196,12 @@ export function Icon({ name, size = 16 }: { name: keyof typeof PATHS | string; s
   );
 }
 
-export function Empty({ children }: { children: ReactNode }) {
-  return <div className="empty">{children}</div>;
+/** estado vazio: diz o que falta e, quando houver, convida para o primeiro passo */
+export function Empty({ children, action }: { children: ReactNode; action?: { label: string; run: () => void } }) {
+  return (
+    <div className={`empty ${action ? 'invite' : ''}`}>
+      <span>{children}</span>
+      {action && <button type="button" className="btn sm out" onClick={action.run}>{action.label}</button>}
+    </div>
+  );
 }

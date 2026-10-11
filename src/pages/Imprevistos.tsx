@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Page } from '../components/Layout';
+import { Card } from '../components/Card';
 import { ImprevistoForm } from '../components/forms';
 import { useUI } from '../components/Overlays';
 import { SuggestionBanner } from '../components/SuggestionBanner';
@@ -10,6 +11,7 @@ import { useData } from '../lib/data';
 import { addDays, DOW_SHORT, dur, hours, parse, today, weekStart } from '../lib/dates';
 import { clusterImprevistos, WINDOW_DAYS } from '../lib/recurrence';
 import { impByArea, impsForWeek, occurrencesForWeek, plannedByArea, sum } from '../lib/week';
+import { ItemMenu } from '../components/ItemMenu';
 import type { ImprevistoType } from '../lib/types';
 
 const TYPE_COLOR: Record<ImprevistoType, string> = {
@@ -66,14 +68,12 @@ export function Imprevistos() {
       <SuggestionBanner />
 
       <div className="grid g3">
-        <section className="card">
-          <h2>Registrar imprevisto</h2>
+        <Card title="Registrar imprevisto">
           <ImprevistoForm compact onSaved={(_, b) => ui.afterImprevisto(b)} />
-        </section>
+        </Card>
 
         <div className="list" style={{ gap: 16 }}>
-          <section className="card">
-            <h2>Por tipo</h2>
+          <Card title="Por tipo">
             <div className="row" style={{ gap: 20, flexWrap: 'wrap' }}>
               <Donut size={124} data={types.map(([t, m]) => ({ value: m, color: TYPE_COLOR[t] }))} center={<b style={{ fontSize: '1.0625rem' }}>{dur(totalMin)}</b>} />
               <div className="list" style={{ flex: 1, minWidth: 140 }}>
@@ -81,9 +81,8 @@ export function Imprevistos() {
                 {types.length === 0 && <Empty>Sem imprevistos no período.</Empty>}
               </div>
             </div>
-          </section>
-          <section className="card">
-            <h2>Por área · planejado + imprevisto</h2>
+          </Card>
+          <Card title="Por área · planejado + imprevisto">
             <div className="list" style={{ gap: 11 }}>
               {AREAS.map((a) => (
                 <div key={a.id} className="row small">
@@ -93,42 +92,45 @@ export function Imprevistos() {
                 </div>
               ))}
             </div>
-          </section>
+          </Card>
         </div>
 
         <div className="list" style={{ gap: 16 }}>
-          <section className="card">
-            <h2>Histórico
-              <span className="act seg">
+          <Card title="Histórico" act={
+              <span className="seg">
                 <button className={range === 'semana' ? 'on' : ''} onClick={() => setRange('semana')}>semana</button>
                 <button className={range === '30' ? 'on' : ''} onClick={() => setRange('30')}>30 dias</button>
                 <button className={range === 'todos' ? 'on' : ''} onClick={() => setRange('todos')}>todos</button>
-              </span>
-            </h2>
+              </span>}>
             <div className="list" style={{ maxHeight: 330, overflow: 'auto' }}>
               {list.map((i) => (
-                <button key={i.id} className="tcard" style={{ cursor: 'pointer' }} onClick={() => ui.openImprevisto(i)}>
+                <div key={i.id} className="tcard has-menu">
+                  <ItemMenu label={i.title} actions={{
+                    edit: () => ui.openImprevisto(i),
+                    duplicate: () => { const { id: _id, createdAt: _c, updatedAt: _u, ...copy } = i; ui.openImprevisto(copy); },
+                    delete: () => void ui.remove('imprevistos', i.id!, `Imprevisto “${i.title}”`),
+                  }} />
+                  <button type="button" className="plain tcard-open" style={{ cursor: 'pointer' }} onClick={() => ui.openImprevisto(i)}>
                   <div className="row"><b className="grow">{i.title}</b><span style={{ font: '400 1.35rem var(--serif)', color: 'var(--imp)' }}>{dur(i.durationMin)}</span></div>
                   <div className="row small"><AreaTag area={i.area} /><span className="muted">{DOW_SHORT[parse(i.date).getDay()].toLowerCase()} {i.date.slice(8)}/{i.date.slice(5, 7)} · {i.start}–{i.end}</span></div>
-                </button>
+                  </button>
+                </div>
               ))}
-              {list.length === 0 && <Empty>Nada registrado.</Empty>}
+              {list.length === 0 && <Empty action={{ label: 'Registrar imprevisto', run: () => ui.openImprevisto() }}>Nada registrado neste período.</Empty>}
             </div>
-          </section>
-          <section className="card">
-            <h2>Efeito na semana</h2>
+          </Card>
+          <Card title="Efeito na semana">
             <div className="list small" style={{ gap: 10 }}>
               <div className="row" style={{ alignItems: 'flex-start' }}><b style={{ color: 'var(--bad)', width: 78 }}>Adiou</b><span>{postponed.length ? postponed.map((t) => t.title).join(' e ') : 'nenhuma tarefa'}</span></div>
               <div className="row" style={{ alignItems: 'flex-start' }}><b style={{ color: 'var(--bad)', width: 78 }}>Consumiu</b><span>{dur(weekMin)} do tempo planejado</span></div>
               <div className="row" style={{ alignItems: 'flex-start' }}><b style={{ color: 'var(--bad)', width: 78 }}>Padrão</b>
                 <span>{topType ? `imprevistos de ${topType.t.toLowerCase()} são os mais caros` : 'sem padrão ainda'}</span></div>
             </div>
-          </section>
+          </Card>
         </div>
       </div>
 
-      <section className="card">
-        <h2><Icon name="repeat" size={18} /> Imprevistos que se repetem · últimos {WINDOW_DAYS} dias</h2>
+      <Card title={<><Icon name="repeat" size={18} /> Imprevistos que se repetem · últimos {WINDOW_DAYS} dias</>}>
         <p className="muted small" style={{ margin: '-6px 0 14px' }}>
           Quando um imprevisto parecido acontece {settings.recurrenceThreshold}x ou mais, o app sugere incluí-lo no seu planejamento como um bloco reservado. Ajuste o limite em Personalizar.
         </p>
@@ -152,7 +154,7 @@ export function Imprevistos() {
           })}
           {patterns.length === 0 && <Empty>Nenhum imprevisto se repetiu nos últimos {WINDOW_DAYS} dias.</Empty>}
         </div>
-      </section>
+      </Card>
     </Page>
   );
 }

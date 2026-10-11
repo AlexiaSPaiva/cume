@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Page } from '../components/Layout';
 import { useUI } from '../components/Overlays';
+import { TaskMenu } from '../components/ItemMenu';
 import { AreaTag, Bar, Stat, Stats } from '../components/ui';
 import { AREAS, AREA } from '../lib/areas';
 import { useData } from '../lib/data';
-import { addRecord, db } from '../lib/db';
+import { moveTask } from '../lib/tasks';
 import { ddmm, dur, today, weekStart } from '../lib/dates';
 import { isTodayTask, upcomingDeadlines, weekNumbers } from '../lib/derive';
 import type { AreaId, Priority, Task, TaskStatus } from '../lib/types';
@@ -33,17 +34,7 @@ export function Tarefas() {
   };
 
   async function move(id: number, s: TaskStatus) {
-    const t = await db.tasks.get(id);
-    if (!t) return;
-    const patch: Partial<Task> = { status: s };
-    if (s === 'hoje') patch.date = today();
-    if (s === 'concluido') { patch.doneAt = today(); patch.progress = 100; }
-    if (s === 'adiada' && t.status !== 'adiada') patch.postponedCount = (t.postponedCount ?? 0) + 1;
-    await db.tasks.update(id, patch);
-    if (s === 'concluido' && t.status !== 'concluido' && t.goalId) {
-      await addRecord(t.goalId, 1, `Concluiu: ${t.title}`);
-      ui.toast('Tarefa concluída e meta atualizada.');
-    }
+    if (await moveTask(id, s)) ui.toast('Tarefa concluída e meta atualizada.');
   }
 
   // destaques
@@ -84,7 +75,9 @@ export function Tarefas() {
               onDrop={(e) => { e.preventDefault(); setOver(null); const id = Number(e.dataTransfer.getData('task')); if (id) move(id, c.id); }}>
               <div className="col-h">{c.label}<small>{list.length}</small></div>
               {list.map((t) => (
-                <button key={t.id} className="tcard" draggable onDragStart={(e) => e.dataTransfer.setData('task', String(t.id))} onClick={() => ui.openTask(t)}>
+                <div key={t.id} className="tcard has-menu" draggable onDragStart={(e) => e.dataTransfer.setData('task', String(t.id))}>
+                  <TaskMenu t={t} />
+                  <button type="button" className="plain tcard-open" onClick={() => ui.openTask(t)}>
                   <b>{t.title}</b>
                   <span><AreaTag area={t.area} /></span>
                   {c.id === 'hoje' && <span className="muted small">{t.durationMin ? dur(t.durationMin) : ''}{t.start ? ` · ${t.start}` : ''}</span>}
@@ -102,7 +95,8 @@ export function Tarefas() {
                     </>
                   )}
                   {c.id === 'adiada' && <span className="muted small">{(t.postponedCount ?? 0) > 1 ? `adiada ${t.postponedCount}x` : t.durationMin ? dur(t.durationMin) : 'adiada'}</span>}
-                </button>
+                  </button>
+                </div>
               ))}
               <button className="add-link" onClick={() => ui.openTask({ status: c.id === 'hoje' ? 'hoje' : c.id, date: c.id === 'hoje' ? today() : undefined, area: area || undefined })}>+ Nova tarefa</button>
             </section>
