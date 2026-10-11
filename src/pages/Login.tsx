@@ -2,13 +2,13 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { accountEmail, createAccount, hasAccount, login } from '../lib/auth';
 import { db } from '../lib/db';
 import { defaultSettings, seedExample } from '../lib/seed';
-import type { ScenarioId, Settings } from '../lib/types';
-import { SCENES, Scenery } from '../components/Scenery';
+import type { Settings } from '../lib/types';
+import { BrandMark, SceneBg } from '../components/Brand';
 import { useAttachmentUrl } from '../lib/attachments';
+import { sceneMode } from '../lib/scene';
 
 export function Login({ settings, onIn }: { settings?: Settings; onIn: () => void }) {
   const [mode, setMode] = useState<'login' | 'signup' | 'reset' | null>(null);
-  const [scene, setScene] = useState<ScenarioId>(settings?.scenario ?? 'por-do-sol');
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
@@ -23,11 +23,6 @@ export function Login({ settings, onIn }: { settings?: Settings; onIn: () => voi
     hasAccount().then((h) => setMode(h ? 'login' : 'signup'));
     accountEmail().then((e) => e && setEmail(e));
   }, []);
-
-  async function pickScene(id: ScenarioId) {
-    setScene(id);
-    if (settings) await db.settings.update('me', { scenario: id, photoAttachmentId: undefined });
-  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -47,7 +42,7 @@ export function Login({ settings, onIn }: { settings?: Settings; onIn: () => voi
         }
         if (!name.trim()) return setErr('Como você quer ser chamada?');
         await createAccount(email, pw);
-        if (!(await db.settings.get('me'))) await db.settings.put({ ...defaultSettings(name.trim(), fullName.trim() || name.trim()), scenario: scene });
+        if (!(await db.settings.get('me'))) await db.settings.put(defaultSettings(name.trim(), fullName.trim() || name.trim()));
         if (example) await seedExample();
         onIn();
       }
@@ -56,17 +51,12 @@ export function Login({ settings, onIn }: { settings?: Settings; onIn: () => voi
     }
   }
 
-  const displayName = settings?.name ?? 'MeuPlano';
-
   return (
     <div className="login">
-      <div className="hero-bg"><Scenery id={scene} photo={scene === settings?.scenario ? photo : undefined} /></div>
-      <div className="brandL">
-        <div className="name">{displayName}</div>
-        <p>Personal Life OS &nbsp;·&nbsp; Foco · Clareza · Ação</p>
-      </div>
+      <SceneBg kind="login" mode={sceneMode(settings)} photo={photo} />
       {mode && (
         <form className="box form" onSubmit={submit}>
+          <BrandMark subtitle />
           <div>
             <h1>{mode === 'login' ? `Bem-vinda de volta${settings ? `, ${settings.name}` : ''}` : mode === 'reset' ? 'Nova senha' : 'Vamos começar'}</h1>
             <p className="lead">{mode === 'login' ? 'Cada passo conta. Hoje é o seu.' : mode === 'reset' ? 'Seus dados continuam aqui, só a senha muda.' : 'Crie seu acesso neste aparelho.'}</p>
@@ -95,18 +85,9 @@ export function Login({ settings, onIn }: { settings?: Settings; onIn: () => voi
             {mode === 'login' ? 'Entrar' : mode === 'reset' ? 'Salvar nova senha' : 'Criar e entrar'}
           </button>
           {mode === 'reset' && <button type="button" className="btn ghost sm" onClick={() => setMode('login')}>Voltar</button>}
-          <p className="muted small" style={{ textAlign: 'center', margin: 0 }}>entre e se sinta em casa</p>
+          <p className="motto">Foco · Clareza · Ação</p>
         </form>
       )}
-      <b style={{ marginTop: 28 }}>Escolha o seu cenário</b>
-      <div className="scenes">
-        {SCENES.map((s) => (
-          <button key={s.id} type="button" className={`scene ${scene === s.id ? 'on' : ''}`} onClick={() => pickScene(s.id)}>
-            <Scenery id={s.id} /><span>{s.name}</span>
-          </button>
-        ))}
-      </div>
-      <p className="muted small">Também: nome, frase, cor de destaque, widgets da Início e foto própria</p>
     </div>
   );
 }

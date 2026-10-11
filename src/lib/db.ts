@@ -33,6 +33,7 @@ export type MeuPlanoDB = Dexie & {
   financeTxs: EntityTable<FinanceTx, 'id'>;
 };
 
+// nome histórico, não alterar: guarda os dados da usuária
 export const DB_NAME = 'meuplano';
 
 /** tabelas que existiam na v2 (a migração v1→v2 só conhece estas) */

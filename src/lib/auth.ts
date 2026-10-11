@@ -5,6 +5,7 @@ import { db } from './db';
  * protege o acesso ao app aqui, não sincroniza com nenhum servidor.
  */
 
+// nome histórico, não alterar: guarda os dados da usuária
 const SESSION_KEY = 'meuplano.session';
 
 function toHex(buf: ArrayBuffer): string {

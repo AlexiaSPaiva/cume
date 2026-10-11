@@ -9,7 +9,7 @@ export function defaultSettings(name: string, fullName = name): Settings {
     name,
     fullName,
     phrase: 'Hoje é um bom dia para ser a sua melhor versão.',
-    accent: '#c9a77c',
+    accent: '#c8a97e',
     scenario: 'por-do-sol',
     widgets: ['sugestoes', 'top3', 'prazos', 'imprevistos', 'foco', 'tempo', 'vida'],
     desiredFocus: { academica: 30, profissional: 28, saude: 12, pessoal: 10, financeiro: 10, adultices: 10 },

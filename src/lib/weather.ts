@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+// nome histórico, não alterar: guarda os dados da usuária
 const CACHE = 'meuplano.weather';
 
 /** temperatura atual via Open-Meteo (sem chave); guarda 30 min em cache */

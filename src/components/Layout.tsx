@@ -8,7 +8,8 @@ import { useAttachmentUrl } from '../lib/attachments';
 import { db } from '../lib/db';
 import type { RecurringSuggestion } from '../lib/recurrence';
 import { DragClose, useFocusMode } from './Card';
-import { Scenery } from './Scenery';
+import { sceneMode, useScene } from '../lib/scene';
+import { BrandMark, SceneBg } from './Brand';
 import { ErrorBoundary, OfflineBadge } from './States';
 import { Icon, Modal } from './ui';
 import { useUI } from './Overlays';
@@ -44,23 +45,24 @@ export function Layout() {
   const main = useRef<HTMLDivElement>(null);
   const focus = useFocusMode(main);
   const collapsed = !!settings.sideCollapsed;
+  const mode = sceneMode(settings);
+  // a cena também vai para a casca: o modo foco a usa ao fundo, escurecida
+  const scene = useScene(mode);
 
   const quick = (fn: () => void) => () => { setSheet(null); fn(); };
 
   return (
-    <div className={`shell ${collapsed ? 'collapsed' : ''} ${focus.on ? 'page-focus' : ''}`} style={{ '--accent': settings.accent } as React.CSSProperties}>
+    <div className={`shell scene-${scene} ${collapsed ? 'collapsed' : ''} ${focus.on ? 'page-focus' : ''}`} style={{ '--accent': settings.accent } as React.CSSProperties}>
       <aside className="side" aria-label="Menu">
         <button type="button" className="icon-btn side-toggle" onClick={() => db.settings.update('me', { sideCollapsed: !collapsed })}
           aria-label={collapsed ? 'Abrir menu' : 'Recolher menu'} aria-expanded={!collapsed} title={collapsed ? 'Abrir menu' : 'Recolher menu'}>
           <Icon name={collapsed ? 'uncollapse' : 'collapse'} size={16} />
         </button>
         <div className="brand">
-          <Link to="/" className="name" title={`${settings.name} · Início`}>
-            <span className="full">{settings.name}</span>
-            <span className="initial" aria-hidden="true">{settings.name[0]}</span>
+          <Link to="/" className="name" title="Cume° · Início" aria-label="Cume° · Início">
+            <span className="full"><BrandMark subtitle /></span>
+            <span className="initial" aria-hidden="true"><img src="/icons/cume-192.png" alt="" /></span>
           </Link>
-          <div className="sub">Personal Life OS</div>
-          <div className="sub2">Foco · Clareza · Ação</div>
         </div>
         <NavLinks />
         <Link to="/personalizar" className="me" title="Personalizar">
@@ -71,7 +73,7 @@ export function Layout() {
       <div className="main" ref={main} tabIndex={focus.on ? -1 : undefined}
         role={focus.on ? 'dialog' : undefined} aria-modal={focus.on || undefined} aria-label={focus.on ? 'Modo foco' : undefined}>
         {focus.on && <DragClose onClose={focus.close} target={main} />}
-        <div className="hero-bg"><Scenery id={settings.scenario} photo={photo} /></div>
+        <div className="hero-bg"><SceneBg kind="hero" mode={mode} photo={photo} /></div>
         <div className="content">
           <PageFocus.Provider value={focus}>
             <ErrorBoundary resetKey={loc.pathname}><Outlet /></ErrorBoundary>
@@ -152,6 +154,10 @@ export function Page({ title, sub, crumbs, children, docButton }: {
   const now = useClock();
   const ui = useUI();
   const focus = useContext(PageFocus);
+  const { pathname } = useLocation();
+  // aba do navegador: "Cume° · <nome da tela>"
+  const screen = pathname === '/' ? 'Início' : crumbs?.length ? crumbs[crumbs.length - 1].label : typeof title === 'string' ? title : '';
+  useEffect(() => { document.title = screen ? `Cume° · ${screen}` : 'Cume°'; }, [screen]);
   return (
     <>
       {focus?.on
@@ -197,7 +203,7 @@ function TopBar({ crumbs, onDoc, onFocus }: { crumbs: { to?: string; label: stri
 
   return (
     <div className="top">
-      <Link to="/" className="top-brand">{settings.name}</Link>
+      <Link to="/" className="top-brand" aria-label="Cume° · Início"><BrandMark /></Link>
       <div className="crumbs">
         {crumbs.map((c, i) => (
           <span key={i} style={{ margin: 0, color: 'inherit' }}>

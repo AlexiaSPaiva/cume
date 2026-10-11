@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
+<title>Cume°</title>
+<defs><clipPath id="rr"><rect width="100" height="100" rx="22"/></clipPath>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a2046"/><stop offset=".6" stop-color="#0e1330"/><stop offset="1" stop-color="#080b1a"/></linearGradient>
+<radialGradient id="glow" cx="52" cy="47" r="46" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e9c99a" stop-opacity=".55"/><stop offset=".25" stop-color="#b98a72" stop-opacity=".28"/><stop offset=".6" stop-color="#5a4a6e" stop-opacity=".12"/><stop offset="1" stop-color="#1a2046" stop-opacity="0"/></radialGradient>
+<radialGradient id="rf" cx="52" cy="47" r="42" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f0d9b0"/><stop offset=".3" stop-color="#d4b38c"/><stop offset=".65" stop-color="#9f8fa8"/><stop offset="1" stop-color="#5c6496"/></radialGradient>
+<linearGradient id="lit" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a8889a" stop-opacity=".95"/><stop offset=".45" stop-color="#4f4566"/><stop offset="1" stop-color="#121632"/></linearGradient>
+<linearGradient id="shd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3c3756"/><stop offset=".5" stop-color="#1f2140"/><stop offset="1" stop-color="#0b0e22"/></linearGradient>
+<linearGradient id="edge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0d9b0" stop-opacity=".9"/><stop offset=".35" stop-color="#f0d9b0" stop-opacity="0"/></linearGradient>
+<linearGradient id="vf" x1="0" y1="0" x2="0" y2="1"><stop offset=".35" stop-color="#fff"/><stop offset=".8" stop-color="#fff" stop-opacity=".15"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<mask id="sky"><rect width="100" height="100" fill="url(#vf)"/><path d="M-2 96 L20 70 L29 75 L52 47 L72 69 L81 64 L102 86 L102 102 L-2 102Z" fill="#000"/></mask>
+<clipPath id="mc"><path d="M-2 96 L20 70 L29 75 L52 47 L72 69 L81 64 L102 86 L102 102 L-2 102Z"/></clipPath>
+<filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation=".6"/></filter>
+</defs>
+<g clip-path="url(#rr)">
+<rect width="100" height="100" fill="url(#bg)"/>
+<circle cx="52" cy="47" r="46" fill="url(#glow)"/>
+<g mask="url(#sky)"><path d="M52 21 C67 21 78 32 78 47 C78 62 67 73 52 73 C37 73 26 62 26 47 C26 32 37 21 52 21Z" fill="none" stroke="url(#rf)" stroke-width="2.6" stroke-opacity="0.8"/><path d="M52 29 C62 29 70 37 70 47 C70 57 62 65 52 65 C42 65 34 57 34 47 C34 37 42 29 52 29Z" fill="none" stroke="url(#rf)" stroke-width="3" stroke-opacity="0.9"/><path d="M52 37 C57.5 37 62 41.5 62 47 C62 52.5 57.5 57 52 57 C46.5 57 42 52.5 42 47 C42 41.5 46.5 37 52 37Z" fill="none" stroke="url(#rf)" stroke-width="3.4" stroke-opacity="1"/></g>
+<path d="M-2 96 L20 70 L29 75 L52 47 L72 69 L81 64 L102 86 L102 102 L-2 102Z" fill="url(#shd)"/>
+<path d="M-2 96 L20 70 L29 75 L52 47 L49.5 57 L45 68 L41 82 L39 102 L-2 102Z" fill="url(#lit)"/>
+<path d="M20 70 L29 75 L25.5 81 L15 75.5Z" fill="#2a2846" opacity=".7"/>
+<path d="M52 47 L49.5 57 L45 68 L41 82" fill="none" stroke="#e9cfa8" stroke-opacity=".18" stroke-width=".8"/>
+<path d="M29 75 L52 47 L72 69" fill="none" stroke="url(#edge)" stroke-width="1.6" stroke-linejoin="round"/>
+
+<circle cx="52" cy="47" r="5" fill="#f4dfb5" opacity=".25" filter="url(#soft)"/>
+<circle cx="52" cy="47" r="3.4" fill="#f6e3bf"/>
+</g></svg>

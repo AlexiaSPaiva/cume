@@ -8,6 +8,7 @@ import { planHours, toPercents } from '../lib/derive';
 import { AreaDot, Donut } from './ui';
 
 type Which = 'esta' | 'proxima';
+// nome histórico, não alterar: guarda os dados da usuária
 const KEY = 'meuplano.focusWeek';
 
 /**

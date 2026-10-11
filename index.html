@@ -3,11 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0b1020" />
-    <meta name="description" content="MeuPlano · Personal Life OS" />
-    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
-    <title>MeuPlano</title>
+    <meta name="theme-color" content="#0a0f1f" />
+    <meta name="application-name" content="Cume°" />
+    <meta name="apple-mobile-web-app-title" content="Cume°" />
+    <meta name="description" content="Cume° · Personal Life OS. Foco · Clareza · Ação." />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon-cume.png" />
+    <title>Cume°</title>
+    <script>
+      // pré-carrega só a cena do topo deste momento (a escolha fixa, se houver, fica espelhada em localStorage)
+      (function () {
+        try {
+          var h = new Date().getHours();
+          var auto = h >= 5 && h < 10 ? 'amanhecer' : h >= 10 && h < 16 ? 'dia' : h >= 16 && h < 19 ? 'entardecer' : 'noite';
+          var fixed = localStorage.getItem('meuplano.scene');
+          var scene = fixed && fixed !== 'auto' && fixed !== 'foto' ? fixed : auto;
+          if (fixed === 'foto') return;
+          var l = document.createElement('link');
+          l.rel = 'preload';
+          l.as = 'image';
+          l.type = 'image/webp';
+          l.href = '/scenes/cume-bg-' + scene + (matchMedia('(max-width: 767.98px)').matches ? '-hero-mobile' : '-hero') + '.webp';
+          document.head.appendChild(l);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

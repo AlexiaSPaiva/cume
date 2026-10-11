@@ -124,3 +124,48 @@ test('capturas renda extra', async ({ page }) => {
   await page.goto('/area/financeiro?aba=renda-extra');
   await shot('4m-renda', true);
 });
+
+test('capturas marca Cume°', async ({ page }) => {
+  const dir = process.env.SHOTS;
+  const shot = async (name: string) => {
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: `${dir}/${name}.png` });
+  };
+  await page.clock.install({ time: new Date(2026, 9, 9, 17, 42) });
+  await useBuild(page, 'a');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+  await shot('c-login-novo');
+  await page.getByLabel('Como quer ser chamada').fill('Alexia');
+  await page.getByLabel('E-mail').fill('teste@meuplano.test');
+  await page.getByLabel('Senha', { exact: true }).fill('senha-de-teste-123');
+  await page.getByLabel('Confirmar senha').fill('senha-de-teste-123');
+  await page.getByRole('button', { name: 'Criar e entrar' }).click();
+  await expect(page.getByRole('heading', { name: /Olá, Alexia/ })).toBeVisible();
+
+  for (const s of ['amanhecer', 'dia', 'entardecer', 'noite']) {
+    await page.goto('/personalizar');
+    await page.getByRole('radiogroup', { name: 'Cenário' }).getByRole('radio', { name: new RegExp(`^${s}`, 'i') }).click();
+    for (const [w, h, tag] of [[1280, 800, 'd'], [768, 1000, 't'], [360, 780, 'm']] as const) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.goto('/');
+      await shot(`c-${tag}-${s}`);
+    }
+    await page.setViewportSize({ width: 1280, height: 800 });
+  }
+  await page.goto('/personalizar');
+  await shot('c-personalizar');
+  await page.getByRole('button', { name: 'Recolher menu' }).click();
+  await page.goto('/');
+  await shot('c-recolhido');
+  await page.getByRole('button', { name: 'Abrir menu' }).click();
+  await page.getByRole('button', { name: 'Abrir Top 3 de hoje em tela cheia' }).click();
+  await shot('c-foco');
+  await page.keyboard.press('Escape');
+  await page.goto('/personalizar');
+  await page.getByRole('button', { name: /Sair/ }).click();
+  await shot('c-login-d');
+  await page.setViewportSize({ width: 360, height: 780 });
+  await shot('c-login-m');
+});

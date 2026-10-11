@@ -3,7 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Page } from '../components/Layout';
 import { Card } from '../components/Card';
 import { useUI } from '../components/Overlays';
-import { SCENES, Scenery } from '../components/Scenery';
+import { SCENE_HOURS, SCENE_LABEL, sceneMode, useScene } from '../lib/scene';
+import { useAttachmentUrl } from '../lib/attachments';
 import { AreaDot, Icon } from '../components/ui';
 import { logout } from '../lib/auth';
 import { AREAS } from '../lib/areas';
@@ -16,7 +17,7 @@ import { listTrash, restore } from '../lib/trash';
 import { geocode } from '../lib/weather';
 import type { AreaId, Settings, WidgetId } from '../lib/types';
 
-const ACCENTS = ['#c9a77c', '#d9915a', '#d4a0b4', '#9b93c9', '#7ea3cc', '#7fb8a0'];
+const ACCENTS = ['#c8a97e', '#d9915a', '#d4a0b4', '#9b93c9', '#7ea3cc', '#7fb8a0'];
 const WIDGETS: [WidgetId, string][] = [
   ['sugestoes', 'Sugestões de imprevistos recorrentes'], ['top3', 'Top 3 de hoje'], ['prazos', 'Próximos prazos'],
   ['imprevistos', 'Imprevistos da semana'], ['foco', 'Foco por área'], ['tempo', 'Tempo por área'], ['vida', 'Minha vida agora'],
@@ -51,6 +52,9 @@ export function Personalizar({ onLogout }: { onLogout: () => void }) {
   const [info, setInfo] = useState<StorageInfo>();
   const [busy, setBusy] = useState('');
   const trash = useLiveQuery(() => listTrash(db), []);
+  const mode = sceneMode(settings);
+  const autoNow = useScene('auto');
+  const photoUrl = useAttachmentUrl(settings.photoAttachmentId);
 
   useEffect(() => { storageInfo().then(setInfo); }, [busy]);
 
@@ -61,7 +65,7 @@ export function Personalizar({ onLogout }: { onLogout: () => void }) {
       const url = URL.createObjectURL(new Blob([zip as Uint8Array<ArrayBuffer>], { type: 'application/zip' }));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `meuplano-backup-${new Date().toISOString().slice(0, 10)}.zip`;
+      a.download = `cume-backup-${new Date().toISOString().slice(0, 10)}.zip`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } finally {
@@ -85,14 +89,14 @@ export function Personalizar({ onLogout }: { onLogout: () => void }) {
     const blob = await resize(f);
     const old = settings.photoAttachmentId;
     const id = await addFileAttachment({ type: 'settings', id: 'me' }, 'photo', Object.assign(blob, { name: f.name }));
-    await set({ photoAttachmentId: id });
+    await set({ photoAttachmentId: id, sceneMode: 'foto' });
     if (old) await ui.remove('attachments', old, 'Foto anterior');
     else ui.toast('Foto aplicada.');
   }
 
   async function removePhoto() {
     const old = settings.photoAttachmentId;
-    await set({ photoAttachmentId: undefined });
+    await set({ photoAttachmentId: undefined, sceneMode: settings.sceneMode === 'foto' ? 'auto' : settings.sceneMode });
     if (old) await ui.remove('attachments', old, 'Foto do cenário');
   }
 
@@ -126,13 +130,22 @@ export function Personalizar({ onLogout }: { onLogout: () => void }) {
         </Card>
 
         <Card title="Cenário" className="form">
-          <div className="grid g2" style={{ gap: 10 }}>
-            {SCENES.map((s) => (
-              <button key={s.id} className={`scene ${!settings.photoAttachmentId && settings.scenario === s.id ? 'on' : ''}`} style={{ height: 84 }}
-                onClick={() => set({ scenario: s.id })}>
-                <Scenery id={s.id} /><span>{s.name}</span>
+          <span className="hint">A montanha do Cume° acompanha o seu dia. No automático, a cena muda sozinha com o horário.</span>
+          <div className="scene-pick" role="radiogroup" aria-label="Cenário">
+            {(['auto', 'amanhecer', 'dia', 'entardecer', 'noite'] as const).map((m) => (
+              <button key={m} type="button" role="radio" aria-checked={mode === m} className={`scene-opt ${mode === m ? 'on' : ''}`}
+                onClick={() => set({ sceneMode: m })}>
+                <span className={`thumb scene-${m === 'auto' ? autoNow : m}`} aria-hidden="true" />
+                <span className="lbl"><b>{m === 'auto' ? 'Automático' : SCENE_LABEL[m]}</b><small>{m === 'auto' ? `agora: ${SCENE_LABEL[autoNow].toLowerCase()}` : SCENE_HOURS[m]}</small></span>
               </button>
             ))}
+            {settings.photoAttachmentId && (
+              <button type="button" role="radio" aria-checked={mode === 'foto'} className={`scene-opt ${mode === 'foto' ? 'on' : ''}`}
+                onClick={() => set({ sceneMode: 'foto' })}>
+                <span className="thumb" aria-hidden="true">{photoUrl && <img src={photoUrl} alt="" />}</span>
+                <span className="lbl"><b>Minha foto</b><small>foto própria</small></span>
+              </button>
+            )}
           </div>
           <div className="row">
             <button className="btn" onClick={() => photo.current?.click()}><Icon name="up" size={14} /> Usar foto própria</button>

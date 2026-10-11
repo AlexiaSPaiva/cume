@@ -13,24 +13,33 @@ export default defineConfig({
     VitePWA({
       // 'prompt': a versão nova espera a usuária clicar em "Atualizar"; nunca recarrega sozinho no meio de uma edição
       registerType: 'prompt',
-      includeAssets: ['icon.svg'],
+      includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon-cume.png'],
       manifest: {
-        name: 'MeuPlano · Personal Life OS',
-        short_name: 'MeuPlano',
+        // id = o start_url de sempre: o app já instalado continua sendo reconhecido como o mesmo
+        id: '/',
+        name: 'Cume° · Personal Life OS',
+        short_name: 'Cume°',
         description: 'Foco · Clareza · Ação. Objetivos, metas, agenda, tarefas e imprevistos em um só lugar.',
         lang: 'pt-BR',
-        theme_color: '#0b1020',
-        background_color: '#0b1020',
+        theme_color: '#0a0f1f',
+        background_color: '#0a0f1f',
         display: 'standalone',
         start_url: '/',
         icons: [
-          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'icons/cume-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'icons/cume-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'icons/cume-maskable-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+          { src: 'icons/cume-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // cenários: não entram no pré-cache (só a cena do momento é baixada); ficam guardados depois do 1º uso, para o offline
+        runtimeCaching: [{
+          urlPattern: ({ url }) => url.pathname.startsWith('/scenes/'),
+          handler: 'CacheFirst',
+          options: { cacheName: 'cume-scenes', expiration: { maxEntries: 40 } },
+        }],
         // offline só precisa das fontes do português; os outros alfabetos o navegador baixa se um dia precisar
         globIgnores: ['**/*-cyrillic*', '**/*-greek*', '**/*-vietnamese*', '**/*-math*', '**/*-symbols*'],
         navigateFallback: '/index.html',

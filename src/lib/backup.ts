@@ -7,6 +7,7 @@ import type { MeuPlanoDB } from './db';
  * ids que colidem com outro registro ganham id novo e as referências são corrigidas.
  */
 
+// nome histórico, não alterar: identifica os backups (inclusive os antigos)
 const FORMAT = 'meuplano-backup';
 const NUMERIC_TABLES = [
   'objectives', 'goals', 'tasks', 'records', 'imprevistos', 'events', 'docs', 'attachments',
@@ -45,9 +46,9 @@ export interface ImportResult { added: number; updated: number; kept: number; fi
 export async function importBackup(d: MeuPlanoDB, zip: Uint8Array): Promise<ImportResult> {
   const entries = unzipSync(zip);
   const json = entries['meuplano-backup.json'];
-  if (!json) throw new Error('Arquivo não é um backup do MeuPlano.');
+  if (!json) throw new Error('Arquivo não é um backup do Cume°.');
   const data = JSON.parse(strFromU8(json)) as BackupFile;
-  if (data.format !== FORMAT) throw new Error('Arquivo não é um backup do MeuPlano.');
+  if (data.format !== FORMAT) throw new Error('Arquivo não é um backup do Cume°.');
 
   const res: ImportResult = { added: 0, updated: 0, kept: 0, files: 0 };
   const allTables = [...NUMERIC_TABLES, ...KEYED_TABLES, 'blobs'];

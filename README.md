@@ -1,6 +1,23 @@
-# MeuPlano · Personal Life OS
+<p align="center"><img src="docs/brand/cume-brand/icon-rounded.svg" width="96" alt="" /></p>
 
-PWA (instalável e offline) feito a partir do `MeuPlano_Design_v6.pdf`.
+# Cume° · Personal Life OS
+
+**Foco · Clareza · Ação**
+
+PWA (instalável e offline) feito a partir do `MeuPlano_Design_v6.pdf` e da v7 (`docs/v7/`).
+Identidade visual em `docs/brand/` (guia `Cume_Guia_de_Identidade.pdf`).
+
+<p align="center"><img src="docs/brand/cume-brand/preview-marca.png" width="720" alt="Ícone e logo do Cume°" /></p>
+
+| Amanhecer · 05h–10h | Dia · 10h–16h | Entardecer · 16h–19h | Noite · 19h–05h |
+| --- | --- | --- | --- |
+| <img src="public/scenes/cume-bg-amanhecer-hero-mobile.jpg" width="180" alt="" /> | <img src="public/scenes/cume-bg-dia-hero-mobile.jpg" width="180" alt="" /> | <img src="public/scenes/cume-bg-entardecer-hero-mobile.jpg" width="180" alt="" /> | <img src="public/scenes/cume-bg-noite-hero-mobile.jpg" width="180" alt="" /> |
+
+O cenário do topo e do login muda pelo horário (`src/lib/scene.ts`) ou fica fixo em Personalizar → Cenário.
+
+> **Nomes históricos que não mudam:** o banco IndexedDB `meuplano`, as chaves `meuplano.*` do localStorage,
+> o formato `meuplano-backup` e o endereço `meuplano-rouge.vercel.app`. Os dados ficam no navegador,
+> e cada endereço tem um armazenamento separado: trocar o nome ou o endereço esconderia os dados.
 
 ## Rodar
 
@@ -17,7 +34,7 @@ No ar em https://meuplano-rouge.vercel.app (Vercel). Cada push na branch `main` 
 
 ## Telas
 
-Login com cenários · Início · Minha semana · Agenda · Tarefas · Planejamento · Calendário ·
+Login com o cenário do horário · Início · Minha semana · Agenda · Tarefas · Planejamento · Calendário ·
 Objetivos e Metas · Imprevistos · painéis das 6 áreas · Cofre de documentos · Personalizar.
 
 ## Recursos novos (além do design)

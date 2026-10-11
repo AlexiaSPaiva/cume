@@ -162,7 +162,13 @@ export interface WeekPlan extends Stamped {
   top3: number[];
 }
 
+/** cenário da v6 (paisagens do Rio). Campo histórico: continua guardado, mas a tela usa `sceneMode`. */
 export type ScenarioId = 'por-do-sol' | 'manha' | 'noite' | 'lagoa';
+
+/** cenas de montanha do Cume° (uma por faixa de horário) */
+export type SceneName = 'amanhecer' | 'dia' | 'entardecer' | 'noite';
+/** automático pela hora, uma cena fixa, ou a foto própria */
+export type SceneMode = 'auto' | SceneName | 'foto';
 
 export type WidgetId = 'top3' | 'prazos' | 'imprevistos' | 'foco' | 'tempo' | 'vida' | 'sugestoes';
 
@@ -175,6 +181,8 @@ export interface Settings extends Stamped {
   scenario: ScenarioId;
   /** foto própria do cenário (Attachment kind 'photo') */
   photoAttachmentId?: number;
+  /** cenário do Cume° (chave nova; sem ela: foto própria se houver, senão automático) */
+  sceneMode?: SceneMode;
   widgets: WidgetId[];
   desiredFocus: Record<AreaId, number>;
   city: { name: string; lat: number; lon: number };
