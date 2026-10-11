@@ -165,7 +165,7 @@ export function AreaPanel() {
       </div>
 
       {record && (
-        <Modal title={`Registrar · ${record.title}`} onClose={() => setRecord(null)}>
+        <Modal title={`${record.byTasks ? "Tarefas" : "Registrar"} · ${record.title}`} onClose={() => setRecord(null)}>
           <RecordForm g={record} onDone={() => setRecord(null)} />
           <button className="btn ghost sm" style={{ marginTop: 10 }} onClick={async () => { await db.goals.update(record.id!, { kpi: !record.kpi }); setRecord(null); }}>
             {record.kpi ? 'Tirar do topo do painel' : 'Mostrar no topo do painel'}

@@ -112,6 +112,8 @@ export interface Goal extends Stamped {
   area: AreaId;
   /** aparece como indicador no topo do painel da área */
   kpi?: boolean;
+  /** o progresso vem das tarefas ligadas (concluídas ÷ total); sem alvo nem valores manuais */
+  byTasks?: boolean;
 }
 
 export interface GoalRecord extends Stamped {

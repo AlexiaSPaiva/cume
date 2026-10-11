@@ -57,6 +57,8 @@ export function capacityMin(s: { weekCapacityH?: number }): number {
 }
 
 export function goalPct(g: Goal): number {
+  // meta pelas tarefas sem nenhuma tarefa ligada ainda: 0%, não 100%
+  if (g.byTasks && !g.target) return 0;
   const span = g.target - g.initial;
   if (span === 0) return g.current >= g.target ? 100 : 0;
   return Math.max(0, Math.min(100, Math.round(((g.current - g.initial) / span) * 100)));

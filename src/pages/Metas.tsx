@@ -9,7 +9,7 @@ import { useData } from '../lib/data';
 import { addRecord, db } from '../lib/db';
 import { MONTHS, parse } from '../lib/dates';
 import { goalPct } from '../lib/week';
-import type { AreaId, Goal, GoalMetric, Objective } from '../lib/types';
+import type { AreaId, Goal, Objective, Task } from '../lib/types';
 import { fmtGoal } from './Inicio';
 
 export function objectivePct(o: Objective, goals: Goal[]): number {
@@ -82,7 +82,7 @@ export function Metas() {
 
       {goalEdit && <Modal title={goalEdit.id ? 'Editar meta' : 'Nova meta'} onClose={() => setGoalEdit(null)}><GoalForm g={goalEdit} onDone={() => setGoalEdit(null)} /></Modal>}
       {objEdit && <Modal title={objEdit.id ? 'Editar objetivo' : 'Novo objetivo'} onClose={() => setObjEdit(null)}><ObjectiveForm o={objEdit} onDone={() => setObjEdit(null)} /></Modal>}
-      {record && <Modal title={`Registrar · ${record.title}`} onClose={() => setRecord(null)}><RecordForm g={record} onDone={() => setRecord(null)} /></Modal>}
+      {record && <Modal title={`${record.byTasks ? "Tarefas" : "Registrar"} · ${record.title}`} onClose={() => setRecord(null)}><RecordForm g={record} onDone={() => setRecord(null)} /></Modal>}
     </Page>
   );
 }
@@ -94,7 +94,7 @@ export function GoalRow({ g, onEdit, onRecord }: { g: Goal; onEdit: () => void; 
     <div className="metric" style={{ '--c': c } as React.CSSProperties}>
       <div className="row">
         <button style={{ cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={onEdit} className="plain grow">{goalLabel(g)}</button>
-        <button className="icon-btn" title="Registrar valor real" onClick={onRecord} style={{ padding: 2, color: c }}>+</button>
+        <button className="icon-btn" title={g.byTasks ? "Tarefas desta meta" : "Registrar valor real"} aria-label={g.byTasks ? `Tarefas de ${g.title}` : `Registrar valor de ${g.title}`} onClick={onRecord} style={{ padding: 2, color: c }}>+</button>
         <b>{p}%</b>
       </div>
       <Bar pct={p} color={c} />
@@ -102,21 +102,58 @@ export function GoalRow({ g, onEdit, onRecord }: { g: Goal; onEdit: () => void; 
   );
 }
 
+/**
+ * Meta = um resultado que se mede pelas TAREFAS ligadas a ela: progresso = concluídas ÷ total.
+ * Não há alvo nem valores inicial/final para preencher: ligue tarefas (ou crie aqui) e o progresso anda sozinho.
+ */
 function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
-  const { objectives } = useData();
+  const { objectives, tasks } = useData();
   const ui = useUI();
-  const [f, setF] = useState<Partial<Goal>>({ metric: 'tarefas', initial: 0, current: 0, ...g });
+  const [f, setF] = useState<Partial<Goal>>({ ...g });
   const set = (p: Partial<Goal>) => setF((o) => ({ ...o, ...p }));
+  const area = f.area ?? 'academica';
+  const linkedBefore = tasks.filter((t) => g.id != null && t.goalId === g.id && !t.repeatDays?.length);
+  const [linked, setLinked] = useState<Set<number>>(() => new Set(linkedBefore.map((t) => t.id!)));
+  const [news, setNews] = useState<string[]>([]);
+  const [draft, setDraft] = useState('');
+  const candidates = tasks.filter((t) => !t.repeatDays?.length && !t.freelanceEntryId && (t.goalId == null || t.goalId === g.id)
+    && (t.area === area || linked.has(t.id!)) && (t.status !== 'concluido' || linked.has(t.id!)));
+  const chosen = tasks.filter((t) => linked.has(t.id!));
+  const done = chosen.filter((t) => t.status === 'concluido').length;
+  const total = chosen.length + news.length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const wasByValues = g.id != null && !g.byTasks && !linkedBefore.length;
+
+  function addNew() {
+    const t = draft.trim();
+    if (!t) return;
+    setNews((n) => [...n, t]);
+    setDraft('');
+  }
+
   async function save(e: FormEvent) {
     e.preventDefault();
-    if (!f.title?.trim() || f.target == null) return;
-    const rec = { ...f, title: f.title.trim(), current: f.current ?? f.initial ?? 0 } as Goal;
-    if (rec.id) await db.goals.put(rec); else await db.goals.add(rec);
+    if (!f.title?.trim()) return;
+    const rec = {
+      ...f, title: f.title.trim(), area, byTasks: true, metric: 'tarefas', unit: 'tarefas', initial: 0, current: done, target: total,
+    } as Goal;
+    await db.transaction('rw', db.goals, db.tasks, async () => {
+      const id = rec.id ?? ((await db.goals.add(rec)) as number);
+      if (rec.id) await db.goals.put(rec);
+      for (const t of tasks) {
+        const want = linked.has(t.id!);
+        if (want && t.goalId !== id) await db.tasks.update(t.id!, { goalId: id });
+        if (!want && t.goalId === id) await db.tasks.update(t.id!, { goalId: undefined });
+      }
+      for (const title of news) await db.tasks.add({ title, area, status: 'afazer', priority: 'media', goalId: id });
+    });
+    if (news.length) ui.toast(`${news.length} ${news.length === 1 ? 'tarefa criada' : 'tarefas criadas'} no backlog do Planejamento, ligada${news.length === 1 ? '' : 's'} à meta.`);
     onDone();
   }
+
   return (
     <form className="form" onSubmit={save}>
-      <label className="field"><span>Meta</span><input autoFocus required value={f.title ?? ''} onChange={(e) => set({ title: e.target.value })} placeholder="Ex.: Leitura" /></label>
+      <label className="field"><span>Meta</span><input autoFocus required value={f.title ?? ''} onChange={(e) => set({ title: e.target.value })} placeholder="Ex.: Ler 3 livros do curso" /></label>
       <div className="cols">
         <label className="field"><span>Objetivo</span>
           <select value={f.objectiveId ?? ''} onChange={(e) => set({ objectiveId: e.target.value ? Number(e.target.value) : undefined })}>
@@ -125,20 +162,33 @@ function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
           </select>
         </label>
         <label className="field"><span>Área</span>
-          <select value={f.area} onChange={(e) => set({ area: e.target.value as AreaId })}>{AREAS.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select>
+          <select value={area} onChange={(e) => set({ area: e.target.value as AreaId })}>{AREAS.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select>
         </label>
-        <label className="field"><span>Métrica</span>
-          <select value={f.metric} onChange={(e) => set({ metric: e.target.value as GoalMetric })}>
-            {['valor', 'páginas', 'horas', 'tarefas', 'frequência', 'nota', 'outro'].map((m) => <option key={m}>{m}</option>)}
-          </select>
-        </label>
-        <label className="field"><span>Unidade (opcional)</span><input value={f.unit ?? ''} onChange={(e) => set({ unit: e.target.value || undefined })} placeholder="R$, págs, copos…" /></label>
       </div>
-      <div className="cols" style={{ '--c': 3 } as React.CSSProperties}>
-        <label className="field"><span>Valor inicial</span><input type="number" step="any" value={f.initial ?? 0} onChange={(e) => set({ initial: Number(e.target.value) })} /></label>
-        <label className="field"><span>Atual</span><input type="number" step="any" value={f.current ?? 0} onChange={(e) => set({ current: Number(e.target.value) })} /></label>
-        <label className="field"><span>Alvo</span><input type="number" step="any" required value={f.target ?? ''} onChange={(e) => set({ target: Number(e.target.value) })} /></label>
+
+      <div className="field"><span>Tarefas desta meta</span>
+        <p className="hint" style={{ margin: 0 }}>O progresso é a parte das tarefas que você já concluiu: {done} de {total} = <b>{pct}%</b>.</p>
+        {wasByValues && <p className="hint" style={{ margin: 0 }}>Esta meta usava números digitados à mão; ao salvar, ela passa a andar pelas tarefas.</p>}
+        <div className="goal-tasks">
+          {candidates.map((t) => (
+            <label key={t.id} className="check">
+              <input type="checkbox" checked={linked.has(t.id!)} onChange={(e) => setLinked((cur) => { const n = new Set(cur); if (e.target.checked) n.add(t.id!); else n.delete(t.id!); return n; })} />
+              <span className="grow">{t.title}</span>
+              {t.status === 'concluido' && <span className="tag ok">concluída</span>}
+            </label>
+          ))}
+          {news.map((t, i) => (
+            <label key={`n${i}`} className="check"><input type="checkbox" checked onChange={() => setNews((n) => n.filter((_, j) => j !== i))} /> <span className="grow">{t}</span><span className="tag info">nova</span></label>
+          ))}
+          {candidates.length === 0 && news.length === 0 && <span className="muted small">Nenhuma tarefa aberta nesta área. Crie a primeira abaixo.</span>}
+        </div>
+        <div className="row">
+          <input className="input" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Nova tarefa para esta meta"
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addNew(); } }} aria-label="Nova tarefa para esta meta" />
+          <button type="button" className="btn out" onClick={addNew}>Adicionar</button>
+        </div>
       </div>
+
       <div className="cols">
         <label className="field"><span>Prazo</span><input type="date" value={f.deadline ?? ''} onChange={(e) => set({ deadline: e.target.value || undefined })} /></label>
         <label className="check" style={{ alignSelf: 'end', paddingBottom: 10 }}><input type="checkbox" checked={!!f.kpi} onChange={(e) => set({ kpi: e.target.checked })} /> Mostrar no topo do painel da área</label>
@@ -182,6 +232,38 @@ function ObjectiveForm({ o, onDone }: { o: Partial<Objective>; onDone: () => voi
 }
 
 export function RecordForm({ g, onDone }: { g: Goal; onDone: () => void }) {
+  const ui = useUI();
+  const { tasks } = useData();
+  if (g.byTasks) return <GoalTasks g={g} tasks={tasks} onDone={onDone} openTask={ui.openTask} />;
+  return <ValueRecordForm g={g} onDone={onDone} />;
+}
+
+/** meta pelas tarefas: mostra as tarefas ligadas e cria uma nova já ligada */
+function GoalTasks({ g, tasks, onDone, openTask }: { g: Goal; tasks: Task[]; onDone: () => void; openTask: (t?: Partial<Task>) => void }) {
+  const list = tasks.filter((t) => t.goalId === g.id && !t.repeatDays?.length);
+  return (
+    <div className="form">
+      <p className="muted" style={{ margin: 0 }}>Progresso: <b>{g.current} de {g.target}</b> tarefas concluídas ({goalPct(g)}%).</p>
+      <div className="goal-tasks">
+        {list.map((t) => (
+          <div key={t.id} className="row small">
+            <span className="dotc" style={{ background: t.status === 'concluido' ? 'var(--ok)' : 'var(--line-2)' }} />
+            <button type="button" className="plain grow" onClick={() => { onDone(); openTask(t); }}>{t.title}</button>
+            <span className="muted">{t.status === 'concluido' ? 'concluída' : t.status === 'adiada' ? 'adiada' : 'aberta'}</span>
+          </div>
+        ))}
+        {list.length === 0 && <span className="muted small">Nenhuma tarefa ligada ainda.</span>}
+      </div>
+      <div className="actions">
+        <button className="btn gold" type="button" onClick={() => { onDone(); openTask({ goalId: g.id, area: g.area }); }}>+ Tarefa para esta meta</button>
+        <button className="btn" type="button" onClick={onDone}>Fechar</button>
+      </div>
+    </div>
+  );
+}
+
+/** metas antigas, ainda sem tarefas ligadas: registro de valor (como antes) */
+function ValueRecordForm({ g, onDone }: { g: Goal; onDone: () => void }) {
   const ui = useUI();
   const [v, setV] = useState('');
   const [note, setNote] = useState('');

@@ -779,3 +779,5 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
 @media (max-width: 767.98px) {
   .adi-act .btn { display: none; }
 }
+.goal-tasks { display: flex; flex-direction: column; gap: 2px; max-height: 14rem; overflow: auto; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; }
+.goal-tasks .check .grow { flex: 1; min-width: 0; }

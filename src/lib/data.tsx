@@ -55,6 +55,9 @@ export function DataProvider({ settings, fallback = null, children }: { settings
   const metricEntries = useLiveQuery(() => db.metricEntries.toArray().then(live), []);
   const snapshots = useLiveQuery(() => db.snapshots.toArray(), []);
 
+  // metas: o progresso vem das tarefas ligadas (concluídas ÷ total)
+  const goalsView = useMemo(() => (goals && tasks ? withTaskProgress(goals, tasks) : undefined), [goals, tasks]);
+
   const suggestions = useMemo(
     () => (imprevistos && suggestionStates && tasks ? findRecurring(imprevistos, suggestionStates, tasks, settings.recurrenceThreshold) : []),
     [imprevistos, suggestionStates, tasks, settings.recurrenceThreshold],
@@ -64,7 +67,7 @@ export function DataProvider({ settings, fallback = null, children }: { settings
     || !clients || !projects || !entries || !txs || !records || !metrics || !metricEntries || !snapshots) return fallback;
   return (
     <Ctx.Provider value={{
-      settings, tasks, imprevistos, objectives, goals, events, docs, attachments, plans, suggestionStates, suggestions,
+      settings, tasks, imprevistos, objectives, goals: goalsView!, events, docs, attachments, plans, suggestionStates, suggestions,
       clients, projects, entries, txs, records, metrics, metricEntries, snapshots,
     }}>
       {children}
@@ -76,4 +79,22 @@ export function useData(): Data {
   const v = useContext(Ctx);
   if (!v) throw new Error('useData fora do DataProvider');
   return v;
+}
+
+/**
+ * Progresso das metas pelas tarefas: uma meta "pelas tarefas" (byTasks) ou com tarefas ligadas
+ * passa a valer concluídas/total. As metas antigas sem nenhuma tarefa ligada continuam com os
+ * números que tinham, até a pessoa ligar tarefas a elas.
+ */
+export function withTaskProgress(goals: Goal[], tasks: Task[]): Goal[] {
+  const by = new Map<number, Task[]>();
+  for (const t of tasks) if (t.goalId != null && !t.repeatDays?.length) by.set(t.goalId, [...(by.get(t.goalId) ?? []), t]);
+  return goals.map((g) => {
+    const linked = by.get(g.id!) ?? [];
+    if (!g.byTasks && !linked.length) return g;
+    return {
+      ...g, byTasks: true, metric: 'tarefas', unit: 'tarefas', initial: 0,
+      current: linked.filter((t) => t.status === 'concluido').length, target: linked.length,
+    };
+  });
 }
