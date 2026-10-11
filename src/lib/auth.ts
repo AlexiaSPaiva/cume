@@ -57,11 +57,11 @@ export async function createAccount(email: string, password: string): Promise<Si
   return enter(dbName);
 }
 
-/** confere e-mail e senha; null = não confere */
-export async function login(email: string, password: string): Promise<Signed | null> {
+/** confere e-mail e senha; diz se a conta não existe NESTE navegador ou se a senha não confere */
+export async function login(email: string, password: string): Promise<Signed | 'sem-conta' | 'senha'> {
   const acc = await registry().account.get(norm(email));
-  if (!acc) return null;
-  if ((await hash(password, acc.salt)) !== acc.passwordHash) return null;
+  if (!acc) return 'sem-conta';
+  if ((await hash(password, acc.salt)) !== acc.passwordHash) return 'senha';
   return enter(dbOf(acc));
 }
 

@@ -112,7 +112,7 @@ export interface Goal extends Stamped {
   area: AreaId;
   /** aparece como indicador no topo do painel da área */
   kpi?: boolean;
-  /** o progresso vem das tarefas ligadas (concluídas ÷ total); sem alvo nem valores manuais */
+  /** como medir: true = pelas tarefas ligadas (concluídas ÷ total); false = por valor (atual e alvo) */
   byTasks?: boolean;
 }
 

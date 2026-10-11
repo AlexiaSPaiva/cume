@@ -243,7 +243,7 @@ function TempoEFoco({ unit, setUnit }: { unit: FreelanceUnit; setUnit: (u: Freel
         </span>
       </div>
       <div className="row" style={{ alignItems: 'baseline', marginTop: 10, flexWrap: 'wrap' }}>
-        <b className="big" data-testid="worked">{fmtWork(ms.hours, unit, hpd)}</b>
+        <b className="big-num" data-testid="worked">{fmtWork(ms.hours, unit, hpd)}</b>
         <span className="muted small">no mês · na semana: {fmtWork(fre, unit, hpd)} na Agenda</span>
       </div>
       <p className="faint small" style={{ margin: '4px 0 12px' }}>

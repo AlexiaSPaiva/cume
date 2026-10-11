@@ -109,7 +109,9 @@ export function GoalRow({ g, onEdit, onRecord }: { g: Goal; onEdit: () => void; 
 function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
   const { objectives, tasks } = useData();
   const ui = useUI();
-  const [f, setF] = useState<Partial<Goal>>({ ...g });
+  // meta nova: pelas tarefas; meta existente: como estava (antiga por valor sem tarefas = por valor)
+  const [mode, setMode] = useState<'tarefas' | 'valor'>(g.id == null ? 'tarefas' : g.byTasks === false || (!g.byTasks && !tasks.some((t) => t.goalId === g.id)) ? 'valor' : 'tarefas');
+  const [f, setF] = useState<Partial<Goal>>({ metric: 'valor', initial: 0, current: 0, ...g, ...(g.byTasks ? { metric: 'valor', unit: undefined } : {}) });
   const set = (p: Partial<Goal>) => setF((o) => ({ ...o, ...p }));
   const area = f.area ?? 'academica';
   const linkedBefore = tasks.filter((t) => g.id != null && t.goalId === g.id && !t.repeatDays?.length);
@@ -122,7 +124,7 @@ function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
   const done = chosen.filter((t) => t.status === 'concluido').length;
   const total = chosen.length + news.length;
   const pct = total ? Math.round((done / total) * 100) : 0;
-  const wasByValues = g.id != null && !g.byTasks && !linkedBefore.length;
+  const wasByValues = g.id != null && mode === 'tarefas' && !g.byTasks && !linkedBefore.length;
 
   function addNew() {
     const t = draft.trim();
@@ -134,9 +136,10 @@ function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!f.title?.trim()) return;
-    const rec = {
-      ...f, title: f.title.trim(), area, byTasks: true, metric: 'tarefas', unit: 'tarefas', initial: 0, current: done, target: total,
-    } as Goal;
+    if (mode === 'valor' && (f.target == null || Number.isNaN(f.target))) return;
+    const rec = (mode === 'tarefas'
+      ? { ...f, title: f.title.trim(), area, byTasks: true, metric: 'tarefas', unit: 'tarefas', initial: 0, current: done, target: total }
+      : { ...f, title: f.title.trim(), area, byTasks: false, metric: f.metric ?? 'valor', initial: f.initial ?? 0, current: f.current ?? f.initial ?? 0 }) as Goal;
     await db.transaction('rw', db.goals, db.tasks, async () => {
       const id = rec.id ?? ((await db.goals.add(rec)) as number);
       if (rec.id) await db.goals.put(rec);
@@ -166,8 +169,36 @@ function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
         </label>
       </div>
 
-      <div className="field"><span>Tarefas desta meta</span>
-        <p className="hint" style={{ margin: 0 }}>O progresso é a parte das tarefas que você já concluiu: {done} de {total} = <b>{pct}%</b>.</p>
+      <div className="field"><span>Como medir o progresso</span>
+        <div className="seg full" role="radiogroup" aria-label="Como medir o progresso">
+          <button type="button" role="radio" aria-checked={mode === 'tarefas'} className={mode === 'tarefas' ? 'on' : ''} onClick={() => setMode('tarefas')}>Pelas tarefas</button>
+          <button type="button" role="radio" aria-checked={mode === 'valor'} className={mode === 'valor' ? 'on' : ''} onClick={() => setMode('valor')}>Por valor (atual e alvo)</button>
+        </div>
+      </div>
+
+      {mode === 'valor' && (
+        <>
+          <div className="cols">
+            <label className="field"><span>Métrica</span>
+              <select value={f.metric} onChange={(e) => set({ metric: e.target.value as Goal['metric'] })}>
+                {(['valor', 'páginas', 'horas', 'tarefas', 'frequência', 'nota', 'outro'] as const).map((m) => <option key={m} value={m}>{m === 'valor' ? 'valor (R$)' : m}</option>)}
+              </select>
+            </label>
+            <label className="field"><span>Unidade (opcional)</span><input value={f.unit ?? ''} onChange={(e) => set({ unit: e.target.value || undefined })} placeholder={f.metric === 'valor' ? 'R$' : 'págs, h, treinos…'} /></label>
+          </div>
+          <div className="cols" style={{ '--c': 3 } as React.CSSProperties}>
+            <label className="field"><span>Valor inicial</span><input type="number" step="any" value={f.initial ?? 0} onChange={(e) => set({ initial: Number(e.target.value) })} /></label>
+            <label className="field"><span>Atual</span><input type="number" step="any" value={f.current ?? 0} onChange={(e) => set({ current: Number(e.target.value) })} /></label>
+            <label className="field"><span>Alvo</span><input type="number" step="any" required value={f.target ?? ''} onChange={(e) => set({ target: e.target.value === '' ? undefined : Number(e.target.value) })} /></label>
+          </div>
+          <p className="hint" style={{ margin: 0 }}>Ex.: Reserva de emergência · R$ · 0 → 3.500 de 10.000. Depois é só tocar no + da meta para registrar cada novo valor.</p>
+        </>
+      )}
+
+      <div className="field"><span>{mode === 'tarefas' ? 'Tarefas desta meta' : 'Tarefas ligadas (opcional)'}</span>
+        {mode === 'tarefas'
+          ? <p className="hint" style={{ margin: 0 }}>O progresso é a parte das tarefas que você já concluiu: {done} de {total} = <b>{pct}%</b>.</p>
+          : <p className="hint" style={{ margin: 0 }}>As tarefas ficam ligadas à meta para você se organizar; o progresso vem do valor atual.</p>}
         {wasByValues && <p className="hint" style={{ margin: 0 }}>Esta meta usava números digitados à mão; ao salvar, ela passa a andar pelas tarefas.</p>}
         <div className="goal-tasks">
           {candidates.map((t) => (

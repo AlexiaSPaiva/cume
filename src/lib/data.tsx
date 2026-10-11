@@ -109,6 +109,8 @@ export function withTaskProgress(goals: Goal[], tasks: Task[]): Goal[] {
   for (const t of tasks) if (t.goalId != null && !t.repeatDays?.length) by.set(t.goalId, [...(by.get(t.goalId) ?? []), t]);
   return goals.map((g) => {
     const linked = by.get(g.id!) ?? [];
+    // a pessoa escolheu medir por valor (atual/alvo): as tarefas ligadas não mudam o número
+    if (g.byTasks === false) return g;
     if (!g.byTasks && !linked.length) return g;
     return {
       ...g, byTasks: true, metric: 'tarefas', unit: 'tarefas', initial: 0,

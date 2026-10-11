@@ -574,7 +574,7 @@ button.stat:hover { border-color: var(--line-2); }
 .fin-tabs .novo { font-size: 0.5625rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--accent-ink); background: var(--accent); border-radius: 4px; padding: 1px 5px; }
 .fin-tabs .fin-note { margin-left: auto; color: var(--muted); font-size: 0.7188rem; padding-bottom: 10px; }
 .stat .v .unit { font-size: 0.55em; color: var(--muted); margin-left: 2px; }
-.big { font: 400 2.25rem/1.1 var(--serif); }
+.big-num { font: 400 2.25rem/1.1 var(--serif); }
 .seg.full { display: flex; }
 .seg.full button { flex: 1; }
 .with-hint { position: relative; display: block; }
@@ -699,7 +699,7 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
 .signup-cta { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .signup-cta b { display: block; font-size: 0.9375rem; }
 .signup-title { font: 400 1.35rem/1.15 var(--serif); }
-.btn.big { justify-content: center; padding: 13px; font-size: 0.9375rem; }
+.btn.big { justify-content: center; padding: 13px; font: 600 0.9375rem/1.2 var(--font-sans); }
 .login .motto { margin: 2px 0 0; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
 @media (max-width: 767.98px) { .login-col { width: 100%; } .login { justify-content: flex-start; padding-top: calc(24px + env(safe-area-inset-top)); } }
 
@@ -871,3 +871,8 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
   .stepper { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 14px; }
   .stepper li:nth-child(4)::before { display: none; }
 }
+/* campos lado a lado: alinhados pela base (um rótulo de 2 linhas não desalinha o vizinho) */
+.form .cols { align-items: end; }
+/* cadastro no celular: um campo por linha */
+@media (max-width: 479.98px) { .login .form .cols { grid-template-columns: 1fr; } }
+.login-hint { margin: 0 0 12px; border-left: 2px solid var(--accent); padding: 6px 10px; background: var(--color-gold-soft); border-radius: 0 8px 8px 0; color: var(--color-text-2); }

@@ -7,6 +7,10 @@ import { BrandMark, SceneBg } from '../components/Brand';
 import { useAttachmentUrl } from '../lib/attachments';
 import { sceneMode } from '../lib/scene';
 
+/** a conta e os dados ficam no navegador onde foram criados: explica isso quando o e-mail não está aqui */
+const NO_ACCOUNT = 'Não há conta com esse e-mail neste navegador. A conta fica guardada só no aparelho e no navegador onde foi criada: '
+  + 'no iPhone, o app instalado na Tela de Início e o Safari são lugares separados. Entre por onde você criou a conta.';
+
 /** dados de exemplo só para testes e demonstração: /?exemplos=1 (o app de verdade começa vazio) */
 const withExamples = () => new URLSearchParams(location.search).get('exemplos') === '1';
 
@@ -40,7 +44,7 @@ export function Login({ settings, onIn }: { settings?: Settings; onIn: () => voi
           <BrandMark subtitle />
           {hasAny !== null && (reset
             ? <ResetForm onBack={() => setReset(false)} onDone={done} />
-            : <LoginForm onDone={done} onForgot={() => setReset(true)} />)}
+            : <LoginForm onDone={done} onForgot={() => setReset(true)} empty={!hasAny} />)}
         </div>
 
         {hasAny !== null && <div className="box signup">
@@ -59,7 +63,7 @@ export function Login({ settings, onIn }: { settings?: Settings; onIn: () => voi
   );
 }
 
-function LoginForm({ onDone, onForgot }: { onDone: (s: Signed) => void; onForgot: () => void }) {
+function LoginForm({ onDone, onForgot, empty }: { onDone: (s: Signed) => void; onForgot: () => void; empty?: boolean }) {
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [err, setErr] = useState('');
@@ -70,7 +74,9 @@ function LoginForm({ onDone, onForgot }: { onDone: (s: Signed) => void; onForgot
     setBusy(true);
     try {
       const s = await login(email, pw);
-      if (s) onDone(s); else setErr('E-mail ou senha não conferem.');
+      if (s === 'senha') setErr('Esta senha não confere. Confira as letras maiúsculas ou use “Esqueci a senha”.');
+      else if (s === 'sem-conta') setErr(NO_ACCOUNT);
+      else onDone(s);
     } finally { setBusy(false); }
   }
   return (
@@ -78,6 +84,7 @@ function LoginForm({ onDone, onForgot }: { onDone: (s: Signed) => void; onForgot
       <div>
         <h1>Entrar</h1>
         <p className="lead">Já tem conta? Bem-vinda de volta.</p>
+        {empty && <p className="hint login-hint">Este navegador ainda não tem nenhuma conta. Se você criou a sua no app instalado na Tela de Início ou em outro aparelho, entre por lá: cada lugar guarda os próprios dados.</p>}
       </div>
       <label className="field"><span>E-mail</span><input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@email.com" /></label>
       <label className="field"><span>Senha</span><input type="password" required autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="••••••••" /></label>
@@ -102,7 +109,7 @@ function ResetForm({ onBack, onDone }: { onBack: () => void; onDone: (s: Signed)
     setBusy(true);
     try {
       const s = await resetPassword(email, pw);
-      if (s) onDone(s); else setErr('Não há conta com esse e-mail neste aparelho.');
+      if (s) onDone(s); else setErr(NO_ACCOUNT);
     } finally { setBusy(false); }
   }
   return (

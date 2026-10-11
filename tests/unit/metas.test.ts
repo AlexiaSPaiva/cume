@@ -28,4 +28,11 @@ describe('metas pelas tarefas', () => {
     expect(m).toMatchObject({ byTasks: true, current: 1, target: 4, unit: 'tarefas' });
     expect(goalPct(m)).toBe(25);
   });
+
+  it('meta "por valor" (atual e alvo) não é recalculada pelas tarefas ligadas', () => {
+    const reserva = g({ id: 7, byTasks: false, metric: 'valor', unit: 'R$', initial: 0, current: 3500, target: 10000 });
+    const [m] = withTaskProgress([reserva], [t({ goalId: 7, status: 'concluido' }), t({ goalId: 7 })]);
+    expect(m).toEqual(reserva);
+    expect(goalPct(m)).toBe(35);
+  });
 });

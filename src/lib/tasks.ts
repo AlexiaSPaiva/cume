@@ -21,8 +21,12 @@ export async function moveTask(id: number, s: TaskStatus, reason = 'arrastou par
   if (s === 'concluido') { patch.doneAt = today(); patch.progress = 100; }
   await db.tasks.update(id, patch);
   if (s === 'concluido' && t.status !== 'concluido' && t.goalId) {
-    await addRecord(t.goalId, 1, `Concluiu: ${t.title}`);
-    return true;
+    const g = await db.goals.get(t.goalId);
+    // meta pelas tarefas: o registro marca o avanço (Histórico); por valor, só soma se a métrica for "tarefas"
+    if (g && (g.byTasks !== false || g.metric === 'tarefas')) {
+      await addRecord(t.goalId, 1, `Concluiu: ${t.title}`);
+      return true;
+    }
   }
   return false;
 }

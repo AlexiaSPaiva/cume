@@ -77,7 +77,9 @@ test('duas contas no mesmo aparelho, cada uma com os próprios dados', async ({ 
   await logout(page);
 
   await loginAs(page, 'ana@cume.test', 'senha-errada');
-  await expect(page.getByRole('alert')).toContainText('não conferem');
+  await expect(page.getByRole('alert')).toContainText('senha não confere');
+  await loginAs(page, 'ninguem@cume.test');
+  await expect(page.getByRole('alert')).toContainText('Não há conta com esse e-mail neste navegador');
   await loginAs(page, 'ana@cume.test');
   await expect(page.getByRole('heading', { name: /Olá, Ana/ })).toBeVisible({ timeout: 20_000 });
   await closeWelcome(page);

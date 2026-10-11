@@ -206,7 +206,7 @@ function StudyWeek({ next }: { next: string }) {
   return (
     <Card title="Estudos da semana">
       <div className="row" style={{ alignItems: 'baseline', gap: 8 }}>
-        <b className="big">{Math.round(total / 6) / 10}h</b><span className="muted small">de estudo em {occ.length} {occ.length === 1 ? 'bloco' : 'blocos'}</span>
+        <b className="big-num">{Math.round(total / 6) / 10}h</b><span className="muted small">de estudo em {occ.length} {occ.length === 1 ? 'bloco' : 'blocos'}</span>
       </div>
       <div className="stack-bar" aria-hidden="true">{byType.map((x) => <i key={x.tt.id} style={{ flex: x.min, background: x.tt.color }} />)}</div>
       <p className="muted small" style={{ margin: '6px 0 10px' }}>{byType.map((x) => `${x.tt.plural} ${dur(x.min)}`).join(' · ') || 'Nenhum bloco de estudo marcado para a semana que vem.'}</p>
