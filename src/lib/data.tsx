@@ -3,8 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
 import { findRecurring, type RecurringSuggestion } from './recurrence';
 import type {
-  Attachment, CalendarEvent, Client, FinanceTx, FreelanceEntry, FreelanceProject, Goal, GoalRecord, HistorySnapshot, Imprevisto,
-  Metric, MetricEntry, Objective, Settings, SuggestionState, Task, VaultDoc, WeekPlan,
+  ArticleNote, Attachment, CalendarEvent, Client, FinanceTx, FreelanceEntry, FreelanceProject, Goal, GoalRecord, HistorySnapshot, Imprevisto, JournalEntry, Metric, MetricEntry, MockExam, Objective, QuestionLog, Settings, Subject, SuggestionState, Task, Topic, Track, TrackDate, VaultDoc, WeekPlan,
 } from './types';
 
 export interface Data {
@@ -30,6 +29,15 @@ export interface Data {
   metrics: Metric[];
   metricEntries: MetricEntry[];
   snapshots: HistorySnapshot[];
+  /** estudos (Acadêmica): trilhas e tudo o que pertence a elas */
+  tracks: Track[];
+  subjects: Subject[];
+  topics: Topic[];
+  questionLogs: QuestionLog[];
+  mockExams: MockExam[];
+  trackDates: TrackDate[];
+  articleNotes: ArticleNote[];
+  journal: JournalEntry[];
 }
 
 const Ctx = createContext<Data | null>(null);
@@ -54,6 +62,14 @@ export function DataProvider({ settings, fallback = null, children }: { settings
   const metrics = useLiveQuery(() => db.metrics.toArray().then(live), []);
   const metricEntries = useLiveQuery(() => db.metricEntries.toArray().then(live), []);
   const snapshots = useLiveQuery(() => db.snapshots.toArray(), []);
+  const tracks = useLiveQuery(() => db.tracks.toArray().then(live), []);
+  const subjects = useLiveQuery(() => db.subjects.toArray().then(live), []);
+  const topics = useLiveQuery(() => db.topics.toArray().then(live), []);
+  const questionLogs = useLiveQuery(() => db.questionLogs.toArray().then(live), []);
+  const mockExams = useLiveQuery(() => db.mockExams.toArray().then(live), []);
+  const trackDates = useLiveQuery(() => db.trackDates.toArray().then(live), []);
+  const articleNotes = useLiveQuery(() => db.articleNotes.toArray().then(live), []);
+  const journal = useLiveQuery(() => db.journal.toArray().then(live), []);
 
   // metas: o progresso vem das tarefas ligadas (concluídas ÷ total)
   const goalsView = useMemo(() => (goals && tasks ? withTaskProgress(goals, tasks) : undefined), [goals, tasks]);
@@ -64,11 +80,13 @@ export function DataProvider({ settings, fallback = null, children }: { settings
   );
 
   if (!tasks || !imprevistos || !objectives || !goals || !events || !docs || !attachments || !plans || !suggestionStates
-    || !clients || !projects || !entries || !txs || !records || !metrics || !metricEntries || !snapshots) return fallback;
+    || !clients || !projects || !entries || !txs || !records || !metrics || !metricEntries || !snapshots
+    || !tracks || !subjects || !topics || !questionLogs || !mockExams || !trackDates || !articleNotes || !journal) return fallback;
   return (
     <Ctx.Provider value={{
       settings, tasks, imprevistos, objectives, goals: goalsView!, events, docs, attachments, plans, suggestionStates, suggestions,
       clients, projects, entries, txs, records, metrics, metricEntries, snapshots,
+      tracks, subjects, topics, questionLogs, mockExams, trackDates, articleNotes, journal,
     }}>
       {children}
     </Ctx.Provider>

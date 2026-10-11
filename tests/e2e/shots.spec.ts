@@ -234,3 +234,36 @@ test('capturas entrada e boas-vindas', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 860 });
   await shot('6d-entrada');
 });
+
+test('capturas estudos', async ({ page }) => {
+  test.setTimeout(180_000);
+  const dir = process.env.SHOTS;
+  const shot = async (name: string, full = false) => { await page.waitForTimeout(600); await page.screenshot({ path: `${dir}/${name}.png`, fullPage: full }); };
+  await useBuild(page, 'a');
+  await page.goto('/?exemplos=1');
+  await page.getByLabel('Como quer ser chamada').fill('Alexia');
+  await page.getByLabel('Seu e-mail').fill('a@cume.test');
+  await page.getByLabel('Crie uma senha').fill('senha-de-teste-123');
+  await page.getByLabel('Confirmar senha').fill('senha-de-teste-123');
+  await page.getByRole('button', { name: 'Criar e entrar' }).click();
+  await expect(page.getByRole('heading', { name: /Olá, Alexia/ })).toBeVisible({ timeout: 20_000 });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/area/academica');
+  await shot('7d-academica');
+  await page.locator('.track h3 a', { hasText: 'Prefeitura' }).click();
+  await shot('7d-concurso', true);
+  await page.getByRole('navigation', { name: 'Abas da trilha' }).getByRole('button', { name: 'Edital e prazos' }).click();
+  await shot('7d-edital', true);
+  await page.goto('/area/academica');
+  await page.locator('.track h3 a', { hasText: 'GEUX' }).click();
+  await shot('7d-pesquisa');
+  await page.goto('/area/academica/cronograma');
+  await shot('7d-cronograma', true);
+  await page.goto('/planejamento');
+  await shot('7d-planejamento');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/area/academica');
+  await shot('7m-academica', true);
+  await page.locator('.track h3 a', { hasText: 'Prefeitura' }).click();
+  await shot('7m-concurso', true);
+});

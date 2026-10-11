@@ -207,6 +207,13 @@ export interface Settings extends Stamped {
   scenario: ScenarioId;
   /** foto própria do cenário (Attachment kind 'photo') */
   photoAttachmentId?: number;
+  /** estudos: alarmes, revisão espaçada e pomodoro (Cronograma de estudos) */
+  study?: {
+    blockStart?: boolean; remindMin?: number; review?: boolean; pomodoro?: boolean; focusMin?: number; breakMin?: number;
+    nightly?: boolean; deadlines?: boolean; quiet?: boolean;
+    /** blocos de estudo aparecem na Agenda geral (padrão: sim) */
+    showInAgenda?: boolean;
+  };
   /** marcou "Não mostrar de novo" nas boas-vindas */
   welcomeDismissed?: boolean;
   /** cenário do Cume° (chave nova; sem ela: foto própria se houver, senão automático) */
@@ -227,6 +234,126 @@ export interface Settings extends Stamped {
   freelanceUnit?: FreelanceUnit;
   /** meta de faturamento da renda extra por mês (R$) */
   freelanceGoal?: number;
+}
+
+/* ---------- estudos: trilhas (Acadêmica) ---------- */
+export type TrackType = 'degree' | 'course' | 'extension' | 'research' | 'exam' | 'language';
+export type TopicStatus = 'todo' | 'studying' | 'studied' | 'reviewed';
+export type ArticleStatus = 'a triar' | 'lendo' | 'incluído' | 'excluído' | 'fichado';
+
+/** trilha de estudo: graduação, curso, extensão, pesquisa, concurso ou idioma (sempre na área Acadêmica) */
+export interface Track extends Stamped {
+  id?: number;
+  type: TrackType;
+  title: string;
+  /** instituição, banca, orientadora… */
+  org?: string;
+  status: 'ativa' | 'pausada' | 'concluida';
+  /** horas por semana planejadas para a trilha */
+  hoursPerWeek?: number;
+  /** próximo prazo importante (entrega, projeto final…) */
+  deadline?: string;
+  deadlineLabel?: string;
+  /** concurso: data e hora da prova; meta de acertos (%) */
+  examDate?: string;
+  examTime?: string;
+  targetAccuracy?: number;
+  /** concurso: etapas da inscrição já cumpridas */
+  steps?: string[];
+  /** datas da trilha (edital, simulados, provas) aparecem no Calendário e na Agenda gerais */
+  showInCalendar?: boolean;
+  /** alertas do edital ligados */
+  alerts?: Record<string, boolean>;
+  /** pesquisa: etapa atual (1–5) */
+  stage?: number;
+  /** pesquisa: avisar se passar N dias sem registro no diário */
+  journalAlertDays?: number;
+  /** graduação: meta de média/CR */
+  targetGrade?: number;
+  /** curso: certificado */
+  certificate?: { done?: boolean; url?: string; date?: string };
+  note?: string;
+}
+
+/** matéria (concurso), módulo (curso) ou disciplina (graduação) */
+export interface Subject extends Stamped {
+  id?: number;
+  trackId: number;
+  name: string;
+  /** concurso: peso e nº de questões na prova */
+  weight?: number;
+  questionsCount?: number;
+  /** meta de acertos (%) */
+  targetAccuracy?: number;
+  /** curso: módulo concluído */
+  done?: boolean;
+  /** graduação: nota final */
+  grade?: number;
+  order?: number;
+}
+
+export interface Topic extends Stamped {
+  id?: number;
+  subjectId: number;
+  name: string;
+  status: TopicStatus;
+  nextReviewAt?: string;
+}
+
+export interface QuestionLog extends Stamped {
+  id?: number;
+  subjectId: number;
+  topicId?: number;
+  date: string;
+  total: number;
+  correct: number;
+}
+
+export interface MockExam extends Stamped {
+  id?: number;
+  trackId: number;
+  title: string;
+  date: string;
+  total: number;
+  correct: number;
+}
+
+/** datas da trilha: edital (inscrições, boleto, prova, recursos…), provas da graduação, entregas da pesquisa */
+export interface TrackDate extends Stamped {
+  id?: number;
+  trackId: number;
+  label: string;
+  date: string;
+  dateEnd?: string;
+  time?: string;
+  kind: 'edital' | 'simulado' | 'prova' | 'entrega';
+  alert?: boolean;
+}
+
+/** fichamento de um artigo (anexo kind 'article' da trilha de pesquisa) */
+export interface ArticleNote extends Stamped {
+  id?: number;
+  attachmentId: number;
+  trackId: number;
+  status: ArticleStatus;
+  authors?: string;
+  year?: string;
+  objective?: string;
+  method?: string;
+  findings?: string;
+  usage?: string;
+  tags?: string[];
+  pages?: string;
+}
+
+/** diário de acompanhamento (pesquisa) */
+export interface JournalEntry extends Stamped {
+  id?: number;
+  trackId: number;
+  date: string;
+  text: string;
+  minutes?: number;
+  articleId?: number;
 }
 
 /* ---------- histórico e desempenho ---------- */

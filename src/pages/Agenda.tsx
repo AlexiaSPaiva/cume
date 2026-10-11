@@ -50,7 +50,8 @@ export function Agenda() {
   const [day, setDay] = useState(t0);
   const [over, setOver] = useState<string | null>(null);
 
-  const occ = occurrencesForWeek(tasks, ws);
+  // blocos de estudo podem ficar só no Cronograma (opção "Mostrar na Agenda e no Calendário gerais")
+  const occ = occurrencesForWeek(settings.study?.showInAgenda === false ? tasks.filter((t) => t.trackId == null) : tasks, ws);
   const imps = impsForWeek(imprevistos, ws);
   const planned = plannedByArea(occ);
   const impMin = sum(impByArea(imps));

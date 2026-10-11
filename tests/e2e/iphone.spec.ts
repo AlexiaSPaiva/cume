@@ -7,7 +7,7 @@ import { useBuild } from './helpers';
  */
 const ROUTES = [
   '/', '/semana', '/agenda', '/tarefas', '/tarefas?aba=lista', '/tarefas?aba=adiadas', '/tarefas?aba=lixeira', '/planejamento', '/calendario', '/metas', '/imprevistos', '/historico',
-  '/area/academica', '/area/financeiro', '/area/financeiro?aba=renda-extra', '/area/financeiro?aba=reserva', '/area/adultices',
+  '/area/academica', '/area/academica/cronograma', '/area/financeiro', '/area/financeiro?aba=renda-extra', '/area/financeiro?aba=reserva', '/area/adultices',
   '/area/adultices/cofre', '/personalizar',
 ];
 
@@ -70,6 +70,20 @@ for (const [dev, label] of [['iPhone 13', '390'], ['iPhone SE', '375'], ['iPhone
           .filter((el) => el.getBoundingClientRect().width > 0 && parseFloat(getComputedStyle(el).fontSize) < 16)
           .map((el) => (el.getAttribute('aria-label') || (el as HTMLInputElement).placeholder || el.tagName).slice(0, 24)));
         all.push(...small.map((x) => `${r}: campo "${x}" com letra < 16px (zoom do Safari)`));
+      }
+      // cada trilha de estudo (abas por tipo)
+      await page.goto('/area/academica');
+      const tracks = await page.locator('.track h3 a').evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).getAttribute('href')!));
+      for (const href of tracks) {
+        await page.goto(href);
+        const tabs = await page.getByRole('navigation', { name: 'Abas da trilha' }).getByRole('button').allInnerTexts();
+        for (let i = 0; i < tabs.length; i++) {
+          await page.getByRole('navigation', { name: 'Abas da trilha' }).getByRole('button').nth(i).click();
+          await page.waitForTimeout(200);
+          all.push(...(await problems(page)).map((p) => `${href} · ${tabs[i]}: ${p}`));
+          const wide = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+          if (wide > 1) all.push(`${href} · ${tabs[i]}: a página passa ${wide}px da largura da tela`);
+        }
       }
       // diálogos (folhas que sobem de baixo)
       await page.goto('/');

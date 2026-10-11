@@ -1,7 +1,8 @@
 import Dexie, { type EntityTable, type Transaction } from 'dexie';
 import type {
   Account, Attachment, CalendarEvent, Client, Draft, FinanceTx, FreelanceEntry, FreelanceProject, Goal, GoalRecord,
-  HistorySnapshot, Imprevisto, Metric, MetricEntry, Objective, Settings, StoredBlob, SuggestionState, Task, VaultDoc, WeekPlan,
+  ArticleNote, HistorySnapshot, Imprevisto, JournalEntry, Metric, MetricEntry, MockExam, Objective, QuestionLog, Settings, StoredBlob,
+  Subject, SuggestionState, Task, Topic, Track, TrackDate, VaultDoc, WeekPlan,
 } from './types';
 
 /**
@@ -34,6 +35,14 @@ export type MeuPlanoDB = Dexie & {
   metrics: EntityTable<Metric, 'id'>;
   metricEntries: EntityTable<MetricEntry, 'id'>;
   snapshots: EntityTable<HistorySnapshot, 'id'>;
+  tracks: EntityTable<Track, 'id'>;
+  subjects: EntityTable<Subject, 'id'>;
+  topics: EntityTable<Topic, 'id'>;
+  questionLogs: EntityTable<QuestionLog, 'id'>;
+  mockExams: EntityTable<MockExam, 'id'>;
+  trackDates: EntityTable<TrackDate, 'id'>;
+  articleNotes: EntityTable<ArticleNote, 'id'>;
+  journal: EntityTable<JournalEntry, 'id'>;
 };
 
 // nome histórico, não alterar: guarda os dados da usuária
@@ -47,12 +56,14 @@ const STAMPED_V2 = [
 /** tabelas com createdAt/updatedAt/deletedAt */
 export const STAMPED_TABLES = [
   ...STAMPED_V2, 'clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs', 'metrics', 'metricEntries', 'snapshots',
+  'tracks', 'subjects', 'topics', 'questionLogs', 'mockExams', 'trackDates', 'articleNotes', 'journal',
 ] as const;
 
 /** tabelas cujos itens podem ir para a Lixeira */
 export const TRASHABLE_TABLES = [
   'tasks', 'imprevistos', 'objectives', 'goals', 'records', 'events', 'docs', 'attachments',
   'clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs', 'metrics', 'metricEntries',
+  'tracks', 'subjects', 'topics', 'questionLogs', 'mockExams', 'trackDates', 'articleNotes', 'journal',
 ] as const;
 export type TrashableTable = (typeof TRASHABLE_TABLES)[number];
 
@@ -96,6 +107,19 @@ export const SCHEMA_V3 = {
   freelanceProjects: '++id, clientId, status, deletedAt',
   freelanceEntries: '++id, clientId, projectId, dateStart, status, dueDate, deletedAt',
   financeTxs: '++id, date, account, sourceId, deletedAt',
+};
+
+/** v5 (v7, estudos): só ACRESCENTA trilhas, matérias/módulos, tópicos, questões, simulados, datas, fichamentos e diário */
+export const SCHEMA_V5_EXTRA = {
+  tasks: '++id, area, status, date, deadline, deletedAt, freelanceEntryId, trackId',
+  tracks: '++id, type, status, deletedAt',
+  subjects: '++id, trackId, deletedAt',
+  topics: '++id, subjectId, status, deletedAt',
+  questionLogs: '++id, subjectId, date, deletedAt',
+  mockExams: '++id, trackId, date, deletedAt',
+  trackDates: '++id, trackId, date, deletedAt',
+  articleNotes: '++id, attachmentId, trackId, deletedAt',
+  journal: '++id, trackId, date, deletedAt',
 };
 
 /** v4 (v7, Histórico e desempenho): só ACRESCENTA as métricas próprias e os fechamentos mensais */
@@ -170,6 +194,7 @@ export function defineSchema(d: Dexie) {
   // nada a transformar: as tabelas novas começam vazias e os registros antigos continuam iguais
   d.version(3).stores(SCHEMA_V3);
   d.version(4).stores(SCHEMA_V4);
+  d.version(5).stores({ ...SCHEMA_V4, ...SCHEMA_V5_EXTRA });
 }
 
 function stampHooks(d: Dexie) {

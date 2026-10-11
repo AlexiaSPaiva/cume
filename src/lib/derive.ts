@@ -2,13 +2,14 @@ import type { Data } from './data';
 import type { AreaId, Task } from './types';
 import { addDays, today, weekStart } from './dates';
 import { goalPct, impByArea, impsForWeek, occurrencesForWeek, plannedByArea, sum } from './week';
+import { trackEvents } from './study';
 
 export interface Deadline { date: string; title: string; area: AreaId; kind: string }
 
 /** prazos e vencimentos (eventos + prazos de tarefas) nos próximos `days` dias */
 export function upcomingDeadlines(d: Data, days: number, area?: AreaId): Deadline[] {
   const t = today(), lim = addDays(t, days);
-  const fromEvents = d.events
+  const fromEvents = [...d.events, ...trackEvents(d)]
     .filter((e) => e.kind !== 'evento' || e.source === 'local')
     .map((e) => ({ date: e.date, title: e.title, area: e.area, kind: e.kind }));
   const fromTasks = d.tasks

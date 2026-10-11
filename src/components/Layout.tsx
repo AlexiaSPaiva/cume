@@ -35,6 +35,8 @@ const NEW = new Set(['/historico']);
 
 /** modo foco da página inteira (⛶ no topo): esconde menu, cenário e rodapé */
 const PageFocus = createContext<ReturnType<typeof useFocusMode> | null>(null);
+/** telas que abrem direto em modo foco (ex.: Cronograma de estudos) */
+export const usePageFocus = () => useContext(PageFocus);
 
 /**
  * Casca do app em três tamanhos:
@@ -47,7 +49,7 @@ export function Layout() {
   const { settings } = data;
   const ui = useUI();
   const loc = useLocation();
-  useReminders(data.tasks, ui.toast);
+  useReminders(data, ui.toast);
   // fechamento automático do mês (dia 1º às 08:00): roda ao abrir o app
   useEffect(() => { void closeMonth(data).catch((e) => console.error('[meuplano] fechamento', e)); }, [data]);
   const temp = useTemperature(settings.city.lat, settings.city.lon);

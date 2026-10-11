@@ -13,6 +13,8 @@ import { impsForWeek, occurrencesForWeek, plannedByArea, sum, capacityMin } from
 import { TaskMenu } from '../components/ItemMenu';
 import type { AreaId, WeekPlan } from '../lib/types';
 import { rescheduleTask } from '../lib/tasks';
+import { Link } from 'react-router-dom';
+import { studyMinutesWeek, TRACK_TYPES } from '../lib/study';
 
 export function Planejamento() {
   const data = useData();
@@ -26,7 +28,11 @@ export function Planejamento() {
   const nextOcc = occurrencesForWeek(tasks, next);
   const nextPlanned = plannedByArea(nextOcc);
   const stored = plans.find((p) => p.weekStart === next);
-  const plan: WeekPlan = stored ?? { weekStart: next, hoursByArea: planHours(data, next).hours, top3: [] };
+  const base: WeekPlan = stored ?? { weekStart: next, hoursByArea: planHours(data, next).hours, top3: [] };
+  // com trilhas de estudo, as horas da Acadêmica vêm do Cronograma de estudos (definidas lá)
+  const hasTracks = data.tracks.some((t) => t.status === 'ativa');
+  const studyNext = studyMinutesWeek(data, next);
+  const plan: WeekPlan = hasTracks ? { ...base, hoursByArea: { ...base.hoursByArea, academica: Math.round(studyNext / 60) } } : base;
   const capH = capacityMin(settings) / 60;
   const plannedH = sum(plan.hoursByArea);
   // backlog: sem dia + as adiadas (com o selo "adiada Nx"), para encaixar na semana que vem
@@ -70,7 +76,7 @@ export function Planejamento() {
         <Stat k="Semana que vem" v={`${ddmm(next)} – ${ddmm(addDays(next, 6))}`} s="horas por área" />
         <Stat k="Horas planejadas" v={`${plannedH}h`} s={`de ${capH}h possíveis`} />
         <Stat k="Horas livres" v={`${Math.max(0, capH - plannedH)}h`} s="para respirar" />
-        <Stat k="Top 3" v={plan.top3.length} s="prioridades da semana" />
+        <Stat k="Estudo planejado" v={`${Math.round(studyNext / 6) / 10}h`.replace('.', ',')} s={`em ${new Set(nextOcc.filter((o) => o.task.trackId != null).map((o) => o.task.trackId)).size} trilhas · Cronograma`} />
         <Stat k="Backlog" v={backlog.length} s="itens para encaixar" />
       </Stats>
 
@@ -83,9 +89,12 @@ export function Planejamento() {
               <div key={a.id}>
                 <div className="row">
                   <b style={{ fontSize: '0.8125rem' }}>{a.name}</b>
+                  {a.id === 'academica' && hasTracks && <Link to="/area/academica/cronograma?foco=1" className="tag info" style={{ textDecoration: 'none' }}>via Cronograma de estudos</Link>}
                   <span className="right row" style={{ gap: 6 }}>
-                    <button className="btn sm" onClick={() => bump(a.id, -1)} aria-label={`menos horas em ${a.name}`}>-</button>
-                    <button className="btn sm" onClick={() => bump(a.id, 1)} aria-label={`mais horas em ${a.name}`}>+</button>
+                    {!(a.id === 'academica' && hasTracks) && <>
+                      <button className="btn sm" onClick={() => bump(a.id, -1)} aria-label={`menos horas em ${a.name}`}>-</button>
+                      <button className="btn sm" onClick={() => bump(a.id, 1)} aria-label={`mais horas em ${a.name}`}>+</button>
+                    </>}
                     <b style={{ color: a.color, fontSize: '0.9375rem', width: 38, textAlign: 'right' }}>{plan.hoursByArea[a.id]}h</b>
                   </span>
                 </div>
@@ -100,6 +109,8 @@ export function Planejamento() {
             {below.length > 0 && <b className="small" style={{ color: 'var(--bad)' }}>{below.map((a) => a.name).join(' e ')} {below.length > 1 ? 'estão' : 'está'} abaixo do foco desejado</b>}
           </div>
         </Card>
+
+        <StudyWeek next={next} />
 
         <Card title="Top 3 da semana">
           <div className="list" style={{ gap: 12 }}>
@@ -176,5 +187,36 @@ export function Planejamento() {
       </div>
       <div className="row small muted"><AreaDot area="academica" /> As horas por área são a sua meta para a semana; os blocos agendados aparecem na Agenda e em Minha semana.</div>
     </Page>
+  );
+}
+
+/** Estudos da semana (v7, §4b): o resumo do Cronograma de estudos da semana que vem */
+function StudyWeek({ next }: { next: string }) {
+  const d = useData();
+  if (!d.tracks.length) return null;
+  const occ = occurrencesForWeek(d.tasks, next).filter((o) => o.task.trackId != null && o.task.status !== 'adiada');
+  const total = occ.reduce((s, o) => s + o.durationMin, 0);
+  const byType = TRACK_TYPES.map((tt) => ({ tt, min: occ.filter((o) => d.tracks.find((t) => t.id === o.task.trackId)?.type === tt.id).reduce((s, o) => s + o.durationMin, 0) })).filter((x) => x.min > 0);
+  const end = addDays(next, 6);
+  const highlights = [
+    ...d.trackDates.filter((x) => x.date >= next && x.date <= end).map((x) => ({ date: x.date, text: `${x.label}${x.time ? ` · ${x.time}` : ''}`, prio: x.kind === 'prova' || x.kind === 'simulado' })),
+    ...d.tracks.filter((t) => t.examDate && t.examDate >= next && t.examDate <= end).map((t) => ({ date: t.examDate!, text: `Prova · ${t.title}`, prio: true })),
+    ...d.tracks.filter((t) => t.deadline && t.deadline >= next && t.deadline <= end).map((t) => ({ date: t.deadline!, text: `${t.deadlineLabel ?? 'Entrega'} · ${t.title}`, prio: false })),
+  ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
+  return (
+    <Card title="Estudos da semana">
+      <div className="row" style={{ alignItems: 'baseline', gap: 8 }}>
+        <b className="big">{Math.round(total / 6) / 10}h</b><span className="muted small">de estudo em {occ.length} {occ.length === 1 ? 'bloco' : 'blocos'}</span>
+      </div>
+      <div className="stack-bar" aria-hidden="true">{byType.map((x) => <i key={x.tt.id} style={{ flex: x.min, background: x.tt.color }} />)}</div>
+      <p className="muted small" style={{ margin: '6px 0 10px' }}>{byType.map((x) => `${x.tt.plural} ${dur(x.min)}`).join(' · ') || 'Nenhum bloco de estudo marcado para a semana que vem.'}</p>
+      <div className="list">
+        {highlights.map((h, i) => (
+          <div key={i} className="row small"><span className="dotc" style={{ background: h.prio ? 'var(--accent)' : '#d197ae' }} /><span className="grow">{h.text} · {DOW_SHORT[parse(h.date).getDay()].toLowerCase()} {ddmm(h.date)}</span>{h.prio && <span className="tag bad">prioridade</span>}</div>
+        ))}
+      </div>
+      <Link to="/area/academica/cronograma?foco=1" className="btn gold big" style={{ marginTop: 12, textDecoration: 'none' }}>Abrir planejamento de estudos ›</Link>
+      <p className="muted small" style={{ textAlign: 'center', margin: '6px 0 0' }}>abre o Cronograma em modo foco · ✕ volta para cá</p>
+    </Card>
   );
 }

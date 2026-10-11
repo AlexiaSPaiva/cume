@@ -3,7 +3,7 @@ import { useBuild } from './helpers';
 
 const ROUTES = [
   '/', '/semana', '/agenda', '/tarefas', '/tarefas?aba=lista', '/tarefas?aba=adiadas', '/tarefas?aba=lixeira', '/planejamento', '/calendario', '/metas', '/imprevistos',
-  '/area/academica', '/area/profissional', '/area/saude', '/area/pessoal', '/area/financeiro', '/area/adultices',
+  '/area/academica', '/area/academica/cronograma', '/historico', '/area/profissional', '/area/saude', '/area/pessoal', '/area/financeiro', '/area/adultices',
   '/area/adultices/cofre', '/personalizar',
 ];
 const WIDTHS = [360, 767, 768, 1199, 1200, 1280];

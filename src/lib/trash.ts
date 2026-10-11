@@ -9,6 +9,28 @@ async function dependents(d: MeuPlanoDB, table: TrashableTable, id: number): Pro
     const doc = await d.docs.get(id);
     return doc?.attachmentId ? [['attachments', doc.attachmentId]] : [];
   }
+  if (table === 'tracks') {
+    // a trilha leva junto matérias, tópicos, questões, simulados, datas, fichamentos, diário, anexos e blocos de estudo
+    const out: [TrashableTable, number][] = [];
+    for (const s of await d.subjects.where('trackId').equals(id).toArray()) {
+      out.push(['subjects', s.id!]);
+      for (const t of await d.topics.where('subjectId').equals(s.id!).toArray()) out.push(['topics', t.id!]);
+      for (const q of await d.questionLogs.where('subjectId').equals(s.id!).toArray()) out.push(['questionLogs', q.id!]);
+    }
+    for (const x of await d.mockExams.where('trackId').equals(id).toArray()) out.push(['mockExams', x.id!]);
+    for (const x of await d.trackDates.where('trackId').equals(id).toArray()) out.push(['trackDates', x.id!]);
+    for (const x of await d.articleNotes.where('trackId').equals(id).toArray()) out.push(['articleNotes', x.id!]);
+    for (const x of await d.journal.where('trackId').equals(id).toArray()) out.push(['journal', x.id!]);
+    for (const x of await d.attachments.where('[ownerType+ownerId]').equals(['track', id]).toArray()) out.push(['attachments', x.id!]);
+    for (const x of await d.tasks.where('trackId').equals(id).toArray()) out.push(['tasks', x.id!]);
+    return out;
+  }
+  if (table === 'subjects') {
+    const out: [TrashableTable, number][] = [];
+    for (const t of await d.topics.where('subjectId').equals(id).toArray()) out.push(['topics', t.id!]);
+    for (const q of await d.questionLogs.where('subjectId').equals(id).toArray()) out.push(['questionLogs', q.id!]);
+    return out;
+  }
   if (table === 'metrics') {
     // os valores lançados são da métrica: saem e voltam juntos
     const es = await d.metricEntries.where('metricId').equals(id).toArray();
@@ -70,6 +92,8 @@ const LABEL: Record<TrashableTable, string> = {
   events: 'Evento', docs: 'Documento', attachments: 'Arquivo',
   clients: 'Cliente', freelanceProjects: 'Projeto de renda extra', freelanceEntries: 'Trabalho de renda extra', financeTxs: 'Lançamento',
   metrics: 'Métrica', metricEntries: 'Valor de métrica',
+  tracks: 'Trilha', subjects: 'Matéria/módulo', topics: 'Tópico', questionLogs: 'Questões', mockExams: 'Simulado', trackDates: 'Data',
+  articleNotes: 'Fichamento', journal: 'Registro do diário',
 };
 
 export function daysLeft(deletedAt: string, now = Date.now()): number {
@@ -86,6 +110,10 @@ export async function listTrash(d: MeuPlanoDB): Promise<TrashItem[]> {
       // blocos de agenda e lançamentos de um trabalho de renda extra aparecem só pelo trabalho
       if ((t === 'tasks' && r.freelanceEntryId) || (t === 'financeTxs' && r.source === 'renda_extra')) continue;
       if (t === 'metricEntries' && rows.length && (await d.metrics.get(r.metricId))?.deletedAt === r.deletedAt) continue;
+      // o que foi junto com uma trilha (ou matéria) aparece só por ela
+      if (r.trackId && t !== 'tracks' && (await d.tracks.get(r.trackId))?.deletedAt === r.deletedAt) continue;
+      if (t === 'attachments' && r.ownerType === 'track' && (await d.tracks.get(r.ownerId))?.deletedAt === r.deletedAt) continue;
+      if ((t === 'topics' || t === 'questionLogs') && (await d.subjects.get(r.subjectId))?.deletedAt === r.deletedAt) continue;
       out.push({ table: t, id: r.id, label: `${LABEL[t]} · ${r.title ?? r.name ?? r.description ?? r.note ?? `#${r.id}`}`, deletedAt: r.deletedAt, daysLeft: daysLeft(r.deletedAt) });
     }
   }

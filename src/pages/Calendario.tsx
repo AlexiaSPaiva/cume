@@ -10,9 +10,13 @@ import { addDays, ddmm, DOW_SHORT, iso, MONTHS, monthYear, parse, today } from '
 import { connectGoogle, isConnected, listCalendars, syncCalendars, type GCal } from '../lib/google';
 import { ItemMenu } from '../components/ItemMenu';
 import type { AreaId, CalendarEvent, CalendarKind } from '../lib/types';
+import { trackEvents } from '../lib/study';
 
 export function Calendario() {
-  const { events, tasks, settings } = useData();
+  const data = useData();
+  const { tasks, settings } = data;
+  // datas das trilhas (edital, provas, entregas) entram junto, se a trilha pedir
+  const events = [...data.events, ...trackEvents(data)];
   const ui = useUI();
   const t0 = today();
   const [month, setMonth] = useState(t0.slice(0, 7) + '-01');

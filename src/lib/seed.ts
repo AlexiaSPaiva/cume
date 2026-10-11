@@ -182,6 +182,7 @@ export async function seedExample(target: MeuPlanoDB = db): Promise<boolean> {
   });
   await seedFreelance(target);
   await seedMetrics(target);
+  await seedStudies(target);
   // conta de demonstração já entra direto (as boas-vindas continuam em Personalizar)
   if (await target.settings.get('me')) await target.settings.update('me', { welcomeDismissed: true });
   return true;
@@ -239,4 +240,49 @@ async function seedFreelance(target: MeuPlanoDB) {
   await set('Site institucional', { status: 'concluido', progress: 100 });
   await set('Relatórios mensais', { status: 'concluido', progress: 100 });
   if (await target.settings.get('me')) await target.settings.update('me', { freelanceGoal: 1500 });
+}
+
+/** trilhas de estudo de exemplo (Acadêmica): concurso, curso, pesquisa e graduação */
+async function seedStudies(target: MeuPlanoDB) {
+  const t0 = today();
+  const mon = weekStart(t0);
+  const exam = (await target.tracks.add({
+    type: 'exam', title: 'Prefeitura do Rio · Analista', org: 'banca exemplo', status: 'ativa', hoursPerWeek: 8,
+    examDate: addDays(t0, 50), examTime: '08:00', targetAccuracy: 75, showInCalendar: true, steps: ['Edital lido', 'Inscrição feita'],
+  })) as number;
+  const subjects: [string, number, number, string[], [number, number]][] = [
+    ['Banco de Dados', 15, 2, ['Modelo relacional', 'Normalização (1FN–FNBC)', 'SQL: joins e subconsultas', 'Transações e ACID', 'Índices e otimização', 'NoSQL'], [27, 50]],
+    ['Engenharia de Software', 12, 2, ['Requisitos', 'Processos ágeis', 'Testes', 'UML'], [30, 49]],
+    ['Português', 10, 1, ['Crase', 'Regência', 'Concordância', 'Interpretação'], [40, 50]],
+    ['Raciocínio Lógico', 8, 1, ['Proposições', 'Conjuntos', 'Probabilidade'], [36, 50]],
+  ];
+  for (const [name, q, w, topics, [correct, total]] of subjects) {
+    const sid = (await target.subjects.add({ trackId: exam, name, questionsCount: q, weight: w })) as number;
+    await target.topics.bulkAdd(topics.map((n, i) => ({ subjectId: sid, name: n, status: i < topics.length / 2 ? 'studied' as const : 'todo' as const })));
+    await target.questionLogs.add({ subjectId: sid, date: addDays(t0, -3), total, correct });
+    await target.tasks.add({ title: name, area: 'academica', status: 'afazer', priority: 'media', date: addDays(mon, subjects.findIndex((x) => x[0] === name) + 1), start: '20:00', durationMin: 60, trackId: exam, subjectId: sid, remindMin: 10 });
+  }
+  await target.trackDates.bulkAdd([
+    { trackId: exam, label: 'Inscrições', date: addDays(t0, -20), dateEnd: addDays(t0, -5), kind: 'edital' },
+    { trackId: exam, label: 'Cartão de confirmação', date: addDays(t0, 40), kind: 'edital', alert: true },
+    { trackId: exam, label: 'Simulado 1', date: addDays(t0, 6), time: '14:00', kind: 'simulado' },
+  ]);
+  await target.mockExams.add({ trackId: exam, title: 'Simulado diagnóstico', date: addDays(t0, -10), total: 60, correct: 37 });
+
+  const course = (await target.tracks.add({ type: 'course', title: 'Python para Dados', status: 'ativa', hoursPerWeek: 3, deadline: addDays(t0, 45), deadlineLabel: 'Projeto final' })) as number;
+  const mods = ['Fundamentos', 'Pandas', 'Visualização', 'Estatística', 'Projeto'];
+  await target.subjects.bulkAdd(mods.map((n, i) => ({ trackId: course, name: n, order: i + 1, done: i < 2 })));
+  await target.tasks.add({ title: 'Python · Visualização', area: 'academica', status: 'afazer', priority: 'media', date: addDays(mon, 2), start: '12:30', durationMin: 45, trackId: course });
+
+  const research = (await target.tracks.add({ type: 'research', title: 'GEUX · iniciação científica', org: 'orientadora', status: 'ativa', hoursPerWeek: 6, stage: 2, deadline: addDays(t0, 3), deadlineLabel: 'Relatório parcial' })) as number;
+  await target.journal.bulkAdd([
+    { trackId: research, date: addDays(t0, -2), text: 'Triagem de mais 8 artigos. 3 excluídos pelo recorte.', minutes: 90 },
+    { trackId: research, date: addDays(t0, -6), text: 'Reunião com a orientadora: manter só estudos com usuários reais.', minutes: 120 },
+  ]);
+
+  const degree = (await target.tracks.add({ type: 'degree', title: 'Mackenzie', status: 'ativa', hoursPerWeek: 6, targetGrade: 8 })) as number;
+  await target.subjects.bulkAdd([
+    { trackId: degree, name: 'Cálculo II', grade: 8.5 }, { trackId: degree, name: 'Estruturas de Dados', grade: 7.5 }, { trackId: degree, name: 'Banco de Dados I' },
+  ]);
+  await target.trackDates.add({ trackId: degree, label: 'Prova de Cálculo II', date: addDays(t0, 9), kind: 'prova' });
 }

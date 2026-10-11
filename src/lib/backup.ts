@@ -12,6 +12,7 @@ const FORMAT = 'meuplano-backup';
 const NUMERIC_TABLES = [
   'objectives', 'goals', 'tasks', 'records', 'imprevistos', 'events', 'docs', 'attachments',
   'clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs', 'metrics', 'metricEntries', 'snapshots',
+  'tracks', 'subjects', 'topics', 'questionLogs', 'mockExams', 'trackDates', 'articleNotes', 'journal',
 ] as const;
 const KEYED_TABLES = ['plans', 'suggestions', 'settings'] as const;
 type NumTable = (typeof NUMERIC_TABLES)[number];
@@ -87,7 +88,7 @@ export async function importBackup(d: MeuPlanoDB, zip: Uint8Array): Promise<Impo
     }
 
     const m = (t: NumTable, v: unknown) => (typeof v === 'number' ? maps[t].get(v) ?? v : v);
-    const ownerTable: Record<string, NumTable> = { doc: 'docs', task: 'tasks', goal: 'goals', track: 'tasks' };
+    const ownerTable: Record<string, NumTable> = { doc: 'docs', task: 'tasks', goal: 'goals', track: 'tracks' };
     const fix = (t: string, r: Row): Row => {
       const o: Row = { ...r };
       if (t !== 'settings' && t !== 'plans' && t !== 'suggestions') o.id = maps[t as NumTable].get(r.id!) ?? r.id;
@@ -96,6 +97,12 @@ export async function importBackup(d: MeuPlanoDB, zip: Uint8Array): Promise<Impo
       if (t === 'tasks') { o.goalId = m('goals', r.goalId); o.freelanceEntryId = m('freelanceEntries', r.freelanceEntryId); }
       if (t === 'freelanceProjects') o.clientId = m('clients', r.clientId);
       if (t === 'metricEntries') o.metricId = m('metrics', r.metricId);
+      if (['subjects', 'mockExams', 'trackDates', 'articleNotes', 'journal'].includes(t)) o.trackId = m('tracks', r.trackId);
+      if (t === 'tasks') { o.trackId = m('tracks', r.trackId); o.subjectId = m('subjects', r.subjectId); o.topicId = m('topics', r.topicId); }
+      if (t === 'topics' || t === 'questionLogs') o.subjectId = m('subjects', r.subjectId);
+      if (t === 'questionLogs') o.topicId = m('topics', r.topicId);
+      if (t === 'articleNotes') o.attachmentId = m('attachments', r.attachmentId);
+      if (t === 'journal') o.articleId = m('attachments', r.articleId);
       if (t === 'freelanceEntries') {
         o.clientId = m('clients', r.clientId);
         o.projectId = m('freelanceProjects', r.projectId);
