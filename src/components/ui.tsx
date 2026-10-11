@@ -167,6 +167,7 @@ const PATHS: Record<string, string> = {
   agenda: 'M5 5h14v15H5zM5 10h14M9 3v4M15 3v4M8 14h3M8 17h6',
   tasks: 'M4 6h3M4 12h3M4 18h3M10 6h10M10 12h10M10 18h10',
   plan: 'M4 18l5-12 4 8 3-5 4 9',
+  history: 'M3.5 12a8.5 8.5 0 1 0 2.5-6M3 4v4.5h4.5M12 7.5V12l3 2',
   calendar: 'M4 6h16v14H4zM4 11h16M8 3v5M16 3v5',
   target: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z',
   zap: 'M13 3 5 14h6l-1 7 8-11h-6z',

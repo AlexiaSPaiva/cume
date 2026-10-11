@@ -169,3 +169,37 @@ test('capturas marca Cume°', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 780 });
   await shot('c-login-m');
 });
+
+test('capturas histórico', async ({ page }) => {
+  const dir = process.env.SHOTS;
+  const shot = async (name: string, full = false) => {
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: `${dir}/${name}.png`, fullPage: full });
+  };
+  await useBuild(page, 'a');
+  await page.goto('/');
+  await page.getByLabel('Como quer ser chamada').fill('Alexia');
+  await page.getByLabel('E-mail').fill('teste@meuplano.test');
+  await page.getByLabel('Senha', { exact: true }).fill('senha-de-teste-123');
+  await page.getByLabel('Confirmar senha').fill('senha-de-teste-123');
+  await page.getByRole('button', { name: 'Criar e entrar' }).click();
+  await expect(page.getByRole('heading', { name: /Olá, Alexia/ })).toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/historico?periodo=semana');
+  await shot('5d-semana', true);
+  await page.goto('/historico');
+  await shot('5d-mes', true);
+  await page.goto('/historico?periodo=ano');
+  await shot('5d-ano');
+  await page.setViewportSize({ width: 900, height: 1000 });
+  await page.goto('/historico');
+  await shot('5t-mes', true);
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto('/historico');
+  await shot('5m-mes', true);
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.emulateMedia({ media: 'print' });
+  await page.goto('/historico');
+  await shot('5p-print', true);
+});

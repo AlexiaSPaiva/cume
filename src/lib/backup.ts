@@ -11,7 +11,7 @@ import type { MeuPlanoDB } from './db';
 const FORMAT = 'meuplano-backup';
 const NUMERIC_TABLES = [
   'objectives', 'goals', 'tasks', 'records', 'imprevistos', 'events', 'docs', 'attachments',
-  'clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs',
+  'clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs', 'metrics', 'metricEntries', 'snapshots',
 ] as const;
 const KEYED_TABLES = ['plans', 'suggestions', 'settings'] as const;
 type NumTable = (typeof NUMERIC_TABLES)[number];
@@ -95,6 +95,7 @@ export async function importBackup(d: MeuPlanoDB, zip: Uint8Array): Promise<Impo
       if (t === 'records') o.goalId = m('goals', r.goalId);
       if (t === 'tasks') { o.goalId = m('goals', r.goalId); o.freelanceEntryId = m('freelanceEntries', r.freelanceEntryId); }
       if (t === 'freelanceProjects') o.clientId = m('clients', r.clientId);
+      if (t === 'metricEntries') o.metricId = m('metrics', r.metricId);
       if (t === 'freelanceEntries') {
         o.clientId = m('clients', r.clientId);
         o.projectId = m('freelanceProjects', r.projectId);

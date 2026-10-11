@@ -201,6 +201,38 @@ export interface Settings extends Stamped {
   freelanceGoal?: number;
 }
 
+/* ---------- histórico e desempenho ---------- */
+export type HistPeriod = 'dia' | 'semana' | 'mes' | 'ano';
+export type MetricAggregation = 'sum' | 'avg' | 'last';
+
+/** métrica criada pela usuária (as do sistema são calculadas, não ficam salvas) */
+export interface Metric extends Stamped {
+  id?: number;
+  name: string;
+  unit: string;
+  area?: AreaId;
+  aggregation: MetricAggregation;
+  /** quanto maior, melhor (padrão); false = quanto menor, melhor (ex.: tempo de tela) */
+  higherIsBetter?: boolean;
+  /** meta por período, para "comparar com: meta" */
+  target?: number;
+}
+
+export interface MetricEntry extends Stamped {
+  id?: number;
+  metricId: number;
+  date: string;
+  value: number;
+}
+
+/** fechamento automático (todo dia 1º às 08:00): retrato do mês que terminou */
+export interface HistorySnapshot extends Stamped {
+  id?: number;
+  period: HistPeriod;
+  start: string;
+  data: Record<string, unknown>;
+}
+
 /* ---------- renda extra (aba do Financeiro) ---------- */
 export type FreelanceUnit = 'days' | 'hours';
 export type Billing = 'day' | 'hour' | 'fixed';

@@ -3,8 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
 import { findRecurring, type RecurringSuggestion } from './recurrence';
 import type {
-  Attachment, CalendarEvent, Client, FinanceTx, FreelanceEntry, FreelanceProject, Goal, Imprevisto, Objective, Settings,
-  SuggestionState, Task, VaultDoc, WeekPlan,
+  Attachment, CalendarEvent, Client, FinanceTx, FreelanceEntry, FreelanceProject, Goal, GoalRecord, HistorySnapshot, Imprevisto,
+  Metric, MetricEntry, Objective, Settings, SuggestionState, Task, VaultDoc, WeekPlan,
 } from './types';
 
 export interface Data {
@@ -25,6 +25,11 @@ export interface Data {
   entries: FreelanceEntry[];
   /** lançamentos do saldo e da Reserva */
   txs: FinanceTx[];
+  /** histórico: registros das metas, métricas próprias e seus valores, fechamentos mensais */
+  records: GoalRecord[];
+  metrics: Metric[];
+  metricEntries: MetricEntry[];
+  snapshots: HistorySnapshot[];
 }
 
 const Ctx = createContext<Data | null>(null);
@@ -45,6 +50,10 @@ export function DataProvider({ settings, fallback = null, children }: { settings
   const projects = useLiveQuery(() => db.freelanceProjects.toArray().then(live), []);
   const entries = useLiveQuery(() => db.freelanceEntries.toArray().then(live), []);
   const txs = useLiveQuery(() => db.financeTxs.toArray().then(live), []);
+  const records = useLiveQuery(() => db.records.toArray().then(live), []);
+  const metrics = useLiveQuery(() => db.metrics.toArray().then(live), []);
+  const metricEntries = useLiveQuery(() => db.metricEntries.toArray().then(live), []);
+  const snapshots = useLiveQuery(() => db.snapshots.toArray(), []);
 
   const suggestions = useMemo(
     () => (imprevistos && suggestionStates && tasks ? findRecurring(imprevistos, suggestionStates, tasks, settings.recurrenceThreshold) : []),
@@ -52,11 +61,11 @@ export function DataProvider({ settings, fallback = null, children }: { settings
   );
 
   if (!tasks || !imprevistos || !objectives || !goals || !events || !docs || !attachments || !plans || !suggestionStates
-    || !clients || !projects || !entries || !txs) return fallback;
+    || !clients || !projects || !entries || !txs || !records || !metrics || !metricEntries || !snapshots) return fallback;
   return (
     <Ctx.Provider value={{
       settings, tasks, imprevistos, objectives, goals, events, docs, attachments, plans, suggestionStates, suggestions,
-      clients, projects, entries, txs,
+      clients, projects, entries, txs, records, metrics, metricEntries, snapshots,
     }}>
       {children}
     </Ctx.Provider>

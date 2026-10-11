@@ -12,6 +12,7 @@ import { Agenda } from './pages/Agenda';
 import { AreaPanel } from './pages/AreaPanel';
 import { Calendario } from './pages/Calendario';
 import { Cofre } from './pages/Cofre';
+import { Historico } from './pages/Historico';
 import { Imprevistos } from './pages/Imprevistos';
 import { Inicio } from './pages/Inicio';
 import { Login } from './pages/Login';
@@ -45,6 +46,7 @@ export function App() {
               <Route path="calendario" element={<Calendario />} />
               <Route path="metas" element={<Metas />} />
               <Route path="imprevistos" element={<Imprevistos />} />
+              <Route path="historico" element={<Historico />} />
               <Route path="area/adultices/cofre" element={<Cofre />} />
               <Route path="area/:id" element={<AreaPanel />} />
               <Route path="personalizar" element={<Personalizar onLogout={() => setSession(false)} />} />

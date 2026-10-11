@@ -2,15 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { Data } from '../../src/lib/data';
 import { planHours, toPercents } from '../../src/lib/derive';
 import { addDays, today, weekStart } from '../../src/lib/dates';
-import { defaultSettings } from '../../src/lib/seed';
+import { emptyData } from './helpers';
 import type { Task, WeekPlan } from '../../src/lib/types';
 
 function data(p: { tasks?: Task[]; plans?: WeekPlan[] }): Data {
-  return {
-    settings: defaultSettings('Teste'), tasks: p.tasks ?? [], plans: p.plans ?? [], imprevistos: [], objectives: [], goals: [],
-    events: [], docs: [], attachments: [], suggestionStates: [], suggestions: [],
-    clients: [], projects: [], entries: [], txs: [],
-  };
+  return emptyData({ tasks: p.tasks ?? [], plans: p.plans ?? [] });
 }
 
 const next = addDays(weekStart(today()), 7);

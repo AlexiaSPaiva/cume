@@ -10,7 +10,7 @@ describe('migração de schema', () => {
     await makeV1(name);
     const d = open(name);
     await d.open();
-    expect(d.verno).toBe(3); // v1 → v2 → v3 de uma vez
+    expect(d.verno).toBe(4); // v1 → v2 → v3 → v4 de uma vez
 
     // nada some
     expect(await d.tasks.count()).toBe(2);
@@ -61,7 +61,7 @@ describe('migração de schema', () => {
     b.close();
   });
 
-  it('v2 → v3 (renda extra) só acrescenta tabelas: tudo o que existia continua igual', async () => {
+  it('v2 → atual (renda extra e histórico) só acrescenta tabelas: tudo o que existia continua igual', async () => {
     const name = uniqueName('mig23');
     await makeV1(name);
     // abre só até a v2, como o app publicado antes desta versão
@@ -74,15 +74,17 @@ describe('migração de schema', () => {
 
     const d = open(name);
     await d.open();
-    expect(d.verno).toBe(3);
+    expect(d.verno).toBe(4);
     expect(await d.tasks.toArray()).toEqual(before.tasks);
     expect(await d.docs.toArray()).toEqual(before.docs);
     expect(await d.attachments.toArray()).toEqual(before.atts);
-    for (const t of ['clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs'] as const) expect(await d.table(t).count()).toBe(0);
+    for (const t of ['clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs', 'metrics', 'metricEntries', 'snapshots'] as const) {
+      expect(await d.table(t).count()).toBe(0);
+    }
     d.close();
   });
 
-  it('uma migração futura (v4) mantém anexos, arquivos e notas', async () => {
+  it('uma migração futura (v5) mantém anexos, arquivos e notas', async () => {
     const name = uniqueName('mig3');
     await makeV1(name);
     const v2 = openDb(name);
@@ -93,13 +95,13 @@ describe('migração de schema', () => {
     // simula a próxima versão do app: nova tabela + transformação de um campo
     const v3 = new Dexie(name);
     defineSchema(v3);
-    v3.version(4).stores({ journal: '++id, trackId' }).upgrade(async (tx) => {
+    v3.version(5).stores({ journal: '++id, trackId' }).upgrade(async (tx) => {
       await tx.table('tasks').toCollection().modify((t: Record<string, unknown>) => {
         t.postponeCount = (t.postponedCount as number | undefined) ?? 0;
       });
     });
     await v3.open();
-    expect(v3.verno).toBe(4);
+    expect(v3.verno).toBe(5);
     const tasks = await v3.table('tasks').toArray();
     expect(tasks.map((t) => t.title)).toContain('Nota: ler paper ViT');
     expect(tasks.find((t) => t.title === 'Corrida no parque')?.postponeCount).toBe(2);

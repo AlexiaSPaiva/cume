@@ -23,6 +23,7 @@ export async function isEmpty(target: MeuPlanoDB = db): Promise<boolean> {
   const t = target;
   const counts = await Promise.all([
     t.tasks, t.imprevistos, t.objectives, t.goals, t.records, t.events, t.docs, t.attachments, t.clients, t.freelanceEntries, t.financeTxs,
+    t.metrics, t.metricEntries,
   ].map((x) => x.count()));
   return counts.every((c) => c === 0);
 }
@@ -177,7 +178,22 @@ export async function seedExample(target: MeuPlanoDB = db): Promise<boolean> {
     });
   });
   await seedFreelance(target);
+  await seedMetrics(target);
   return true;
+}
+
+/** métricas próprias de exemplo (Histórico): sono médio e páginas lidas nos últimos ~4 meses */
+async function seedMetrics(target: MeuPlanoDB) {
+  const sono = (await target.metrics.add({ name: 'Sono médio', unit: 'h', area: 'saude', aggregation: 'avg', target: 7.5 })) as number;
+  const pags = (await target.metrics.add({ name: 'Páginas lidas', unit: 'págs', area: 'academica', aggregation: 'sum', target: 400 })) as number;
+  const t0 = today();
+  const rows = [];
+  for (let i = 1; i <= 120; i += 3) {
+    const date = addDays(t0, -i);
+    rows.push({ metricId: sono, date, value: Math.round((6 + ((i * 7) % 15) / 10) * 10) / 10 });
+    rows.push({ metricId: pags, date, value: 20 + ((i * 13) % 30) });
+  }
+  await target.metricEntries.bulkAdd(rows);
 }
 
 /** renda extra de exemplo (aba do Financeiro): meses anteriores pagos + trabalhos deste mês */

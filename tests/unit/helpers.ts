@@ -1,5 +1,6 @@
 import Dexie from 'dexie';
 import { openDb, SCHEMA_V1, type MeuPlanoDB } from '../../src/lib/db';
+import { defaultSettings } from '../../src/lib/seed';
 
 export const PDF_BYTES = new TextEncoder().encode('%PDF-1.4\n% teste MeuPlano\n1 0 obj << /Type /Catalog >> endobj\n%%EOF\n');
 
@@ -43,4 +44,14 @@ export async function makeV1(name: string) {
 
 export function open(name: string): MeuPlanoDB {
   return openDb(name);
+}
+
+/** um Data vazio para testar as contas (derive, histórico) sem banco */
+export function emptyData(over: Partial<import('../../src/lib/data').Data> = {}): import('../../src/lib/data').Data {
+  return {
+    settings: defaultSettings('Teste'), tasks: [], plans: [], imprevistos: [], objectives: [], goals: [], events: [], docs: [],
+    attachments: [], suggestionStates: [], suggestions: [], clients: [], projects: [], entries: [], txs: [],
+    records: [], metrics: [], metricEntries: [], snapshots: [],
+    ...over,
+  };
 }

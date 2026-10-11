@@ -2,7 +2,9 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AREAS, AREA } from '../lib/areas';
 import { useData } from '../lib/data';
-import { addDays, ddmm, DOW_LONG, dur, longDate, relDays, today } from '../lib/dates';
+import { addDays, ddmm, DOW_LONG, dur, longDate, MONTHS, parse, relDays, today } from '../lib/dates';
+import { closingData, fmtH, monthToClose, periodRange } from '../lib/history';
+import type { Data } from '../lib/data';
 import { useTemperature } from '../lib/weather';
 import { useAttachmentUrl } from '../lib/attachments';
 import { db } from '../lib/db';
@@ -23,7 +25,11 @@ const SYSTEM: [to: string, label: string, icon: string][] = [
   ['/calendario', 'Calendário', 'calendar'],
   ['/metas', 'Objetivos e Metas', 'target'],
   ['/imprevistos', 'Imprevistos', 'zap'],
+  ['/historico', 'Histórico', 'history'],
 ];
+
+/** itens novos da v7 ganham o selo "novo" no menu */
+const NEW = new Set(['/historico']);
 
 /** modo foco da página inteira (⛶ no topo): esconde menu, cenário e rodapé */
 const PageFocus = createContext<ReturnType<typeof useFocusMode> | null>(null);
@@ -35,9 +41,12 @@ const PageFocus = createContext<ReturnType<typeof useFocusMode> | null>(null);
  * - < 768px: sem menu lateral; barra inferior com Início, Semana, + (ação rápida), Tarefas e Mais.
  */
 export function Layout() {
-  const { settings } = useData();
+  const data = useData();
+  const { settings } = data;
   const ui = useUI();
   const loc = useLocation();
+  // fechamento automático do mês (dia 1º às 08:00): roda ao abrir o app
+  useEffect(() => { void closeMonth(data).catch((e) => console.error('[meuplano] fechamento', e)); }, [data]);
   const temp = useTemperature(settings.city.lat, settings.city.lon);
   const photo = useAttachmentUrl(settings.photoAttachmentId);
   const [sheet, setSheet] = useState<null | 'add' | 'more'>(null);
@@ -125,6 +134,7 @@ function NavLinks() {
         <NavLink key={to} to={to} end={to === '/'} title={label}>
           <Icon name={icon} size={18} />
           <span className="lbl">{label}</span>
+          {NEW.has(to) && <span className="novo" aria-label="novo">novo</span>}
           {to === '/imprevistos' && suggestions.length > 0 && <span className="count" title="sugestões de imprevistos recorrentes">{suggestions.length}</span>}
         </NavLink>
       ))}
@@ -243,9 +253,18 @@ function TopBar({ crumbs, onDoc, onFocus }: { crumbs: { to?: string; label: stri
 }
 
 function useNotifications(): { text: ReactNode; to?: string; suggestion?: RecurringSuggestion }[] {
-  const { suggestions, events, tasks } = useData();
+  const { suggestions, events, tasks, snapshots } = useData();
   return useMemo(() => {
     const out: { text: ReactNode; to?: string; suggestion?: RecurringSuggestion }[] = [];
+    // fechamento do mês: fica no sino por 7 dias
+    const week = new Date(Date.now() - 7 * 86_400_000).toISOString();
+    for (const s of snapshots.filter((x) => x.period === 'mes' && (x.createdAt ?? '') >= week)) {
+      const k = s.data as { minutes?: number; done?: number };
+      out.push({
+        to: `/historico?periodo=mes&data=${s.start}`,
+        text: <><b style={{ color: 'var(--accent)' }}>Fechamento de {MONTHS[parse(s.start).getMonth()]}:</b> {fmtH(k.minutes ?? 0)} produtivas, {k.done ?? 0} tarefas concluídas. Ver o histórico ›</>,
+      });
+    }
     for (const s of suggestions) {
       out.push({
         suggestion: s,
@@ -259,7 +278,7 @@ function useNotifications(): { text: ReactNode; to?: string; suggestion?: Recurr
     const late = tasks.filter((x) => (x.postponedCount ?? 0) >= 2 && x.status === 'adiada');
     for (const x of late) out.push({ to: '/tarefas', text: <><b style={{ color: 'var(--bad)' }}>Adiada {x.postponedCount}x:</b> {x.title}</> });
     return out;
-  }, [suggestions, events, tasks]);
+  }, [suggestions, events, tasks, snapshots]);
 }
 
 function Search() {
@@ -296,4 +315,16 @@ function Search() {
       )}
     </div>
   );
+}
+
+/** grava o retrato do mês que terminou, uma única vez (só se a conta já existia naquele mês) */
+async function closeMonth(d: Data) {
+  const m = monthToClose();
+  if (!m || d.snapshots.some((x) => x.period === 'mes' && x.start === m)) return;
+  const since = (d.settings.createdAt ?? '').slice(0, 10);
+  if (since && since > periodRange('mes', m).end) return;
+  await db.transaction('rw', db.snapshots, async () => {
+    if (await db.snapshots.where('[period+start]').equals(['mes', m]).count()) return;
+    await db.snapshots.add({ period: 'mes', start: m, data: closingData(d, m) });
+  });
 }

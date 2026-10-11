@@ -1,7 +1,7 @@
 import Dexie, { type EntityTable, type Transaction } from 'dexie';
 import type {
   Account, Attachment, CalendarEvent, Client, Draft, FinanceTx, FreelanceEntry, FreelanceProject, Goal, GoalRecord,
-  Imprevisto, Objective, Settings, StoredBlob, SuggestionState, Task, VaultDoc, WeekPlan,
+  HistorySnapshot, Imprevisto, Metric, MetricEntry, Objective, Settings, StoredBlob, SuggestionState, Task, VaultDoc, WeekPlan,
 } from './types';
 
 /**
@@ -31,6 +31,9 @@ export type MeuPlanoDB = Dexie & {
   freelanceProjects: EntityTable<FreelanceProject, 'id'>;
   freelanceEntries: EntityTable<FreelanceEntry, 'id'>;
   financeTxs: EntityTable<FinanceTx, 'id'>;
+  metrics: EntityTable<Metric, 'id'>;
+  metricEntries: EntityTable<MetricEntry, 'id'>;
+  snapshots: EntityTable<HistorySnapshot, 'id'>;
 };
 
 // nome histórico, não alterar: guarda os dados da usuária
@@ -42,12 +45,14 @@ const STAMPED_V2 = [
 ] as const;
 
 /** tabelas com createdAt/updatedAt/deletedAt */
-export const STAMPED_TABLES = [...STAMPED_V2, 'clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs'] as const;
+export const STAMPED_TABLES = [
+  ...STAMPED_V2, 'clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs', 'metrics', 'metricEntries', 'snapshots',
+] as const;
 
 /** tabelas cujos itens podem ir para a Lixeira */
 export const TRASHABLE_TABLES = [
   'tasks', 'imprevistos', 'objectives', 'goals', 'records', 'events', 'docs', 'attachments',
-  'clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs',
+  'clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs', 'metrics', 'metricEntries',
 ] as const;
 export type TrashableTable = (typeof TRASHABLE_TABLES)[number];
 
@@ -91,6 +96,14 @@ export const SCHEMA_V3 = {
   freelanceProjects: '++id, clientId, status, deletedAt',
   freelanceEntries: '++id, clientId, projectId, dateStart, status, dueDate, deletedAt',
   financeTxs: '++id, date, account, sourceId, deletedAt',
+};
+
+/** v4 (v7, Histórico e desempenho): só ACRESCENTA as métricas próprias e os fechamentos mensais */
+export const SCHEMA_V4 = {
+  ...SCHEMA_V3,
+  metrics: '++id, area, deletedAt',
+  metricEntries: '++id, metricId, date, deletedAt',
+  snapshots: '++id, [period+start]',
 };
 
 export function newKey(): string {
@@ -156,6 +169,7 @@ export function defineSchema(d: Dexie) {
   d.version(2).stores(SCHEMA_V2).upgrade(migrateV1toV2);
   // nada a transformar: as tabelas novas começam vazias e os registros antigos continuam iguais
   d.version(3).stores(SCHEMA_V3);
+  d.version(4).stores(SCHEMA_V4);
 }
 
 function stampHooks(d: Dexie) {

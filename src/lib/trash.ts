@@ -9,6 +9,11 @@ async function dependents(d: MeuPlanoDB, table: TrashableTable, id: number): Pro
     const doc = await d.docs.get(id);
     return doc?.attachmentId ? [['attachments', doc.attachmentId]] : [];
   }
+  if (table === 'metrics') {
+    // os valores lançados são da métrica: saem e voltam juntos
+    const es = await d.metricEntries.where('metricId').equals(id).toArray();
+    return es.map((e) => ['metricEntries', e.id!] as [TrashableTable, number]);
+  }
   if (table === 'freelanceEntries') {
     // o lançamento no saldo e os blocos da Agenda pertencem ao registro: saem e voltam juntos
     const e = await d.freelanceEntries.get(id);
@@ -64,6 +69,7 @@ const LABEL: Record<TrashableTable, string> = {
   tasks: 'Tarefa', imprevistos: 'Imprevisto', objectives: 'Objetivo', goals: 'Meta', records: 'Registro',
   events: 'Evento', docs: 'Documento', attachments: 'Arquivo',
   clients: 'Cliente', freelanceProjects: 'Projeto de renda extra', freelanceEntries: 'Trabalho de renda extra', financeTxs: 'Lançamento',
+  metrics: 'Métrica', metricEntries: 'Valor de métrica',
 };
 
 export function daysLeft(deletedAt: string, now = Date.now()): number {
@@ -79,6 +85,7 @@ export async function listTrash(d: MeuPlanoDB): Promise<TrashItem[]> {
       if (t === 'attachments' && r.ownerType === 'doc') continue;
       // blocos de agenda e lançamentos de um trabalho de renda extra aparecem só pelo trabalho
       if ((t === 'tasks' && r.freelanceEntryId) || (t === 'financeTxs' && r.source === 'renda_extra')) continue;
+      if (t === 'metricEntries' && rows.length && (await d.metrics.get(r.metricId))?.deletedAt === r.deletedAt) continue;
       out.push({ table: t, id: r.id, label: `${LABEL[t]} · ${r.title ?? r.name ?? r.description ?? r.note ?? `#${r.id}`}`, deletedAt: r.deletedAt, daysLeft: daysLeft(r.deletedAt) });
     }
   }
