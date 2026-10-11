@@ -691,6 +691,8 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
   font-size: 0.8125rem;
 }
 .update-banner + .shell .side { top: 0; }
+.sync-banner { background: #2a2540; text-align: center; }
+.sync-banner span { max-width: 52rem; }
 
 /* entrada: "Entrar" em cima, "Criar conta" logo abaixo */
 .login-col { width: min(440px, 100%); display: flex; flex-direction: column; gap: 14px; }
@@ -876,3 +878,7 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
 /* cadastro no celular: um campo por linha */
 @media (max-width: 479.98px) { .login .form .cols { grid-template-columns: 1fr; } }
 .login-hint { margin: 0 0 12px; border-left: 2px solid var(--accent); padding: 6px 10px; background: var(--color-gold-soft); border-radius: 0 8px 8px 0; color: var(--color-text-2); }
+
+/* tarefa semanal criada dentro da meta */
+.weekly-pick { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.weekly-pick .actions { gap: 4px; }

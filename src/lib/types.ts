@@ -36,8 +36,12 @@ export interface Task extends Stamped {
   postponedCount?: number;
   /** marcada no Top 3 do dia */
   top3Today?: boolean;
-  /** dias da semana (0=dom..6=sáb) em que o bloco se repete; usado para compromissos fixos */
+  /** dias da semana (0=dom..6=sáb) em que se repete (blocos fixos e tarefas semanais de metas) */
   repeatDays?: number[];
+  /** último dia da repetição (YYYY-MM-DD); sem ele, repete sem fim */
+  repeatUntil?: string;
+  /** dias (YYYY-MM-DD) em que a tarefa semanal foi feita */
+  doneDates?: string[];
   /** bloco de folga criado a partir de uma sugestão de imprevisto recorrente */
   bufferFor?: string;
   /** bloco de descanso/livre (aparece tracejado) */
@@ -455,6 +459,8 @@ export interface Account {
   salt: string;
   /** banco com os dados desta conta; sem ele = o histórico "meuplano" (contas da v6) */
   dbName?: string;
+  /** id da mesma conta na nuvem (Supabase), quando já foi ligada */
+  cloudId?: string;
 }
 
 export interface SuggestionState extends Stamped {

@@ -1,9 +1,12 @@
 import { ACTIVE_DB_KEY, activeDbName, DB_NAME, openDb, type MeuPlanoDB } from './db';
 import type { Account } from './types';
+import { cloudOn, cloudSetPassword, cloudSignIn, cloudSignOut, cloudSignUp } from './cloud';
 
 /**
- * Contas locais: os dados ficam neste aparelho (IndexedDB) e a senha protege o acesso aqui;
- * nada vai para um servidor. Cada conta tem o próprio banco (`dbName`):
+ * Contas: os dados ficam neste aparelho (IndexedDB) e a senha protege o acesso aqui.
+ * Com a nuvem ligada (cloud.ts), a mesma conta existe no Supabase e os dados são copiados para lá
+ * (sync.ts), então dá para entrar em qualquer aparelho. Sem internet, a conta do aparelho continua entrando.
+ * Cada conta tem o próprio banco (`dbName`):
  * - a primeira conta do aparelho (e as contas da v6) usa o banco histórico `meuplano`;
  * - as outras ganham `meuplano-<código>`.
  * A lista de contas fica sempre no banco `meuplano`, para a tela de entrada achar todas.
@@ -44,7 +47,7 @@ export async function hasAccount(): Promise<boolean> {
 export type Signed = { dbName: string; reload: boolean };
 
 /** cria uma conta nova (e-mail único neste aparelho); devolve o banco dela */
-export async function createAccount(email: string, password: string): Promise<Signed> {
+export async function createAccount(email: string, password: string, cloudId?: string): Promise<Signed> {
   const r = registry();
   const e = norm(email);
   if (await r.account.get(e)) throw new Error('Já existe uma conta com esse e-mail neste aparelho. Use “Entrar”.');
@@ -53,8 +56,81 @@ export async function createAccount(email: string, password: string): Promise<Si
   const legacyFree = others === 0 && !(await r.settings.get('me'));
   const dbName = legacyFree ? DB_NAME : `${DB_NAME}-${toHex(crypto.getRandomValues(new Uint8Array(5)).buffer)}`;
   const salt = toHex(crypto.getRandomValues(new Uint8Array(16)).buffer);
-  await r.account.put({ email: e, salt, passwordHash: await hash(password, salt), dbName });
+  await r.account.put({ email: e, salt, passwordHash: await hash(password, salt), dbName, cloudId });
   return enter(dbName);
+}
+
+export type Entered = Signed & {
+  /** conta da nuvem ligada a este banco */
+  cloudId?: string;
+  /** conta nova neste aparelho: os dados ainda vão descer da nuvem */
+  fresh?: boolean;
+  /** entrou só no aparelho (sem nuvem); o motivo, para mostrar */
+  warn?: string;
+};
+
+/** criar conta: na nuvem (se ligada) e neste aparelho */
+export async function signUp(email: string, password: string): Promise<Entered> {
+  if (await registry().account.get(norm(email))) throw new Error('Já existe uma conta com esse e-mail neste aparelho. Use “Entrar”.');
+  if (!cloudOn()) return createAccount(email, password);
+  const c = await cloudSignUp(norm(email), password);
+  if (!c.ok && c.reason === 'existe') throw new Error('Já existe uma conta com esse e-mail. Use “Entrar”, logo acima.');
+  if (!c.ok && c.reason !== 'rede') throw new Error(`Não foi possível criar a conta agora (${c.message ?? 'erro na nuvem'}). Tente de novo.`);
+  const s = await createAccount(email, password, c.ok ? c.userId : undefined);
+  return c.ok ? { ...s, cloudId: c.userId } : { ...s, warn: 'Sem internet: a conta foi criada neste aparelho e vai para a nuvem quando você entrar com internet.' };
+}
+
+async function linkCloud(acc: Account, cloudId: string, password?: string) {
+  const patch: Partial<Account> = { cloudId };
+  // a senha mudou em outro aparelho: este passa a aceitar a nova
+  if (password) { patch.salt = toHex(crypto.getRandomValues(new Uint8Array(16)).buffer); patch.passwordHash = await hash(password, patch.salt); }
+  await registry().account.update(acc.email, patch);
+}
+
+/**
+ * Entrar: confere na nuvem e no aparelho.
+ * - nuvem ok + conta aqui: liga as duas (os dados daqui sobem);
+ * - nuvem ok + sem conta aqui: cria a conta neste aparelho e os dados descem (aparelho novo);
+ * - conta só aqui (de antes da nuvem): cria a mesma conta na nuvem, com a mesma senha, e sobe os dados;
+ * - sem internet: entra só no aparelho.
+ */
+export async function signIn(email: string, password: string): Promise<Entered | 'sem-conta' | 'senha'> {
+  const e = norm(email);
+  const acc = await registry().account.get(e);
+  const localOk = !!acc && (await hash(password, acc.salt)) === acc.passwordHash;
+  const fail = !acc ? 'sem-conta' as const : !localOk ? 'senha' as const : null;
+  if (!cloudOn()) return fail ?? enter(dbOf(acc!));
+
+  const c = await cloudSignIn(e, password);
+  if (c.ok) {
+    if (acc) { await linkCloud(acc, c.userId, localOk ? undefined : password); return { ...enter(dbOf(acc)), cloudId: c.userId }; }
+    const s = await createAccount(e, password, c.userId);
+    return { ...s, cloudId: c.userId, fresh: true };
+  }
+  if (c.reason === 'credenciais') {
+    if (fail) return fail;
+    const u = await cloudSignUp(e, password);
+    if (u.ok) { await linkCloud(acc!, u.userId); return { ...enter(dbOf(acc!)), cloudId: u.userId }; }
+    return { ...enter(dbOf(acc!)), warn: 'Na nuvem, este e-mail usa outra senha. Você entrou neste aparelho; para sincronizar, saia e entre com a senha da nuvem (ou use “Esqueci a senha”).' };
+  }
+  if (fail) return fail;
+  return { ...enter(dbOf(acc!)), warn: 'Sem conexão com a nuvem agora: você entrou neste aparelho e a sincronização volta sozinha.' };
+}
+
+/** senha nova vinda do link do e-mail: grava na nuvem e neste aparelho */
+export async function finishRecovery(password: string): Promise<Entered> {
+  const c = await cloudSetPassword(password);
+  if (!c.ok || !c.email || !c.userId) throw new Error(c.message ?? 'O link expirou. Peça outro em “Esqueci a senha”.');
+  const acc = await registry().account.get(norm(c.email));
+  if (acc) { await linkCloud(acc, c.userId, password); return { ...enter(dbOf(acc)), cloudId: c.userId }; }
+  const s = await createAccount(c.email, password, c.userId);
+  return { ...s, cloudId: c.userId, fresh: true };
+}
+
+/** a conta do banco aberto agora */
+export async function currentAccount(): Promise<Account | undefined> {
+  const name = activeDbName();
+  return (await accounts()).find((a) => dbOf(a) === name);
 }
 
 /** confere e-mail e senha; diz se a conta não existe NESTE navegador ou se a senha não confere */
@@ -92,4 +168,5 @@ export function hasSession(): boolean {
 
 export function logout() {
   try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+  void cloudSignOut();
 }

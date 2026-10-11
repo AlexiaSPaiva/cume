@@ -53,3 +53,29 @@ test('meta por valor (atual e alvo): ideal para dinheiro e quantidades', async (
   await rec.getByRole('button', { name: 'Registrar' }).click();
   await expect(page.locator('.metric', { hasText: 'Reserva de emergência' })).toContainText('50%');
 });
+
+test('tarefa semanal da meta: repete até a data final e o progresso conta os dias', async ({ page }) => {
+  await useBuild(page, 'a');
+  await signup(page);
+  await page.goto('/metas');
+  await page.getByRole('button', { name: '+ Nova meta' }).click();
+  const dlg = page.getByRole('dialog', { name: 'Nova meta' });
+  await dlg.getByLabel('Meta', { exact: true }).fill('Estudar para o vestibular');
+  await dlg.getByLabel('Nova tarefa para esta meta').fill('Estudar Matemática');
+  // todos os dias, de hoje até daqui a 6 dias = 7 dias de estudo
+  for (const d of ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']) await dlg.getByRole('group', { name: 'Dias da semana da tarefa nova' }).getByRole('button', { name: d }).click();
+  const end = await page.evaluate(() => { const x = new Date(); x.setDate(x.getDate() + 6); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; });
+  await dlg.getByLabel('Repetir até').fill(end);
+  await dlg.getByRole('button', { name: 'Adicionar' }).click();
+  await expect(dlg).toContainText('0 de 7 dias');
+  await expect(dlg).toContainText('0 de 7 = 0%');
+  await dlg.getByRole('button', { name: 'Salvar' }).click();
+  await expect(page.locator('.metric', { hasText: 'Estudar para o vestibular' })).toContainText('0%');
+
+  // aparece em Minha semana e marca o dia de hoje
+  await page.goto('/semana');
+  await page.getByRole('button', { name: /^Marcar Estudar Matemática como feita em/ }).click();
+  await expect(page.getByRole('button', { name: /^Desfazer Estudar Matemática em/ })).toHaveCount(1);
+  await page.goto('/metas');
+  await expect(page.locator('.metric', { hasText: 'Estudar para o vestibular' })).toContainText('14%');
+});

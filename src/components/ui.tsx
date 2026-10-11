@@ -1,4 +1,5 @@
 import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { AREA } from '../lib/areas';
 import type { AreaId } from '../lib/types';
 
@@ -139,14 +140,17 @@ export function Modal({ title, onClose, children, wide, drawer }: { title: React
     if (close) onClose();
   };
 
-  return (
+  // vai direto no <body>: dentro da página ele ficava abaixo da barra de atalhos do celular,
+  // que cobria os botões do fim da janela (Salvar, Cancelar)
+  return createPortal(
     <div className={`overlay ${drawer ? 'has-drawer' : ''}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={box} tabIndex={-1} className={`modal ${wide ? 'wide' : ''} ${drawer ? 'drawer' : ''}`} role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
         <div className="sheet-handle" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} aria-hidden="true"><i /></div>
         <h2>{title}<button className="icon-btn x" onClick={onClose} aria-label="Fechar"><Icon name="x" /></button></h2>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -2,6 +2,7 @@ import { AREAS, zeroByArea } from './areas';
 import type { Data } from './data';
 import { addDays, DOW_LONG, dow, iso, MONTHS, parse, today, weekStart } from './dates';
 import type { AreaId, HistPeriod, Metric, MetricEntry, Task } from './types';
+import { occursOn } from './recurring';
 
 /**
  * Histórico e desempenho: SÓ LÊ. Agrega Tarefas, Agenda (tarefas com dia/horário e blocos fixos),
@@ -84,7 +85,7 @@ export function minutesByDay(tasks: Task[], r: Range, area?: AreaId): Map<string
     if (!productive(t) || (area && t.area !== area)) continue;
     if (t.repeatDays?.length) {
       for (const day of days) {
-        if (t.repeatDays.includes(dow(day)) && (!t.date || t.date <= day)) out.get(day)![t.area] += t.durationMin ?? 60;
+        if (occursOn(t, day)) out.get(day)![t.area] += t.durationMin ?? 60;
       }
     } else if (t.date && t.date >= r.start && t.date <= r.end) {
       out.get(t.date)![t.area] += t.durationMin ?? 0;

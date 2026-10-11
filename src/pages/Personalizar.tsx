@@ -7,6 +7,7 @@ import { SCENE_HOURS, SCENE_LABEL, sceneMode, useScene } from '../lib/scene';
 import { useAttachmentUrl } from '../lib/attachments';
 import { AreaDot, Icon } from '../components/ui';
 import { logout } from '../lib/auth';
+import { SyncLine } from '../components/Sync';
 import { AREAS } from '../lib/areas';
 import { useData } from '../lib/data';
 import { db } from '../lib/db';
@@ -202,12 +203,14 @@ export function Personalizar({ onLogout }: { onLogout: () => void }) {
         <Card title="Seus dados" className="form span2">
           <p className="muted small" style={{ margin: 0 }}>
             Tudo fica guardado neste aparelho (IndexedDB), inclusive PDFs e fotos, e continua aqui depois de recarregar, atualizar o app ou fechar o PWA.
+            Com a nuvem ligada, uma cópia fica guardada na sua conta e você entra em qualquer aparelho com o mesmo e-mail e senha.
           </p>
           <div className="row small" style={{ flexWrap: 'wrap', gap: '6px 18px' }}>
             <span>Armazenamento: <b>{info?.persisted ? 'persistente' : 'padrão do navegador'}</b></span>
             {info?.usage != null && <span>Em uso: <b>{fmtSize(info.usage)}</b>{info.quota ? ` de ${fmtSize(info.quota)} disponíveis` : ''}</span>}
             <span className="faint">versão {__APP_VERSION__}</span>
           </div>
+          <SyncLine onRelogin={onLogout} />
           {info && !info.persisted && (
             <span className="hint">O navegador ainda não marcou o armazenamento como persistente. Instalar o app (ícone na barra de endereço) costuma liberar isso.</span>
           )}

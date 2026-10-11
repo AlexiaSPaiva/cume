@@ -5,12 +5,13 @@ import { Card } from '../components/Card';
 import { useUI } from '../components/Overlays';
 import { Bar, Empty, Icon, Modal, Ring, Stat, Stats } from '../components/ui';
 import { AREAS, AREA } from '../lib/areas';
-import { useData } from '../lib/data';
+import { taskCount, useData } from '../lib/data';
 import { addRecord, db } from '../lib/db';
-import { MONTHS, parse } from '../lib/dates';
+import { ddmm, dow, DOW_SHORT, MONTHS, parse, today } from '../lib/dates';
 import { goalPct } from '../lib/week';
 import type { AreaId, Goal, Objective, Task } from '../lib/types';
 import { fmtGoal } from './Inicio';
+import { isDoneOn, isWeekly, occursOn, toggleOccurrence, weeklyProgress } from '../lib/recurring';
 
 export function objectivePct(o: Objective, goals: Goal[]): number {
   const gs = goals.filter((g) => g.objectiveId === o.id);
@@ -114,22 +115,26 @@ function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
   const [f, setF] = useState<Partial<Goal>>({ metric: 'valor', initial: 0, current: 0, ...g, ...(g.byTasks ? { metric: 'valor', unit: undefined } : {}) });
   const set = (p: Partial<Goal>) => setF((o) => ({ ...o, ...p }));
   const area = f.area ?? 'academica';
-  const linkedBefore = tasks.filter((t) => g.id != null && t.goalId === g.id && !t.repeatDays?.length);
+  const linkedBefore = tasks.filter((t) => g.id != null && t.goalId === g.id);
   const [linked, setLinked] = useState<Set<number>>(() => new Set(linkedBefore.map((t) => t.id!)));
-  const [news, setNews] = useState<string[]>([]);
+  const [news, setNews] = useState<NewTask[]>([]);
   const [draft, setDraft] = useState('');
-  const candidates = tasks.filter((t) => !t.repeatDays?.length && !t.freelanceEntryId && (t.goalId == null || t.goalId === g.id)
-    && (t.area === area || linked.has(t.id!)) && (t.status !== 'concluido' || linked.has(t.id!)));
+  // tarefa nova que se repete toda semana (ex.: Estudar Matemática seg/qua/sex até 31/12)
+  const [draftDays, setDraftDays] = useState<number[]>([]);
+  const [draftUntil, setDraftUntil] = useState('');
+  // semanais: só as que já são desta meta (os blocos fixos de trabalho etc. não entram na lista)
+  const candidates = tasks.filter((t) => !t.freelanceEntryId && !t.bufferFor && (t.goalId == null || t.goalId === g.id)
+    && (isWeekly(t) ? linked.has(t.id!) || t.goalId === g.id : (t.area === area || linked.has(t.id!)) && (t.status !== 'concluido' || linked.has(t.id!))));
   const chosen = tasks.filter((t) => linked.has(t.id!));
-  const done = chosen.filter((t) => t.status === 'concluido').length;
-  const total = chosen.length + news.length;
+  const newTasks = news.map((n) => newTaskRecord(n, area));
+  const { current: done, target: total } = taskCount([...chosen, ...newTasks], f);
   const pct = total ? Math.round((done / total) * 100) : 0;
   const wasByValues = g.id != null && mode === 'tarefas' && !g.byTasks && !linkedBefore.length;
 
   function addNew() {
     const t = draft.trim();
     if (!t) return;
-    setNews((n) => [...n, t]);
+    setNews((n) => [...n, draftDays.length ? { title: t, days: [...draftDays].sort(), until: draftUntil || f.deadline } : { title: t }]);
     setDraft('');
   }
 
@@ -148,7 +153,7 @@ function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
         if (want && t.goalId !== id) await db.tasks.update(t.id!, { goalId: id });
         if (!want && t.goalId === id) await db.tasks.update(t.id!, { goalId: undefined });
       }
-      for (const title of news) await db.tasks.add({ title, area, status: 'afazer', priority: 'media', goalId: id });
+      for (const n of news) await db.tasks.add({ ...newTaskRecord(n, area), goalId: id });
     });
     if (news.length) ui.toast(`${news.length} ${news.length === 1 ? 'tarefa criada' : 'tarefas criadas'} no backlog do Planejamento, ligada${news.length === 1 ? '' : 's'} à meta.`);
     onDone();
@@ -204,12 +209,13 @@ function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
           {candidates.map((t) => (
             <label key={t.id} className="check">
               <input type="checkbox" checked={linked.has(t.id!)} onChange={(e) => setLinked((cur) => { const n = new Set(cur); if (e.target.checked) n.add(t.id!); else n.delete(t.id!); return n; })} />
-              <span className="grow">{t.title}</span>
-              {t.status === 'concluido' && <span className="tag ok">concluída</span>}
+              <span className="grow">{t.title}{isWeekly(t) && <span className="muted small"> · {weeklyLabel(t, f)}</span>}</span>
+              {!isWeekly(t) && t.status === 'concluido' && <span className="tag ok">concluída</span>}
             </label>
           ))}
           {news.map((t, i) => (
-            <label key={`n${i}`} className="check"><input type="checkbox" checked onChange={() => setNews((n) => n.filter((_, j) => j !== i))} /> <span className="grow">{t}</span><span className="tag info">nova</span></label>
+            <label key={`n${i}`} className="check"><input type="checkbox" checked onChange={() => setNews((n) => n.filter((_, j) => j !== i))} />
+              <span className="grow">{t.title}{t.days && <span className="muted small"> · {weeklyLabel(newTasks[i], f)}</span>}</span><span className="tag info">nova</span></label>
           ))}
           {candidates.length === 0 && news.length === 0 && <span className="muted small">Nenhuma tarefa aberta nesta área. Crie a primeira abaixo.</span>}
         </div>
@@ -217,6 +223,22 @@ function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
           <input className="input" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Nova tarefa para esta meta"
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addNew(); } }} aria-label="Nova tarefa para esta meta" />
           <button type="button" className="btn out" onClick={addNew}>Adicionar</button>
+        </div>
+        <div className="weekly-pick">
+          <span className="muted small">Repetir toda semana (opcional):</span>
+          <div className="actions" role="group" aria-label="Dias da semana da tarefa nova">
+            {[1, 2, 3, 4, 5, 6, 0].map((d) => {
+              const on = draftDays.includes(d);
+              return <button key={d} type="button" aria-pressed={on} className={`btn sm ${on ? 'gold' : ''}`}
+                onClick={() => setDraftDays((x) => (on ? x.filter((y) => y !== d) : [...x, d]))}>{DOW_SHORT[d]}</button>;
+            })}
+          </div>
+          {draftDays.length > 0 && (
+            <label className="field"><span>Até</span>
+              <input type="date" value={draftUntil || f.deadline || ''} onChange={(e) => setDraftUntil(e.target.value)} aria-label="Repetir até" />
+            </label>
+          )}
+          {draftDays.length > 0 && <p className="hint" style={{ margin: 0 }}>Cada dia marcado até a data final conta no progresso da meta. Sem data final, conta até o prazo da meta.</p>}
         </div>
       </div>
 
@@ -271,18 +293,28 @@ export function RecordForm({ g, onDone }: { g: Goal; onDone: () => void }) {
 
 /** meta pelas tarefas: mostra as tarefas ligadas e cria uma nova já ligada */
 function GoalTasks({ g, tasks, onDone, openTask }: { g: Goal; tasks: Task[]; onDone: () => void; openTask: (t?: Partial<Task>) => void }) {
-  const list = tasks.filter((t) => t.goalId === g.id && !t.repeatDays?.length);
+  const list = tasks.filter((t) => t.goalId === g.id);
+  const weekly = list.some(isWeekly);
   return (
     <div className="form">
-      <p className="muted" style={{ margin: 0 }}>Progresso: <b>{g.current} de {g.target}</b> tarefas concluídas ({goalPct(g)}%).</p>
+      <p className="muted" style={{ margin: 0 }}>Progresso: <b>{g.current} de {g.target}</b> {weekly ? 'tarefas e dias cumpridos' : 'tarefas concluídas'} ({goalPct(g)}%).</p>
       <div className="goal-tasks">
-        {list.map((t) => (
-          <div key={t.id} className="row small">
-            <span className="dotc" style={{ background: t.status === 'concluido' ? 'var(--ok)' : 'var(--line-2)' }} />
-            <button type="button" className="plain grow" onClick={() => { onDone(); openTask(t); }}>{t.title}</button>
-            <span className="muted">{t.status === 'concluido' ? 'concluída' : t.status === 'adiada' ? 'adiada' : 'aberta'}</span>
-          </div>
-        ))}
+        {list.map((t) => {
+          const w = isWeekly(t) ? weeklyProgress(t, g) : null;
+          const ok = w ? w.total > 0 && w.done >= w.total : t.status === 'concluido';
+          return (
+            <div key={t.id} className="row small">
+              <span className="dotc" style={{ background: ok ? 'var(--ok)' : 'var(--line-2)' }} />
+              <button type="button" className="plain grow" onClick={() => { onDone(); openTask(t); }}>{t.title}{w && <span className="muted"> · {weeklyLabel(t, g)}</span>}</button>
+              {w && t.repeatDays!.includes(dow(today())) && occursOn(t, today()) && (
+                <button type="button" className={`btn sm ${isDoneOn(t, today()) ? 'gold' : 'out'}`} onClick={() => toggleOccurrence(t.id!, today())}>
+                  {isDoneOn(t, today()) ? 'feito hoje ✓' : 'fiz hoje'}
+                </button>
+              )}
+              {!w && <span className="muted">{t.status === 'concluido' ? 'concluída' : t.status === 'adiada' ? 'adiada' : 'aberta'}</span>}
+            </div>
+          );
+        })}
         {list.length === 0 && <span className="muted small">Nenhuma tarefa ligada ainda.</span>}
       </div>
       <div className="actions">
@@ -317,4 +349,19 @@ function ValueRecordForm({ g, onDone }: { g: Goal; onDone: () => void }) {
       <div className="actions"><button className="btn gold">Registrar</button><button className="btn" type="button" onClick={onDone}>Cancelar</button></div>
     </form>
   );
+}
+
+/** tarefa nova criada dentro da meta (comum ou semanal) */
+interface NewTask { title: string; days?: number[]; until?: string }
+
+function newTaskRecord(n: NewTask, area: AreaId): Task {
+  const base: Task = { title: n.title, area, status: 'afazer', priority: 'media' };
+  return n.days?.length ? { ...base, repeatDays: n.days, repeatUntil: n.until || undefined, date: today(), durationMin: 60 } : base;
+}
+
+/** "seg, qua, sex · até 31/12 · 3 de 40 dias" */
+function weeklyLabel(t: Task, g?: Partial<Goal>): string {
+  const days = [1, 2, 3, 4, 5, 6, 0].filter((d) => t.repeatDays?.includes(d)).map((d) => DOW_SHORT[d].toLowerCase()).join(', ');
+  const p = weeklyProgress({ createdAt: new Date().toISOString(), ...t }, g);
+  return `${days}${p.end ? ` · até ${ddmm(p.end)}` : ''} · ${p.done} de ${p.total} ${p.total === 1 ? 'dia' : 'dias'}`;
 }

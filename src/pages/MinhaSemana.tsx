@@ -8,6 +8,7 @@ import { db } from '../lib/db';
 import { addDays, ddmm, DOW_SHORT, dur, hours, parse, today, weekDays, weekStart } from '../lib/dates';
 import { impByArea, impsForWeek, occurrencesForWeek, plannedByArea, sum, capacityMin } from '../lib/week';
 import { postponeTask, rescheduleTask } from '../lib/tasks';
+import { isPlannedWeekly, toggleOccurrence } from '../lib/recurring';
 
 export function MinhaSemana() {
   const { tasks, imprevistos, plans, settings } = useData();
@@ -18,7 +19,8 @@ export function MinhaSemana() {
   const t0 = today();
 
   const occ = occurrencesForWeek(tasks, ws);
-  const shown = occ.filter((o) => !o.repeating || o.task.bufferFor);
+  // blocos fixos (trabalho…) ficam na Agenda; as tarefas semanais de metas aparecem aqui, para marcar dia a dia
+  const shown = occ.filter((o) => !o.repeating || o.task.bufferFor || isPlannedWeekly(o.task));
   const imps = impsForWeek(imprevistos, ws);
   const planned = plannedByArea(occ);
   const impA = impByArea(imps);
@@ -54,7 +56,7 @@ export function MinhaSemana() {
     <Page title="Minha semana" sub="Tudo o que está planejado de segunda a domingo, dia a dia e com horário.">
       <Stats>
         <Stat k="Tarefas e blocos" v={shown.length} s="planejados na semana" />
-        <Stat k="Hoje" v={shown.filter((o) => o.date === t0 && o.task.status !== 'concluido').length} s="tarefas para fazer" />
+        <Stat k="Hoje" v={shown.filter((o) => o.date === t0 && !o.done).length} s="tarefas para fazer" />
         <Stat k="Top 3 da semana" v={top3.length} s={top3.map((t) => t!.title).join(', ') || 'defina no Planejamento'} />
         <Stat k="Horas livres" v={hours(free).replace('.0', '')} s="para respirar" />
         <Stat k="Imprevistos" v={dur(impMin)} s={`${imps.length} nesta semana`} />
@@ -99,7 +101,7 @@ export function MinhaSemana() {
                     <span className="muted" style={{ fontSize: '0.6562rem' }}>{AREA[c.i.area].name}</span>
                   </button>
                 ) : (
-                  <div key={`t${c.o.task.id}-${day}`} className={`tcard ${c.o.task.soft || c.o.task.status === 'adiada' ? 'soft' : ''} ${c.o.task.status === 'concluido' ? 'done' : ''}`}
+                  <div key={`t${c.o.task.id}-${day}`} className={`tcard ${c.o.task.soft || c.o.task.status === 'adiada' ? 'soft' : ''} ${c.o.done ? 'done' : ''}`}
                     draggable={!c.o.repeating} onDragStart={(e) => e.dataTransfer.setData('task', String(c.o.task.id))}
                     onClick={() => ui.openTask(c.o.task)} role="button" tabIndex={0}>
                     <div className="meta">
@@ -107,10 +109,16 @@ export function MinhaSemana() {
                       <span>{c.o.durationMin ? dur(c.o.durationMin) : ''}</span>
                     </div>
                     <b style={{ color: c.o.task.soft || c.o.task.status === 'adiada' ? 'var(--muted)' : undefined }}>
-                      {c.o.task.bufferFor && <Icon name="repeat" size={11} />} {c.o.task.title}
+                      {(c.o.task.bufferFor || c.o.repeating) && <Icon name="repeat" size={11} />} {c.o.task.title}
                     </b>
                     <div className="meta">
                       <span>{c.o.task.status === 'adiada' ? 'adiada' : AREA[c.o.task.area].name}</span>
+                      {c.o.repeating && isPlannedWeekly(c.o.task) && (
+                        <span className="row" style={{ gap: 2 }} onClick={(e) => e.stopPropagation()}>
+                          <button className="icon-btn" title={c.o.done ? 'Desfazer' : 'Feito hoje'} aria-label={c.o.done ? `Desfazer ${c.o.task.title} em ${ddmm(day)}` : `Marcar ${c.o.task.title} como feita em ${ddmm(day)}`}
+                            onClick={() => toggleOccurrence(c.o.task.id!, day)}><Icon name="check" size={13} /></button>
+                        </span>
+                      )}
                       {!c.o.repeating && (
                         <span className="row" style={{ gap: 2 }} onClick={(e) => e.stopPropagation()}>
                           <button className="icon-btn" title={c.o.task.status === 'concluido' ? 'Desfazer' : 'Marcar como feita'} onClick={() => toggleDone(c.o.task.id!, c.o.task.status === 'concluido')}><Icon name="check" size={13} /></button>

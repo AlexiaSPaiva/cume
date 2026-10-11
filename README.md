@@ -32,6 +32,22 @@ pnpm preview    # testa o build (instalação e offline)
 
 No ar em https://meuplano-rouge.vercel.app (Vercel). Cada push na branch `main` do GitHub publica sozinho.
 
+## Nuvem (Supabase)
+
+Contas e cópia dos dados ficam no Supabase (projeto `cume`, São Paulo), para entrar em qualquer aparelho.
+
+- Variáveis: `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (chave pública) em `.env.local` e na Vercel.
+  Sem elas o app funciona só no aparelho, como antes (os testes rodam assim).
+- Banco: `supabase/schema.sql` (uma tabela `rows` com tabela + chave + JSON; cada pessoa só vê as próprias
+  linhas por RLS; arquivos no bucket privado `arquivos/<id da pessoa>/`).
+- Sincronização (`src/lib/sync.ts`, `src/lib/syncApp.ts`): o aparelho continua sendo o principal e funciona offline.
+  Sobe o que mudou (lista de pendentes no localStorage), desce o que mudou na nuvem; no mesmo registro vence o
+  `updatedAt` mais recente. Ids novos são únicos entre aparelhos (`newId` em `db.ts`); ao ligar um aparelho com
+  ids antigos que colidem com a nuvem, os daqui são renumerados com as ligações corrigidas.
+- Login (`src/lib/auth.ts`): confere na nuvem e no aparelho. Conta de antes da nuvem: ao entrar, a mesma conta é
+  criada na nuvem com a mesma senha e os dados sobem. Aparelho novo: entra e os dados descem.
+  "Esqueci a senha" manda um link por e-mail.
+
 ## Telas
 
 Entrada (Entrar em cima, Criar conta embaixo; várias contas por aparelho) · boas-vindas · Início · Minha semana ·
@@ -49,14 +65,16 @@ extensão, idioma) · Cronograma de estudos · Cofre de documentos · Personaliz
   próprias, fechamento automático no dia 1º às 08:00.
 - **Tarefas adiadas** (`src/lib/tasks.ts`): adiar com motivo, Realocar a MESMA tarefa (dia, Planejamento ou backlog),
   histórico de adiamentos, gesto de deslizar no celular.
-- **Metas pelas tarefas**: progresso = tarefas concluídas ÷ tarefas ligadas (sem alvo/valores manuais).
+- **Metas pelas tarefas** ou **por valor** (atual e alvo). Pelas tarefas: cada tarefa comum vale 1 e cada
+  **tarefa semanal** (ex.: Estudar Matemática seg/qua/sex até 31/12) vale os dias em que acontece até a data
+  final da repetição (`src/lib/recurring.ts`); cada dia é marcado em Minha semana ou no card da meta.
 - **Estudos** (`src/lib/study.ts`): trilhas com abas pelo tipo; concurso com necessidade por matéria
   (peso × distância da meta × edital que falta) e "Gerar cronograma pela necessidade"; pesquisa com artigos,
   fichamento salvo sozinho e diário; curso/graduação com módulos, provas e notas; sessões de estudo = tarefas
   da Agenda com `trackId` (nunca duplicadas); pomodoro, revisões 24h/7d/30d e alarmes (`src/lib/reminders.ts`).
 - **Imprevistos recorrentes** (`src/lib/recurrence.ts`) e **link do Google Drive** no Cofre.
-- **Contas**: cada conta tem o próprio banco no aparelho (`src/lib/auth.ts`); a conta antiga continua no banco
-  histórico `meuplano`. Os avisos funcionam com o app aberto; com o app fechado e por e-mail exigiriam um servidor.
+- **Contas**: cada conta tem o próprio banco no aparelho (`src/lib/auth.ts`) e uma cópia na nuvem; a conta antiga
+  continua no banco histórico `meuplano`. Os avisos funcionam com o app aberto.
 
 ## Dados (regras que não podem ser quebradas)
 

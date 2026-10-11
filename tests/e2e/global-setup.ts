@@ -7,7 +7,8 @@ export default function globalSetup() {
   for (const v of ['a', 'b']) {
     execFileSync(process.execPath, [vite, 'build', '--outDir', `.e2e/${v}`, '--emptyOutDir', '--logLevel', 'error'], {
       stdio: 'inherit',
-      env: { ...process.env, MEUPLANO_BUILD_ID: v.toUpperCase() },
+      // sem nuvem nos testes: nada de contas de teste no Supabase de verdade
+      env: { ...process.env, MEUPLANO_BUILD_ID: v.toUpperCase(), VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '' },
     });
   }
 }

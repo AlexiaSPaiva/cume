@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { OverlayProvider } from './components/Overlays';
 import { ErrorBoundary, Skeleton } from './components/States';
 import { UpdateBanner } from './components/UpdateBanner';
+import { SyncBanner } from './components/Sync';
+import { recoveryLink } from './lib/cloud';
+import { startAutoSync } from './lib/syncApp';
 import { hasSession } from './lib/auth';
 import { DataProvider } from './lib/data';
 import { db } from './lib/db';
@@ -29,13 +32,20 @@ export function App() {
   const [session, setSession] = useState(hasSession());
   // null = ainda carregando; undefined = sem configurações (primeiro acesso)
   const settings = useLiveQuery(async () => (await db.settings.get('me')) ?? null, []);
+  // chegou pelo link "criar senha nova" do e-mail
+  const [recovery, setRecovery] = useState(recoveryLink);
+  const inApp = session && !!settings && !recovery;
+
+  // nuvem: sincroniza enquanto a conta está aberta
+  useEffect(() => (inApp ? startAutoSync() : undefined), [inApp]);
 
   if (settings === undefined) return <><UpdateBanner /><Skeleton shell={session} /></>;
-  if (!session || !settings) return <><UpdateBanner /><Login settings={settings ?? undefined} onIn={() => setSession(true)} /></>;
+  if (!inApp) return <><UpdateBanner /><Login settings={settings ?? undefined} recovery={recovery} onIn={() => { setRecovery(false); setSession(true); }} /></>;
 
   return (
     <BrowserRouter>
       <UpdateBanner />
+      <SyncBanner onRelogin={() => setSession(false)} />
       <ErrorBoundary>
       <DataProvider settings={settings} fallback={<Skeleton />}>
         <OverlayProvider>

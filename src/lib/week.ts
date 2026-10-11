@@ -1,6 +1,7 @@
 import type { AreaId, Goal, Imprevisto, Task } from './types';
-import { dow, toMin, weekDays } from './dates';
+import { toMin, weekDays } from './dates';
 import { zeroByArea } from './areas';
+import { isDoneOn, occursOn } from './recurring';
 
 export interface Occurrence {
   task: Task;
@@ -9,6 +10,8 @@ export interface Occurrence {
   durationMin: number;
   /** instância de um bloco que se repete toda semana */
   repeating: boolean;
+  /** feita (nas semanais: feita NAQUELE dia) */
+  done: boolean;
 }
 
 /** expande tarefas (incluindo blocos fixos que se repetem) para os dias da semana */
@@ -18,12 +21,12 @@ export function occurrencesForWeek(tasks: Task[], start: string): Occurrence[] {
   for (const t of tasks) {
     if (t.repeatDays?.length) {
       for (const d of days) {
-        if (t.repeatDays.includes(dow(d)) && (!t.date || t.date <= d)) {
-          out.push({ task: t, date: d, start: t.start, durationMin: t.durationMin ?? 60, repeating: true });
+        if (occursOn(t, d)) {
+          out.push({ task: t, date: d, start: t.start, durationMin: t.durationMin ?? 60, repeating: true, done: isDoneOn(t, d) });
         }
       }
     } else if (t.date && days.includes(t.date)) {
-      out.push({ task: t, date: t.date, start: t.start, durationMin: t.durationMin ?? 0, repeating: false });
+      out.push({ task: t, date: t.date, start: t.start, durationMin: t.durationMin ?? 0, repeating: false, done: t.status === 'concluido' });
     }
   }
   return out.sort((a, b) => a.date.localeCompare(b.date) || (a.start ?? '99').localeCompare(b.start ?? '99'));

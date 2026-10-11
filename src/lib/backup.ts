@@ -9,14 +9,14 @@ import type { MeuPlanoDB } from './db';
 
 // nome histórico, não alterar: identifica os backups (inclusive os antigos)
 const FORMAT = 'meuplano-backup';
-const NUMERIC_TABLES = [
+export const NUMERIC_TABLES = [
   'objectives', 'goals', 'tasks', 'records', 'imprevistos', 'events', 'docs', 'attachments',
   'clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs', 'metrics', 'metricEntries', 'snapshots',
   'tracks', 'subjects', 'topics', 'questionLogs', 'mockExams', 'trackDates', 'articleNotes', 'journal',
 ] as const;
-const KEYED_TABLES = ['plans', 'suggestions', 'settings'] as const;
-type NumTable = (typeof NUMERIC_TABLES)[number];
-type Row = Record<string, unknown> & { id?: number; createdAt?: string; updatedAt?: string };
+export const KEYED_TABLES = ['plans', 'suggestions', 'settings'] as const;
+export type NumTable = (typeof NUMERIC_TABLES)[number];
+export type Row = Record<string, unknown> & { id?: number; createdAt?: string; updatedAt?: string };
 
 interface BackupFile {
   format: typeof FORMAT;
@@ -25,6 +25,46 @@ interface BackupFile {
   exportedAt: string;
   tables: Record<string, Row[]>;
   blobs: { key: string; type: string; size: number }[];
+}
+
+const OWNER_TABLE: Record<string, NumTable> = { doc: 'docs', task: 'tasks', goal: 'goals', track: 'tracks' };
+
+/**
+ * Troca as referências de uma linha (goalId, trackId, ownerId…) pelo mapa de ids novos.
+ * Usado ao importar backup e ao sincronizar um aparelho que já tinha dados com ids antigos.
+ */
+export function remapRefs(t: string, r: Row, m: (t: NumTable, v: unknown) => unknown): Row {
+  const o: Row = { ...r };
+  const ownerTable = OWNER_TABLE;
+  if (t === 'goals') o.objectiveId = m('objectives', r.objectiveId);
+  if (t === 'records') o.goalId = m('goals', r.goalId);
+  if (t === 'tasks') { o.goalId = m('goals', r.goalId); o.freelanceEntryId = m('freelanceEntries', r.freelanceEntryId); }
+  if (t === 'freelanceProjects') o.clientId = m('clients', r.clientId);
+  if (t === 'metricEntries') o.metricId = m('metrics', r.metricId);
+  if (['subjects', 'mockExams', 'trackDates', 'articleNotes', 'journal'].includes(t)) o.trackId = m('tracks', r.trackId);
+  if (t === 'tasks') {
+    o.trackId = m('tracks', r.trackId); o.subjectId = m('subjects', r.subjectId); o.topicId = m('topics', r.topicId);
+    o.sessionOf = m('tasks', r.sessionOf); o.reviewOf = m('topics', r.reviewOf);
+  }
+  if (t === 'topics' || t === 'questionLogs') o.subjectId = m('subjects', r.subjectId);
+  if (t === 'questionLogs') o.topicId = m('topics', r.topicId);
+  if (t === 'articleNotes') o.attachmentId = m('attachments', r.attachmentId);
+  if (t === 'journal') o.articleId = m('attachments', r.articleId);
+  if (t === 'freelanceEntries') {
+    o.clientId = m('clients', r.clientId);
+    o.projectId = m('freelanceProjects', r.projectId);
+    o.financeTxId = m('financeTxs', r.financeTxId);
+    o.invoiceDocId = m('docs', r.invoiceDocId);
+  }
+  if (t === 'financeTxs' && r.source === 'renda_extra') o.sourceId = m('freelanceEntries', r.sourceId);
+  if (t === 'imprevistos' && Array.isArray(r.postponedTaskIds)) o.postponedTaskIds = r.postponedTaskIds.map((x) => m('tasks', x));
+  if (t === 'docs') o.attachmentId = m('attachments', r.attachmentId);
+  if (t === 'attachments' && typeof r.ownerType === 'string' && ownerTable[r.ownerType]) o.ownerId = m(ownerTable[r.ownerType], r.ownerId);
+  if (t === 'plans' && Array.isArray(r.top3)) o.top3 = r.top3.map((x) => m('tasks', x));
+  if (t === 'suggestions') o.taskId = m('tasks', r.taskId);
+  if (t === 'settings') o.photoAttachmentId = m('attachments', r.photoAttachmentId);
+  for (const k of Object.keys(o)) if (o[k] === undefined) delete o[k];
+  return o;
 }
 
 export async function exportBackup(d: MeuPlanoDB): Promise<Uint8Array> {
@@ -88,35 +128,9 @@ export async function importBackup(d: MeuPlanoDB, zip: Uint8Array): Promise<Impo
     }
 
     const m = (t: NumTable, v: unknown) => (typeof v === 'number' ? maps[t].get(v) ?? v : v);
-    const ownerTable: Record<string, NumTable> = { doc: 'docs', task: 'tasks', goal: 'goals', track: 'tracks' };
     const fix = (t: string, r: Row): Row => {
-      const o: Row = { ...r };
+      const o = remapRefs(t, r, m);
       if (t !== 'settings' && t !== 'plans' && t !== 'suggestions') o.id = maps[t as NumTable].get(r.id!) ?? r.id;
-      if (t === 'goals') o.objectiveId = m('objectives', r.objectiveId);
-      if (t === 'records') o.goalId = m('goals', r.goalId);
-      if (t === 'tasks') { o.goalId = m('goals', r.goalId); o.freelanceEntryId = m('freelanceEntries', r.freelanceEntryId); }
-      if (t === 'freelanceProjects') o.clientId = m('clients', r.clientId);
-      if (t === 'metricEntries') o.metricId = m('metrics', r.metricId);
-      if (['subjects', 'mockExams', 'trackDates', 'articleNotes', 'journal'].includes(t)) o.trackId = m('tracks', r.trackId);
-      if (t === 'tasks') { o.trackId = m('tracks', r.trackId); o.subjectId = m('subjects', r.subjectId); o.topicId = m('topics', r.topicId); }
-      if (t === 'topics' || t === 'questionLogs') o.subjectId = m('subjects', r.subjectId);
-      if (t === 'questionLogs') o.topicId = m('topics', r.topicId);
-      if (t === 'articleNotes') o.attachmentId = m('attachments', r.attachmentId);
-      if (t === 'journal') o.articleId = m('attachments', r.articleId);
-      if (t === 'freelanceEntries') {
-        o.clientId = m('clients', r.clientId);
-        o.projectId = m('freelanceProjects', r.projectId);
-        o.financeTxId = m('financeTxs', r.financeTxId);
-        o.invoiceDocId = m('docs', r.invoiceDocId);
-      }
-      if (t === 'financeTxs' && r.source === 'renda_extra') o.sourceId = m('freelanceEntries', r.sourceId);
-      if (t === 'imprevistos' && Array.isArray(r.postponedTaskIds)) o.postponedTaskIds = r.postponedTaskIds.map((x) => m('tasks', x));
-      if (t === 'docs') o.attachmentId = m('attachments', r.attachmentId);
-      if (t === 'attachments' && typeof r.ownerType === 'string' && ownerTable[r.ownerType]) o.ownerId = m(ownerTable[r.ownerType], r.ownerId);
-      if (t === 'plans' && Array.isArray(r.top3)) o.top3 = r.top3.map((x) => m('tasks', x));
-      if (t === 'suggestions') o.taskId = m('tasks', r.taskId);
-      if (t === 'settings') o.photoAttachmentId = m('attachments', r.photoAttachmentId);
-      for (const k of Object.keys(o)) if (o[k] === undefined) delete o[k];
       return o;
     };
 

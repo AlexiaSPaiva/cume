@@ -3,13 +3,14 @@ import { db } from '../lib/db';
 import { useFormModel } from '../lib/drafts';
 import { addFileAttachment, addLinkAttachment } from '../lib/attachments';
 import { AREAS, AREA } from '../lib/areas';
-import { addDays, DOW_LONG, DOW_SHORT, dur, fromMin, toMin, today } from '../lib/dates';
+import { addDays, ddmm, DOW_LONG, DOW_SHORT, dur, fromMin, toMin, today } from '../lib/dates';
 import { similarCount, type RecurringSuggestion } from '../lib/recurrence';
 import { useData } from '../lib/data';
-import type { AreaId, DocType, Imprevisto, ImprevistoType, Priority, Task, TaskStatus, VaultDoc } from '../lib/types';
+import type { AreaId, DocType, Goal, Imprevisto, ImprevistoType, Priority, Task, TaskStatus, VaultDoc } from '../lib/types';
 import { AreaDot, Icon } from './ui';
 import { useUI } from './Overlays';
 import { postponeTask } from '../lib/tasks';
+import { weeklyProgress } from '../lib/recurring';
 
 export const STATUS_LABEL: Record<TaskStatus, string> = {
   afazer: 'A fazer', hoje: 'Hoje', andamento: 'Em andamento', aguardando: 'Aguardando', concluido: 'Concluído', adiada: 'Adiada',
@@ -43,6 +44,7 @@ function normalizeTask(t: Partial<Task>): Task {
     date: t.date || undefined,
     start: t.start || undefined,
     deadline: t.deadline || undefined,
+    repeatUntil: t.repeatDays?.length ? t.repeatUntil || undefined : undefined,
     durationMin: t.durationMin ? Number(t.durationMin) : undefined,
     doneAt: t.status === 'concluido' ? (t.doneAt ?? today()) : undefined,
     progress: t.status === 'concluido' ? 100 : t.progress,
@@ -128,6 +130,14 @@ export function TaskForm({ task, onDone }: { task?: Partial<Task>; onDone: () =>
           })}
         </div>
       </div>
+      {repeating && (
+        <div className="cols">
+          <label className="field"><span>Repetir até</span>
+            <input type="date" value={t.repeatUntil ?? ''} min={t.date || undefined} onChange={(e) => set({ repeatUntil: e.target.value || undefined })} />
+          </label>
+          <RepeatHint t={t} goal={goals.find((g) => g.id === t.goalId)} />
+        </div>
+      )}
       {(t.status === 'andamento' || (t.progress ?? 0) > 0) && (
         <label className="field"><span>Progresso · {t.progress ?? 0}%</span>
           <input type="range" min={0} max={100} step={5} value={t.progress ?? 0} onChange={(e) => set({ progress: Number(e.target.value) })} />
@@ -149,6 +159,20 @@ export function TaskForm({ task, onDone }: { task?: Partial<Task>; onDone: () =>
         {editing && <button className="btn danger" type="button" style={{ marginLeft: 'auto' }} onClick={remove}><Icon name="trash" size={14} /> Excluir</button>}
       </div>
     </form>
+  );
+}
+
+/** quantos dias a tarefa semanal soma até o fim (é isso que conta na meta) */
+function RepeatHint({ t, goal }: { t: Partial<Task>; goal?: Goal }) {
+  const task = { createdAt: new Date().toISOString(), ...t } as Task;
+  const end = t.repeatUntil ?? goal?.deadline;
+  if (!end) return <p className="hint" style={{ alignSelf: 'end', margin: 0 }}>Sem data final, repete sempre (blocos fixos como trabalho).</p>;
+  const p = weeklyProgress(task, goal);
+  return (
+    <p className="hint" style={{ alignSelf: 'end', margin: 0 }}>
+      {p.total} {p.total === 1 ? 'dia' : 'dias'} até {ddmm(end)}{t.repeatUntil ? '' : ' (prazo da meta)'}{p.done ? ` · ${p.done} feitos` : ''}.
+      {t.goalId ? ' Cada dia feito avança a meta.' : ''}
+    </p>
   );
 }
 

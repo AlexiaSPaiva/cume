@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
 import { findRecurring, type RecurringSuggestion } from './recurrence';
+import { isWeekly, weeklyProgress } from './recurring';
 import type {
   ArticleNote, Attachment, CalendarEvent, Client, FinanceTx, FreelanceEntry, FreelanceProject, Goal, GoalRecord, HistorySnapshot, Imprevisto, JournalEntry, Metric, MetricEntry, MockExam, Objective, QuestionLog, Settings, Subject, SuggestionState, Task, Topic, Track, TrackDate, VaultDoc, WeekPlan,
 } from './types';
@@ -106,15 +107,26 @@ export function useData(): Data {
  */
 export function withTaskProgress(goals: Goal[], tasks: Task[]): Goal[] {
   const by = new Map<number, Task[]>();
-  for (const t of tasks) if (t.goalId != null && !t.repeatDays?.length) by.set(t.goalId, [...(by.get(t.goalId) ?? []), t]);
+  for (const t of tasks) if (t.goalId != null && !t.deletedAt) by.set(t.goalId, [...(by.get(t.goalId) ?? []), t]);
   return goals.map((g) => {
     const linked = by.get(g.id!) ?? [];
     // a pessoa escolheu medir por valor (atual/alvo): as tarefas ligadas não mudam o número
     if (g.byTasks === false) return g;
     if (!g.byTasks && !linked.length) return g;
-    return {
-      ...g, byTasks: true, metric: 'tarefas', unit: 'tarefas', initial: 0,
-      current: linked.filter((t) => t.status === 'concluido').length, target: linked.length,
-    };
+    return { ...g, byTasks: true, metric: 'tarefas', unit: 'tarefas', initial: 0, ...taskCount(linked, g) };
   });
+}
+
+/**
+ * Conta da meta pelas tarefas: cada tarefa comum vale 1; cada tarefa semanal vale os dias em que
+ * ela acontece até a data final da repetição (ex.: seg/qua/sex até 31/12 = todos esses dias).
+ */
+export function taskCount(linked: Task[], g?: Pick<Goal, 'deadline'>): { current: number; target: number } {
+  let current = 0;
+  let target = 0;
+  for (const t of linked) {
+    if (isWeekly(t)) { const p = weeklyProgress(t, g); current += p.done; target += p.total; }
+    else { target++; if (t.status === 'concluido') current++; }
+  }
+  return { current, target };
 }

@@ -197,14 +197,55 @@ export function defineSchema(d: Dexie) {
   d.version(5).stores({ ...SCHEMA_V4, ...SCHEMA_V5_EXTRA });
 }
 
+/**
+ * Ids novos são únicos entre aparelhos (instante em µs + sorteio): dois celulares nunca criam
+ * registros diferentes com o mesmo id, o que permite sincronizar sem trocar ids.
+ * (Ids antigos, pequenos, continuam valendo.)
+ */
+let lastId = 0;
+export function newId(): number {
+  const base = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+  lastId = base > lastId ? base : lastId + 1;
+  return lastId;
+}
+
+/**
+ * Avisos de mudança local, para a sincronização saber o que subir.
+ * Mudanças que vieram da nuvem (`applyRemote`) não avisam nem trocam o updatedAt.
+ */
+type ChangeListener = (dbName: string, table: string, pk: unknown) => void;
+const listeners = new Set<ChangeListener>();
+export const onLocalChange = (fn: ChangeListener) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
+const REMOTE = Symbol('remote');
+type Tx = { [REMOTE]?: boolean; parent?: Tx } | undefined;
+const isRemote = (tx: Tx) => !!(tx?.[REMOTE] || tx?.parent?.[REMOTE]);
+
+/** grava o que veio da nuvem numa transação marcada (não volta a subir, não muda o updatedAt) */
+export function applyRemote<T>(d: Dexie, tables: string[], fn: () => Promise<T>): Promise<T> {
+  return d.transaction('rw', tables, (tx) => { (tx as unknown as { [REMOTE]: boolean })[REMOTE] = true; return fn(); });
+}
+
 function stampHooks(d: Dexie) {
+  const emit = (t: string, pk: unknown) => { for (const l of listeners) l(d.name, t, pk); };
   for (const t of STAMPED_TABLES) {
-    d.table(t).hook('creating', (_pk, obj: Record<string, unknown>) => {
+    const auto = d.table(t).schema.primKey.auto;
+    d.table(t).hook('creating', function (pk, obj: Record<string, unknown>, tx) {
       const n = new Date().toISOString();
       obj.createdAt ??= n;
       obj.updatedAt ??= n;
+      const id = pk === undefined && auto ? newId() : pk;
+      if (pk === undefined && auto) obj.id = id;
+      if (!isRemote(tx as Tx)) this.onsuccess = () => emit(t, id);
+      return pk === undefined && auto ? id : undefined;
     });
-    d.table(t).hook('updating', ((mods: Record<string, unknown>) => ('updatedAt' in mods ? undefined : { updatedAt: new Date().toISOString() })) as never);
+    d.table(t).hook('updating', function (this: { onsuccess?: () => void }, mods: Record<string, unknown>, pk: unknown, _o: unknown, tx: Tx) {
+      if (isRemote(tx)) return undefined;
+      this.onsuccess = () => emit(t, pk);
+      return 'updatedAt' in mods ? undefined : { updatedAt: new Date().toISOString() };
+    } as never);
+    d.table(t).hook('deleting', function (pk, _o, tx) {
+      if (!isRemote(tx as Tx)) this.onsuccess = () => emit(t, pk);
+    });
   }
 }
 
