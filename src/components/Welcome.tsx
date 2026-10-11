@@ -55,7 +55,7 @@ export function Welcome({ name, onClose }: { name: string; onClose: () => void }
               O Cume° te ajuda a subir um passo de cada vez, com <b>foco</b>, <b>clareza</b> e <b>ação</b>: você escolhe aonde quer chegar,
               planeja o caminho e acompanha cada passo.
             </p>
-            <p className="muted small">Seus dados ficam guardados neste aparelho. Em Personalizar dá para fazer um backup quando quiser.</p>
+            <p className="muted small">Seus dados ficam neste aparelho e guardados na nuvem: entre com o mesmo e-mail e senha em qualquer aparelho. Em Personalizar dá para fazer um backup quando quiser.</p>
           </div>
         ) : (
           <div className="welcome-step" aria-live="polite">
