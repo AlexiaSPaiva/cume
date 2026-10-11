@@ -11,6 +11,10 @@ pnpm build      # gera dist/ com service worker
 pnpm preview    # testa o build (instalação e offline)
 ```
 
+## Publicação
+
+No ar em https://meuplano-rouge.vercel.app (Vercel). Cada push na branch `main` do GitHub publica sozinho.
+
 ## Telas
 
 Login com cenários · Início · Minha semana · Agenda · Tarefas · Planejamento · Calendário ·
