@@ -42,6 +42,67 @@ async function exampleSignature(): Promise<Map<string, Set<string>>> {
   }
 }
 
+/** editado pela pessoa depois de criado (passou da janela do exemplo): é dela, não sai */
+const edited = (r: Row) => !!r.createdAt && !!r.updatedAt && Date.parse(r.updatedAt as string) - Date.parse(r.createdAt) > WINDOW_AFTER;
+
+/** tira dos candidatos o que algo que FICA referencia (laço até estabilizar) */
+function keepReferenced(cand: Map<string, Row[]>, tasks: Row[], goals: Row[], docs: Row[]) {
+  const ids = (t: string) => new Set((cand.get(t) ?? []).map((r) => r.id));
+  for (let i = 0; i < 3; i++) {
+    const goneTasks = ids('tasks'), goneGoals = ids('goals'), goneDocs = ids('docs');
+    const keptTasks = tasks.filter((x) => !goneTasks.has(x.id));
+    const keptGoals = goals.filter((x) => !goneGoals.has(x.id));
+    const keptDocs = docs.filter((x) => !goneDocs.has(x.id));
+    const needGoals = new Set(keptTasks.map((x) => x.goalId));
+    const needObjs = new Set(keptGoals.map((x) => x.objectiveId));
+    const needAtts = new Set(keptDocs.map((x) => x.attachmentId));
+    cand.set('goals', (cand.get('goals') ?? []).filter((r) => !needGoals.has(r.id)));
+    cand.set('objectives', (cand.get('objectives') ?? []).filter((r) => !needObjs.has(r.id)));
+    cand.set('attachments', (cand.get('attachments') ?? []).filter((r) => !needAtts.has(r.id)));
+  }
+}
+
+/**
+ * Devolve, uma vez, o que a primeira versão da limpeza tirou mas era da pessoa:
+ * itens de exemplo que ela tinha editado, e metas/objetivos/anexos que algo dela usa.
+ * Vem da cópia de segurança guardada na limpeza; nada que já existe é sobrescrito.
+ */
+export async function restoreEditedExamples(d: MeuPlanoDB): Promise<number> {
+  const KEY = 'exemplos-restaurados-v1';
+  if (await d.meta.get(KEY)) return 0;
+  const copy = (await d.meta.get('exemplos-removidos-copia'))?.value as { removed?: Record<string, Row[]> } | undefined;
+  let n = 0;
+  if (copy?.removed) {
+    const removed = copy.removed;
+    await d.transaction('rw', [...TRASHABLE_TABLES, 'plans', 'blobs', 'meta'], async () => {
+      const back = new Map<string, Row[]>();
+      for (const [t, rows] of Object.entries(removed)) back.set(t, rows.filter(edited));
+      // referências: tarefas/metas/documentos que existem hoje (ou que voltam agora)
+      const live = async (t: string) => [...((await d.table(t).toArray()) as Row[]), ...(back.get(t) ?? [])];
+      const tasks = await live('tasks'), goals = await live('goals'), docs = await live('docs');
+      const needGoals = new Set(tasks.map((x) => x.goalId));
+      back.set('goals', [...(back.get('goals') ?? []), ...(removed.goals ?? []).filter((r) => needGoals.has(r.id))]);
+      const needObjs = new Set([...goals, ...(back.get('goals') ?? [])].map((x) => x.objectiveId));
+      back.set('objectives', [...(back.get('objectives') ?? []), ...(removed.objectives ?? []).filter((r) => needObjs.has(r.id))]);
+      const needAtts = new Set(docs.map((x) => x.attachmentId));
+      back.set('attachments', [...(back.get('attachments') ?? []), ...(removed.attachments ?? []).filter((r) => needAtts.has(r.id))]);
+      for (const [t, rows] of back) {
+        const table = t === 'plans' ? d.plans : d.table(t);
+        for (const r of rows) {
+          const pk = t === 'plans' ? r.weekStart : r.id;
+          if (pk == null || (await table.get(pk as never))) continue;
+          // anexo cujo arquivo já não existe não volta (ficaria quebrado); link volta
+          if (t === 'attachments' && r.blobKey && !(await d.blobs.get(r.blobKey as string))) continue;
+          await table.put(r as never);
+          n++;
+        }
+      }
+    });
+  }
+  await d.meta.put({ key: KEY, value: `${n} itens devolvidos` });
+  return n;
+}
+
 export async function removeExampleData(d: MeuPlanoDB): Promise<number> {
   if (await d.meta.get(DONE_KEY)) return 0;
   if (await d.meta.get(SEEDED_KEY)) { await d.meta.put({ key: DONE_KEY, value: 'exemplo pedido de propósito' }); return 0; }
@@ -63,17 +124,24 @@ export async function removeExampleData(d: MeuPlanoDB): Promise<number> {
   await d.transaction('rw', [...TRASHABLE_TABLES, 'plans', 'blobs', 'meta', 'settings'], async () => {
     // confere de novo dentro da transação: um exemplo pedido de propósito pode ter começado a entrar agora
     if (await d.meta.get(SEEDED_KEY)) { total = -1; return; }
+    // candidatos: criados no instante do exemplo (ou, na v6, com o nome exato do exemplo) e NUNCA editados depois
+    const cand = new Map<string, Row[]>();
     for (const t of TRASHABLE_TABLES) {
       // na v6 metas, objetivos e eventos de exemplo não tinham data de criação: aí vale o nome exato do exemplo
       const byName = NAMED.has(t) ? sig.get(t)! : new Set<string>();
-      const rows = ((await d.table(t).toArray()) as Row[]).filter((r) => inWindow(r) || byName.has(label(r)));
+      cand.set(t, ((await d.table(t).toArray()) as Row[]).filter((r) => (inWindow(r) || byName.has(label(r))) && !edited(r)));
+    }
+    // o que a pessoa usa fica: meta ligada a uma tarefa dela, objetivo de uma meta que fica, anexo de um documento que fica
+    keepReferenced(cand, (await d.tasks.toArray()) as unknown as Row[], (await d.goals.toArray()) as unknown as Row[], (await d.docs.toArray()) as unknown as Row[]);
+    for (const t of TRASHABLE_TABLES) {
+      const rows = cand.get(t)!;
       if (!rows.length) continue;
       removed[t] = rows;
+      // os arquivos (blobs) ficam guardados: a cópia de segurança pode ser restaurada inteira
       await d.table(t).bulkDelete(rows.map((r) => r.id!));
       total += rows.length;
-      if (t === 'attachments') for (const a of rows) if (a.blobKey) await d.blobs.delete(a.blobKey as string);
     }
-    const plans = ((await d.plans.toArray()) as unknown as Row[]).filter(inWindow);
+    const plans = ((await d.plans.toArray()) as unknown as Row[]).filter((r) => inWindow(r) && !edited(r));
     if (plans.length) { removed.plans = plans; await d.plans.bulkDelete(plans.map((p) => p.weekStart as string)); }
     // a meta de renda extra de exemplo (R$ 1.500) também era do pacote
     const s = await d.settings.get('me');

@@ -528,7 +528,7 @@ button.stat:hover { border-color: var(--line-2); }
   /* diálogos viram folha que sobe de baixo */
   .overlay { place-items: end stretch; padding: 0; }
   .modal, .modal.wide {
-    width: 100%; max-height: 92vh; border-radius: 18px 18px 0 0; border-bottom: 0;
+    width: 100%; max-height: 92vh; max-height: 92dvh; border-radius: 18px 18px 0 0; border-bottom: 0;
     padding: 4px 18px calc(18px + env(safe-area-inset-bottom)); animation: sheet-up .22s ease-out;
   }
   .sheet-handle { display: grid; place-items: center; height: 26px; touch-action: none; cursor: grab; margin: 0 -18px; }

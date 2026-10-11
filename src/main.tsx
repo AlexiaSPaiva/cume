@@ -1,3 +1,4 @@
+import './compat';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 // Source Serif 4: serifa de proporção normal (a Instrument Serif era condensada e parecia "esticada").
@@ -10,13 +11,15 @@ import { App } from './App';
 import { db } from './lib/db';
 import { requestPersistence } from './lib/storage';
 import { purgeExpired } from './lib/trash';
-import { removeExampleData } from './lib/cleanup';
+import { removeExampleData, restoreEditedExamples } from './lib/cleanup';
 
 // pede armazenamento persistente e esvazia só o que está na Lixeira há mais de 30 dias
 void requestPersistence();
 void db.open().then(() => purgeExpired(db)).then(goldToCume)
   // tira os dados de exemplo antigos (uma vez só); conta, configurações e o que a pessoa criou ficam
   .then(() => removeExampleData(db))
+  // devolve o que a 1ª versão da limpeza tirou mas a pessoa tinha editado ou usava
+  .then(() => restoreEditedExamples(db))
   .catch((e) => console.error('[meuplano] abrir banco', e));
 
 /**

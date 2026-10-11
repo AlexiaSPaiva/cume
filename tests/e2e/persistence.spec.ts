@@ -30,6 +30,8 @@ test('troca de versão do service worker não apaga dados nem rascunhos', async 
   await expect(page.getByText(/rascunho salvo às/)).toBeVisible({ timeout: 10_000 });
   await page.keyboard.press('Escape');
 
+  // app em uso há mais que alguns segundos (versão nova que chega logo ao abrir entra na hora, sem faixa)
+  await page.waitForFunction(() => performance.now() > 8500);
   // publica a versão B no mesmo endereço e o app procura atualização
   await useBuild(page, 'b');
   await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.update());
@@ -68,4 +70,32 @@ test('fechar e reabrir o app (mesmo perfil do navegador) mantém o PDF', async (
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('versão nova entra sozinha quando a pessoa sai do app, sem perder dados nem rascunho', async ({ page }) => {
+  await signup(page);
+  await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+  await page.getByRole('button', { name: /Tarefa/ }).first().click();
+  await page.getByLabel('O que fazer').fill('Rascunho do celular');
+  await expect(page.getByText(/rascunho salvo às/)).toBeVisible({ timeout: 10_000 });
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => performance.now() > 8500);
+
+  await useBuild(page, 'b');
+  await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.update());
+  await expect(page.getByTestId('update-banner')).toBeVisible({ timeout: 30_000 });
+  // a pessoa troca de aplicativo / bloqueia a tela
+  await Promise.all([
+    page.waitForEvent('load'),
+    page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+      document.dispatchEvent(new Event('visibilitychange'));
+    }),
+  ]);
+  await page.goto('/personalizar');
+  await expect(page.getByText(/versão 1\.0\.0\+B/)).toBeVisible();
+  await page.getByRole('button', { name: /Tarefa/ }).first().click();
+  await expect(page.getByLabel('O que fazer')).toHaveValue('Rascunho do celular');
 });

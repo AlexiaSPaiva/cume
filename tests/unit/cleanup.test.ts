@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { removeExampleData } from '../../src/lib/cleanup';
+import { removeExampleData, restoreEditedExamples } from '../../src/lib/cleanup';
 import { defaultSettings, seedExample } from '../../src/lib/seed';
 import { open, uniqueName } from './helpers';
 
@@ -60,5 +60,35 @@ describe('remover dados de exemplo', () => {
     expect(await removeExampleData(b)).toBe(0);
     expect(await b.tasks.count()).toBe(1);
     b.close();
+  });
+
+  it('o que a pessoa editou ou usa fica: exemplo editado, meta ligada a uma tarefa dela e o objetivo dessa meta', async () => {
+    const d = await deviceWithOldExamples();
+    const later = new Date(Date.now() + 3_600_000).toISOString();
+    const [edited] = (await d.tasks.toArray()).filter((x) => x.title === 'Estudar Matemática');
+    await d.tasks.update(edited.id!, { title: 'Estudar Matemática (minha)', updatedAt: later });
+    const goal = (await d.goals.toArray()).find((g) => g.objectiveId)!;
+    await d.tasks.add({ title: 'Tarefa real ligada', area: 'academica', status: 'afazer', priority: 'media', goalId: goal.id, createdAt: later });
+    await removeExampleData(d);
+    expect(await d.tasks.get(edited.id!)).toBeTruthy();
+    expect(await d.goals.get(goal.id!)).toBeTruthy();
+    expect(await d.objectives.get(goal.objectiveId!)).toBeTruthy();
+    d.close();
+  });
+
+  it('devolve da cópia o que a versão anterior da limpeza tirou mas tinha sido editado', async () => {
+    const d = await deviceWithOldExamples();
+    const later = new Date(Date.now() + 3_600_000).toISOString();
+    const [t] = (await d.tasks.toArray()).filter((x) => x.title === 'Estudar Matemática');
+    // simula a 1ª versão da limpeza: tirou a tarefa editada e guardou a cópia
+    const row = { ...t, title: 'Estudar Matemática (minha)', updatedAt: later };
+    await d.tasks.delete(t.id!);
+    await d.meta.put({ key: 'exemplos-removidos-copia', value: { removed: { tasks: [row, { ...t, id: 99999 }] } } });
+    await d.meta.put({ key: 'exemplos-removidos-v1', value: 'feito' });
+    expect(await restoreEditedExamples(d)).toBe(1);
+    expect((await d.tasks.get(t.id!))?.title).toBe('Estudar Matemática (minha)');
+    expect(await d.tasks.get(99999)).toBeUndefined(); // não editado: não volta
+    expect(await restoreEditedExamples(d)).toBe(0); // uma vez só
+    d.close();
   });
 });

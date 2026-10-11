@@ -42,10 +42,11 @@ async function problems(page: Page): Promise<string[]> {
   });
 }
 
-for (const [dev, label] of [['iPhone 13', '390'], ['iPhone SE', '375'], ['iPhone 14 Pro Max', '430']] as const) {
+// 320 = iPhone pequeno ou Safari com o texto ampliado (aA → 115–125%): a página fica "mais estreita"
+for (const [dev, label] of [['iPhone 13', '390'], ['iPhone SE', '375'], ['iPhone 14 Pro Max', '430'], ['iPhone SE', '320']] as const) {
   test.describe(`iPhone ${label}px`, () => {
     const { defaultBrowserType: _b, ...device } = devices[dev];
-    test.use(device);
+    test.use(label === '320' ? { ...device, viewport: { width: 320, height: 568 } } : device);
 
     test('nada se sobrepõe em nenhuma tela', async ({ page }) => {
       test.setTimeout(240_000);
@@ -62,6 +63,8 @@ for (const [dev, label] of [['iPhone 13', '390'], ['iPhone SE', '375'], ['iPhone
         await page.goto(r);
         await page.waitForTimeout(250);
         all.push(...(await problems(page)).map((p) => `${r}: ${p}`));
+        const wide = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        if (wide > 1) all.push(`${r}: a página passa ${wide}px da largura da tela`);
         // campo com letra menor que 16px faz o Safari dar zoom ao tocar
         const small = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]), select, textarea')]
           .filter((el) => el.getBoundingClientRect().width > 0 && parseFloat(getComputedStyle(el).fontSize) < 16)
