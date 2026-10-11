@@ -34,34 +34,48 @@ No ar em https://meuplano-rouge.vercel.app (Vercel). Cada push na branch `main` 
 
 ## Telas
 
-Login com o cenário do horário · Início · Minha semana · Agenda · Tarefas · Planejamento · Calendário ·
-Objetivos e Metas · Imprevistos · painéis das 6 áreas · Cofre de documentos · Personalizar.
+Entrada (Entrar em cima, Criar conta embaixo; várias contas por aparelho) · boas-vindas · Início · Minha semana ·
+Agenda · Tarefas (Quadro · Lista · Adiadas · Lixeira) · Planejamento (com Estudos da semana) · Calendário ·
+Objetivos e Metas · Imprevistos · Histórico e desempenho · painéis das 6 áreas · Financeiro (Visão geral · Renda extra ·
+Contas e cartões · Reserva · Cofre de comprovantes) · Acadêmica por trilhas (concurso, curso, graduação, pesquisa,
+extensão, idioma) · Cronograma de estudos · Cofre de documentos · Personalizar.
 
-## Recursos novos (além do design)
+## Recursos (v7 + pedidos)
 
-- **Imprevistos recorrentes** (`src/lib/recurrence.ts`): imprevistos parecidos da mesma área são
-  agrupados; quando um grupo aparece N vezes em 30 dias (padrão 3, ajustável), o app sugere
-  reservar um bloco fixo no planejamento (dia da semana mais comum, horário típico, duração média).
-  A sugestão aparece na Início, em Imprevistos, no Planejamento e no sino; aceitar cria um bloco
-  semanal listrado na Agenda; "Agora não" silencia por 30 dias.
-- **Link do Google Drive no Cofre**: além de enviar arquivo, dá para guardar o link de um documento
-  do Drive (validado para `drive.google.com` / `docs.google.com`).
+- **Modo foco** (⛶ em todo card e no topo), menu lateral recolhível, menu ⋯ com ordem fixa, estados de
+  carregando/erro/vazio/offline.
+- **Renda extra** como aba do Financeiro (`src/lib/freelance.ts`): dias ↔ horas só na exibição; pago entra no saldo.
+- **Histórico e desempenho** (`src/lib/history.ts`, só lê): dia/semana/mês/ano × anterior/média/meta, métricas
+  próprias, fechamento automático no dia 1º às 08:00.
+- **Tarefas adiadas** (`src/lib/tasks.ts`): adiar com motivo, Realocar a MESMA tarefa (dia, Planejamento ou backlog),
+  histórico de adiamentos, gesto de deslizar no celular.
+- **Metas pelas tarefas**: progresso = tarefas concluídas ÷ tarefas ligadas (sem alvo/valores manuais).
+- **Estudos** (`src/lib/study.ts`): trilhas com abas pelo tipo; concurso com necessidade por matéria
+  (peso × distância da meta × edital que falta) e "Gerar cronograma pela necessidade"; pesquisa com artigos,
+  fichamento salvo sozinho e diário; curso/graduação com módulos, provas e notas; sessões de estudo = tarefas
+  da Agenda com `trackId` (nunca duplicadas); pomodoro, revisões 24h/7d/30d e alarmes (`src/lib/reminders.ts`).
+- **Imprevistos recorrentes** (`src/lib/recurrence.ts`) e **link do Google Drive** no Cofre.
+- **Contas**: cada conta tem o próprio banco no aparelho (`src/lib/auth.ts`); a conta antiga continua no banco
+  histórico `meuplano`. Os avisos funcionam com o app aberto; com o app fechado e por e-mail exigiriam um servidor.
 
 ## Dados (regras que não podem ser quebradas)
 
-- Tudo fica no IndexedDB (Dexie, `src/lib/db.ts`). Arquivos: binário em `blobs`, metadados em `attachments`
-  (`src/lib/attachments.ts`). Nunca em memória nem em `localStorage`; URLs de arquivo são criadas na hora de exibir.
-- **Schema versionado**: toda mudança de estrutura = nova `db.version(n)` com `.upgrade()` que transforma os dados.
-  Proibido apagar/recriar o banco. Os testes em `tests/unit/migration.test.ts` provam isso.
+- Tudo fica no IndexedDB (Dexie, `src/lib/db.ts`, hoje na versão 5). Arquivos: binário em `blobs`, metadados em
+  `attachments` (`src/lib/attachments.ts`). URLs de arquivo são criadas na hora de exibir.
+- **Schema versionado**: toda mudança de estrutura = nova `db.version(n)`; as versões 3, 4 e 5 só ACRESCENTARAM
+  tabelas. Proibido apagar/recriar o banco. Os testes em `tests/unit/migration.test.ts` provam isso.
 - **Exclusão** = soft delete (`deletedAt`) + "Desfazer" (6 s) + Lixeira de 30 dias (`src/lib/trash.ts`).
 - **Formulários**: rascunho (novo) ou autosave (edição) com debounce, "salvo às HH:MM" (`src/lib/drafts.ts`).
-- **Service worker** em modo `prompt`: só limpa caches de assets antigos; mostra "Nova versão disponível · Atualizar".
-- **Backup** `.zip` (JSON + arquivos) em Configurações; importar soma, nunca apaga (`src/lib/backup.ts`).
-- Dados de exemplo só entram com o banco vazio.
+- **Versão nova do app**: entra sozinha ao abrir o app ou quando a pessoa sai dele (`UpdateBanner.tsx`);
+  os dados e rascunhos ficam.
+- **Backup** `.zip` (JSON + arquivos) em Personalizar; importar soma, nunca apaga (`src/lib/backup.ts`).
+- **Dados de exemplo**: o app começa vazio; exemplos só com `/?exemplos=1` (demonstração e testes). A limpeza
+  automática (`src/lib/cleanup.ts`) tira os exemplos das contas antigas, mas nunca o que a pessoa criou, editou
+  ou usa; guarda uma cópia do que saiu.
 
 ## Testes
 
 ```sh
-pnpm test        # Vitest + fake-indexeddb: migração, lixeira, backup, seed
-pnpm test:e2e    # Playwright com o Chrome instalado: recarregar, troca de versão do SW, reabrir o app, layout 360/768/1280
+pnpm test        # Vitest + fake-indexeddb: migração, lixeira, backup, limpeza, renda extra, histórico, tarefas, estudos
+pnpm test:e2e    # Playwright: Chrome (fluxos, layout 360–1280, 44px) e iPhone/WebKit (320, 375, 390, 430 px)
 ```

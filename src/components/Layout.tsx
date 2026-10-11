@@ -298,7 +298,7 @@ function useNotifications(): { text: ReactNode; to?: string; suggestion?: Recurr
 }
 
 function Search() {
-  const { tasks, goals, objectives, docs } = useData();
+  const { tasks, goals, objectives, docs, tracks, attachments, subjects } = useData();
   const ui = useUI();
   const nav = useNavigate();
   const [q, setQ] = useState('');
@@ -311,14 +311,18 @@ function Search() {
       ...tasks.filter((t) => norm(t.title).includes(n)).map((t) => ({ label: t.title, kind: 'tarefa', run: () => ui.openTask(t) })),
       ...goals.filter((g) => norm(g.title).includes(n)).map((g) => ({ label: g.title, kind: 'meta', run: () => nav('/metas') })),
       ...objectives.filter((o) => norm(o.title).includes(n)).map((o) => ({ label: o.title, kind: 'objetivo', run: () => nav('/metas') })),
+      ...tracks.filter((t) => norm(t.title).includes(n)).map((t) => ({ label: t.title, kind: 'trilha', run: () => nav(`/area/academica/trilha/${t.id}`) })),
+      ...subjects.filter((x) => norm(x.name).includes(n)).map((x) => ({ label: x.name, kind: 'matéria/módulo', run: () => nav(`/area/academica/trilha/${x.trackId}`) })),
       ...docs.filter((d) => norm(d.name).includes(n)).map((d) => ({ label: d.name, kind: 'documento', run: () => nav('/area/adultices/cofre') })),
+      // arquivos das trilhas (edital, artigos, links…)
+      ...attachments.filter((a) => a.ownerType === 'track' && norm(a.name).includes(n)).map((a) => ({ label: a.name, kind: 'arquivo', run: () => nav(`/area/academica/trilha/${a.ownerId}`) })),
     ].slice(0, 12);
-  }, [q, tasks, goals, objectives, docs, ui, nav]);
+  }, [q, tasks, goals, objectives, docs, tracks, subjects, attachments, ui, nav]);
 
   return (
     <div className="search">
       <Icon name="search" size={13} />
-      <input value={q} placeholder="Buscar tarefa, projeto ou meta..." onChange={(e) => setQ(e.target.value)}
+      <input value={q} placeholder="Buscar tarefa, trilha, meta ou arquivo..." onChange={(e) => setQ(e.target.value)}
         onFocus={() => setFocus(true)} onBlur={() => setTimeout(() => setFocus(false), 150)} aria-label="Buscar" />
       {focus && results.length > 0 && (
         <div className="search-res">
