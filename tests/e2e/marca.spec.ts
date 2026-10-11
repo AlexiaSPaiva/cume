@@ -75,7 +75,7 @@ test('cena fixada em Personalizar vale depois de recarregar; login usa a mesma c
   await expect(page.locator('.login .scene')).toHaveAttribute('data-scene', 'noite');
   const loginBg = await page.locator('.login .scene-layer').first().evaluate((el) => getComputedStyle(el).backgroundImage);
   expect(loginBg).toContain('cume-bg-noite-login');
-  await expect(page.locator('.login .box').getByRole('img', { name: 'Cume°' })).toBeVisible();
-  await expect(page.locator('.login .box')).toContainText('Personal Life OS');
-  await expect(page.locator('.login .box')).toContainText(/Foco · Clareza · Ação/i);
+  await expect(page.locator('.login .box').first().getByRole('img', { name: 'Cume°' })).toBeVisible();
+  await expect(page.locator('.login .box').first()).toContainText('Personal Life OS');
+  await expect(page.locator('.login')).toContainText(/Foco · Clareza · Ação/i);
 });

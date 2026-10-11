@@ -217,7 +217,8 @@ export function Personalizar({ onLogout }: { onLogout: () => void }) {
             <input ref={importer} type="file" accept=".zip,application/zip" hidden data-testid="backup-file"
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void importData(f); }} />
             {busy && <span className="hint">{busy}</span>}
-            <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => { logout(); onLogout(); }}><Icon name="logout" size={14} /> Sair</button>
+            <button className="btn out" style={{ marginLeft: 'auto' }} onClick={async () => { await set({ welcomeDismissed: false }); window.dispatchEvent(new Event('cume:boas-vindas')); }}>Ver as boas-vindas</button>
+            <button className="btn" onClick={() => { logout(); onLogout(); }}><Icon name="logout" size={14} /> Sair</button>
           </div>
           <span className="hint">O backup leva tudo, inclusive os arquivos. Importar soma ao que já existe: nada é apagado e, no mesmo item, vale a versão mais recente.</span>
           {settings.googleClientId && (

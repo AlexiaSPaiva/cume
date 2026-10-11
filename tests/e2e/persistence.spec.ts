@@ -2,7 +2,7 @@ import { chromium, expect, test } from '@playwright/test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { attachPdf, captureOpens, expectPdfOpens, signup, useBuild } from './helpers';
+import { attachPdf, captureOpens, expectPdfOpens, signup, useBuild, closeWelcome } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await useBuild(page, 'a');
@@ -62,6 +62,7 @@ test('fechar e reabrir o app (mesmo perfil do navegador) mantém o PDF', async (
     await captureOpens(page);
     await page.goto('/');
     await expect(page.getByRole('heading', { name: /Olá, Teste/ })).toBeVisible();
+    await closeWelcome(page); // app aberto de novo: as boas-vindas voltam até a pessoa marcar "Não mostrar de novo"
     await expectPdfOpens(page, 'Boleto inscrição.pdf');
     await ctx.close();
   } finally {

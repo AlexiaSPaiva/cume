@@ -27,8 +27,8 @@ export function App() {
   // null = ainda carregando; undefined = sem configurações (primeiro acesso)
   const settings = useLiveQuery(async () => (await db.settings.get('me')) ?? null, []);
 
-  if (settings === undefined) return <><Skeleton shell={session} /><UpdateBanner /></>;
-  if (!session || !settings) return <><Login settings={settings ?? undefined} onIn={() => setSession(true)} /><UpdateBanner /></>;
+  if (settings === undefined) return <><UpdateBanner /><Skeleton shell={session} /></>;
+  if (!session || !settings) return <><UpdateBanner /><Login settings={settings ?? undefined} onIn={() => setSession(true)} /></>;
 
   return (
     <BrowserRouter>

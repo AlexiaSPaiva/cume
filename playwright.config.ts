@@ -11,11 +11,15 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: `http://localhost:${PORT}`,
-    // usa o Google Chrome já instalado (sem baixar outro navegador)
-    channel: 'chrome',
     serviceWorkers: 'allow',
     viewport: { width: 1280, height: 860 },
   },
+  projects: [
+    // usa o Google Chrome já instalado
+    { name: 'chrome', use: { channel: 'chrome' }, testIgnore: /iphone\.spec/ },
+    // motor do Safari (WebKit), para o que só aparece no iPhone
+    { name: 'iphone', use: { browserName: 'webkit' }, testMatch: /iphone\.spec/ },
+  ],
   webServer: {
     command: 'node tests/e2e/server.mjs',
     url: `http://localhost:${PORT}/__switch?to=a`,

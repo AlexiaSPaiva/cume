@@ -12,6 +12,7 @@ import type { RecurringSuggestion } from '../lib/recurrence';
 import { DragClose, useFocusMode } from './Card';
 import { sceneMode, useScene } from '../lib/scene';
 import { BrandMark, SceneBg } from './Brand';
+import { Welcome, WELCOME_SESSION_KEY } from './Welcome';
 import { ErrorBoundary, OfflineBadge } from './States';
 import { Icon, Modal } from './ui';
 import { useUI } from './Overlays';
@@ -59,6 +60,16 @@ export function Layout() {
   const scene = useScene(mode);
 
   const quick = (fn: () => void) => () => { setSheet(null); fn(); };
+  const [welcome, setWelcome] = useState(() => {
+    try { return !settings.welcomeDismissed && sessionStorage.getItem(WELCOME_SESSION_KEY) !== '1'; } catch { return !settings.welcomeDismissed; }
+  });
+  const closeWelcome = () => { try { sessionStorage.setItem(WELCOME_SESSION_KEY, '1'); } catch { /* ok */ } setWelcome(false); };
+  // "Ver as boas-vindas de novo" (Personalizar)
+  useEffect(() => {
+    const h = () => setWelcome(true);
+    window.addEventListener('cume:boas-vindas', h);
+    return () => window.removeEventListener('cume:boas-vindas', h);
+  }, []);
 
   return (
     <div className={`shell scene-${scene} ${collapsed ? 'collapsed' : ''} ${focus.on ? 'page-focus' : ''}`} style={{ '--accent': settings.accent } as React.CSSProperties}>
@@ -102,6 +113,7 @@ export function Layout() {
         <button type="button" onClick={() => setSheet('more')} aria-expanded={sheet === 'more'}><Icon name="menu" size={20} /><span>Mais</span></button>
       </nav>
 
+      {welcome && <Welcome name={settings.name} onClose={closeWelcome} />}
       {sheet === 'add' && (
         <Modal title="Adicionar" onClose={() => setSheet(null)}>
           <div className="list quick">

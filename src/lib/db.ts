@@ -190,7 +190,13 @@ export function openDb(name = DB_NAME): MeuPlanoDB {
   return d;
 }
 
-export const db = openDb();
+/** qual banco abrir: o da conta que entrou por último neste aparelho (chave nova; sem ela, o histórico) */
+export const ACTIVE_DB_KEY = 'meuplano.db';
+export function activeDbName(): string {
+  try { return localStorage.getItem(ACTIVE_DB_KEY) || DB_NAME; } catch { return DB_NAME; }
+}
+
+export const db = openDb(typeof localStorage === 'undefined' ? DB_NAME : activeDbName());
 
 /** registra um valor real numa meta e atualiza o progresso */
 export async function addRecord(goalId: number, value: number, note?: string, date = new Date().toISOString().slice(0, 10)) {

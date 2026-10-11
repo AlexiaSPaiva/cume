@@ -1,93 +1,170 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { accountEmail, createAccount, hasAccount, login } from '../lib/auth';
-import { db } from '../lib/db';
+import { createAccount, hasAccount, login, resetPassword, type Signed } from '../lib/auth';
+import { db, openDb } from '../lib/db';
 import { defaultSettings, seedExample } from '../lib/seed';
 import type { Settings } from '../lib/types';
 import { BrandMark, SceneBg } from '../components/Brand';
 import { useAttachmentUrl } from '../lib/attachments';
 import { sceneMode } from '../lib/scene';
 
+/** dados de exemplo só para testes e demonstração: /?exemplos=1 (o app de verdade começa vazio) */
+const withExamples = () => new URLSearchParams(location.search).get('exemplos') === '1';
+
+/**
+ * Tela de entrada: "Entrar" em cima (para quem já tem conta) e, logo abaixo, "Criar conta".
+ * Cada conta tem os próprios dados neste aparelho.
+ */
 export function Login({ settings, onIn }: { settings?: Settings; onIn: () => void }) {
-  const [mode, setMode] = useState<'login' | 'signup' | 'reset' | null>(null);
-  const [email, setEmail] = useState('');
-  const [pw, setPw] = useState('');
-  const [pw2, setPw2] = useState('');
-  const [name, setName] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [example, setExample] = useState(true);
-  const [err, setErr] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [hasAny, setHasAny] = useState<boolean | null>(null);
+  const [signupOpen, setSignupOpen] = useState(false);
+  const [reset, setReset] = useState(false);
   const photo = useAttachmentUrl(settings?.photoAttachmentId);
 
   useEffect(() => {
-    hasAccount().then((h) => setMode(h ? 'login' : 'signup'));
-    accountEmail().then((e) => e && setEmail(e));
+    hasAccount().then((h) => { setHasAny(h); setSignupOpen(!h); });
   }, []);
 
+  /** depois de entrar: se a conta usa outro banco, recarrega para abrir o banco dela */
+  // e sempre abre na Início (não na tela onde a outra pessoa saiu)
+  const done = (s: Signed) => {
+    if (s.reload) return location.assign('/');
+    history.replaceState(null, '', '/');
+    onIn();
+  };
+
+  return (
+    <div className="login">
+      <SceneBg kind="login" mode={sceneMode(settings)} photo={photo} />
+      <div className="login-col">
+        <div className="box">
+          <BrandMark subtitle />
+          {hasAny !== null && (reset
+            ? <ResetForm onBack={() => setReset(false)} onDone={done} />
+            : <LoginForm onDone={done} onForgot={() => setReset(true)} />)}
+        </div>
+
+        {hasAny !== null && <div className="box signup">
+          {!signupOpen ? (
+            <div className="signup-cta">
+              <div><b>Primeira vez no Cume°?</b><span className="muted small">Crie sua conta neste aparelho.</span></div>
+              <button type="button" className="btn out" onClick={() => setSignupOpen(true)}>Criar conta</button>
+            </div>
+          ) : (
+            <SignupForm onDone={done} />
+          )}
+        </div>}
+        <p className="motto">Foco · Clareza · Ação</p>
+      </div>
+    </div>
+  );
+}
+
+function LoginForm({ onDone, onForgot }: { onDone: (s: Signed) => void; onForgot: () => void }) {
+  const [email, setEmail] = useState('');
+  const [pw, setPw] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
   async function submit(e: FormEvent) {
     e.preventDefault();
     setErr('');
     setBusy(true);
     try {
-      if (mode === 'login') {
-        if (await login(email, pw)) onIn();
-        else setErr('E-mail ou senha não conferem.');
-      } else if (mode === 'signup' || mode === 'reset') {
-        if (pw.length < 6) return setErr('Use pelo menos 6 caracteres na senha.');
-        if (pw !== pw2) return setErr('As senhas não são iguais.');
-        if (mode === 'reset') {
-          if (email.trim().toLowerCase() !== (await accountEmail())) return setErr('Esse não é o e-mail da conta neste aparelho.');
-          await createAccount(email, pw);
-          return onIn();
-        }
-        if (!name.trim()) return setErr('Como você quer ser chamada?');
-        await createAccount(email, pw);
-        if (!(await db.settings.get('me'))) await db.settings.put(defaultSettings(name.trim(), fullName.trim() || name.trim()));
-        if (example) await seedExample();
-        onIn();
-      }
-    } finally {
-      setBusy(false);
-    }
+      const s = await login(email, pw);
+      if (s) onDone(s); else setErr('E-mail ou senha não conferem.');
+    } finally { setBusy(false); }
   }
-
   return (
-    <div className="login">
-      <SceneBg kind="login" mode={sceneMode(settings)} photo={photo} />
-      {mode && (
-        <form className="box form" onSubmit={submit}>
-          <BrandMark subtitle />
-          <div>
-            <h1>{mode === 'login' ? `Bem-vinda de volta${settings ? `, ${settings.name}` : ''}` : mode === 'reset' ? 'Nova senha' : 'Vamos começar'}</h1>
-            <p className="lead">{mode === 'login' ? 'Cada passo conta. Hoje é o seu.' : mode === 'reset' ? 'Seus dados continuam aqui, só a senha muda.' : 'Crie seu acesso neste aparelho.'}</p>
-          </div>
-          {mode === 'signup' && (
-            <div className="form cols">
-              <label className="field"><span>Como quer ser chamada</span><input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Alexia" /></label>
-              <label className="field"><span>Nome completo</span><input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Alexia Silva Paiva" /></label>
-            </div>
-          )}
-          <label className="field"><span>E-mail</span><input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@email.com" /></label>
-          <label className="field"><span>{mode === 'reset' ? 'Nova senha' : 'Senha'}</span>
-            <input type="password" required autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={pw} onChange={(e) => setPw(e.target.value)} placeholder="••••••••" />
-          </label>
-          {mode !== 'login' && (
-            <label className="field"><span>Confirmar senha</span><input type="password" required autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></label>
-          )}
-          {mode === 'signup' && (
-            <label className="check"><input type="checkbox" checked={example} onChange={(e) => setExample(e.target.checked)} /> Começar com dados de exemplo (dá para apagar depois)</label>
-          )}
-          {mode === 'login' && (
-            <button type="button" className="btn ghost sm" style={{ alignSelf: 'flex-end' }} onClick={() => { setMode('reset'); setErr(''); setPw(''); }}>Esqueci a senha</button>
-          )}
-          {err && <div className="err">{err}</div>}
-          <button className="btn gold" style={{ justifyContent: 'center', padding: 13, fontSize: '0.9375rem' }} disabled={busy}>
-            {mode === 'login' ? 'Entrar' : mode === 'reset' ? 'Salvar nova senha' : 'Criar e entrar'}
-          </button>
-          {mode === 'reset' && <button type="button" className="btn ghost sm" onClick={() => setMode('login')}>Voltar</button>}
-          <p className="motto">Foco · Clareza · Ação</p>
-        </form>
-      )}
-    </div>
+    <form className="form" onSubmit={submit} aria-label="Entrar">
+      <div>
+        <h1>Entrar</h1>
+        <p className="lead">Já tem conta? Bem-vinda de volta.</p>
+      </div>
+      <label className="field"><span>E-mail</span><input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@email.com" /></label>
+      <label className="field"><span>Senha</span><input type="password" required autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="••••••••" /></label>
+      <button type="button" className="btn ghost sm" style={{ alignSelf: 'flex-end' }} onClick={onForgot}>Esqueci a senha</button>
+      {err && <div className="err" role="alert">{err}</div>}
+      <button className="btn gold big" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
+    </form>
+  );
+}
+
+function ResetForm({ onBack, onDone }: { onBack: () => void; onDone: (s: Signed) => void }) {
+  const [email, setEmail] = useState('');
+  const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setErr('');
+    if (pw.length < 6) return setErr('Use pelo menos 6 caracteres na senha.');
+    if (pw !== pw2) return setErr('As senhas não são iguais.');
+    setBusy(true);
+    try {
+      const s = await resetPassword(email, pw);
+      if (s) onDone(s); else setErr('Não há conta com esse e-mail neste aparelho.');
+    } finally { setBusy(false); }
+  }
+  return (
+    <form className="form" onSubmit={submit} aria-label="Nova senha">
+      <div>
+        <h1>Nova senha</h1>
+        <p className="lead">Seus dados continuam aqui, só a senha muda.</p>
+      </div>
+      <label className="field"><span>E-mail da conta</span><input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
+      <label className="field"><span>Nova senha</span><input type="password" required autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} /></label>
+      <label className="field"><span>Repetir a nova senha</span><input type="password" required autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></label>
+      {err && <div className="err" role="alert">{err}</div>}
+      <button className="btn gold big" disabled={busy}>Salvar nova senha</button>
+      <button type="button" className="btn ghost sm" onClick={onBack}>Voltar</button>
+    </form>
+  );
+}
+
+function SignupForm({ onDone }: { onDone: (s: Signed) => void }) {
+  const [name, setName] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setErr('');
+    if (!name.trim()) return setErr('Como você quer ser chamada?');
+    if (pw.length < 6) return setErr('Use pelo menos 6 caracteres na senha.');
+    if (pw !== pw2) return setErr('As senhas não são iguais.');
+    setBusy(true);
+    try {
+      const s = await createAccount(email, pw);
+      // os dados da conta nova vão para o banco dela
+      const target = s.reload ? openDb(s.dbName) : db;
+      if (!(await target.settings.get('me'))) await target.settings.put(defaultSettings(name.trim(), fullName.trim() || name.trim()));
+      if (withExamples()) await seedExample(target);
+      if (s.reload) target.close();
+      onDone(s);
+    } catch (ex) {
+      setErr((ex as Error).message);
+    } finally { setBusy(false); }
+  }
+  return (
+    <form className="form" onSubmit={submit} aria-label="Criar conta">
+      <div>
+        <h2 className="signup-title">Criar conta</h2>
+        <p className="lead">Primeira vez no Cume°? Seus dados ficam guardados neste aparelho.</p>
+      </div>
+      <div className="cols">
+        <label className="field"><span>Como quer ser chamada</span><input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Alexia" /></label>
+        <label className="field"><span>Nome completo</span><input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Alexia Silva Paiva" /></label>
+      </div>
+      <label className="field"><span>Seu e-mail</span><input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@email.com" /></label>
+      <div className="cols">
+        <label className="field"><span>Crie uma senha</span><input type="password" required autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} /></label>
+        <label className="field"><span>Confirmar senha</span><input type="password" required autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></label>
+      </div>
+      {err && <div className="err" role="alert">{err}</div>}
+      <button className="btn gold big" disabled={busy}>{busy ? 'Criando…' : 'Criar e entrar'}</button>
+    </form>
   );
 }

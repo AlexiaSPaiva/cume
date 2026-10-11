@@ -22,12 +22,20 @@ export async function captureOpens(page: Page) {
 export async function signup(page: Page) {
   await page.goto('/');
   await page.getByLabel('Como quer ser chamada').fill('Teste');
-  await page.getByLabel('E-mail').fill('teste@meuplano.test');
-  await page.getByLabel('Senha', { exact: true }).fill('senha-de-teste-123');
+  await page.getByLabel('Seu e-mail').fill('teste@meuplano.test');
+  await page.getByLabel('Crie uma senha').fill('senha-de-teste-123');
   await page.getByLabel('Confirmar senha').fill('senha-de-teste-123');
-  await page.getByLabel(/dados de exemplo/).uncheck();
   await page.getByRole('button', { name: 'Criar e entrar' }).click();
   await expect(page.getByRole('heading', { name: /Olá, Teste/ })).toBeVisible();
+  await closeWelcome(page);
+}
+
+/** fecha as boas-vindas (aparecem para quem entra numa conta nova) */
+export async function closeWelcome(page: Page) {
+  const w = page.getByRole('dialog', { name: 'Boas-vindas ao Cume°' });
+  await expect(w).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(w).toBeHidden();
 }
 
 export async function attachPdf(page: Page, name = 'Edital concurso.pdf') {

@@ -2,10 +2,10 @@ import { expect, test, type Page } from '@playwright/test';
 import { useBuild } from './helpers';
 
 async function signupWithExamples(page: Page) {
-  await page.goto('/');
+  await page.goto('/?exemplos=1');
   await page.getByLabel('Como quer ser chamada').fill('Teste');
-  await page.getByLabel('E-mail').fill('teste@meuplano.test');
-  await page.getByLabel('Senha', { exact: true }).fill('senha-de-teste-123');
+  await page.getByLabel('Seu e-mail').fill('teste@meuplano.test');
+  await page.getByLabel('Crie uma senha').fill('senha-de-teste-123');
   await page.getByLabel('Confirmar senha').fill('senha-de-teste-123');
   await page.getByRole('button', { name: 'Criar e entrar' }).click();
   await expect(page.getByRole('heading', { name: /Olá, Teste/ })).toBeVisible();
@@ -90,7 +90,8 @@ test('menu lateral recolhido continua recolhido depois de recarregar', async ({ 
 
 test('menu ⋯ segue a ordem padrão e excluir mostra Desfazer', async ({ page }) => {
   await page.goto('/tarefas');
-  const first = page.locator('.cols5 .tcard').first();
+  // uma tarefa comum (blocos de renda extra se repetem em vários dias com o mesmo nome)
+  const first = page.locator('.cols5 .tcard').filter({ hasNotText: 'Renda extra' }).first();
   const title = (await first.locator('b').first().innerText()).trim();
   await first.getByRole('button', { name: `Ações: ${title}` }).click();
   const items = await page.getByRole('menuitem').allInnerTexts();
@@ -109,7 +110,7 @@ test('menu ⋯ segue a ordem padrão e excluir mostra Desfazer', async ({ page }
 
 test('duplicar cria uma cópia nova', async ({ page }) => {
   await page.goto('/tarefas');
-  const first = page.locator('.cols5 .tcard').first();
+  const first = page.locator('.cols5 .tcard').filter({ hasNotText: 'Renda extra' }).first();
   const title = (await first.locator('b').first().innerText()).trim();
   await first.getByRole('button', { name: `Ações: ${title}` }).click();
   await page.getByRole('menuitem', { name: 'Duplicar' }).click();

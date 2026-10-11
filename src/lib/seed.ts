@@ -179,6 +179,10 @@ export async function seedExample(target: MeuPlanoDB = db): Promise<boolean> {
   });
   await seedFreelance(target);
   await seedMetrics(target);
+  // exemplo pedido de propósito (demonstração/testes): a limpeza automática não remove (ver cleanup.ts)
+  await target.meta.put({ key: 'exemplos', value: new Date().toISOString() });
+  // conta de demonstração já entra direto (as boas-vindas continuam em Personalizar)
+  if (await target.settings.get('me')) await target.settings.update('me', { welcomeDismissed: true });
   return true;
 }
 

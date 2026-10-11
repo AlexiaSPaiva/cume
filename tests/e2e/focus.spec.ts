@@ -3,10 +3,10 @@ import { useBuild } from './helpers';
 
 test('Foco por área responde ao Planejamento', async ({ page }) => {
   await useBuild(page, 'a');
-  await page.goto('/');
+  await page.goto('/?exemplos=1');
   await page.getByLabel('Como quer ser chamada').fill('Teste');
-  await page.getByLabel('E-mail').fill('teste@meuplano.test');
-  await page.getByLabel('Senha', { exact: true }).fill('senha-de-teste-123');
+  await page.getByLabel('Seu e-mail').fill('teste@meuplano.test');
+  await page.getByLabel('Crie uma senha').fill('senha-de-teste-123');
   await page.getByLabel('Confirmar senha').fill('senha-de-teste-123');
   await page.getByRole('button', { name: 'Criar e entrar' }).click(); // com os dados de exemplo
   await expect(page.getByRole('heading', { name: /Olá, Teste/ })).toBeVisible();

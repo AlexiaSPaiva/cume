@@ -21,7 +21,7 @@ export function UpdateBanner() {
 
   if (!needRefresh) return null;
   return (
-    <div className="toast" role="status" data-testid="update-banner">
+    <div className="update-banner" role="status" data-testid="update-banner">
       Nova versão disponível
       <button className="btn sm gold" onClick={() => updateServiceWorker(true)}>Atualizar</button>
       <button className="btn sm ghost" onClick={() => setNeedRefresh(false)} aria-label="Depois">Depois</button>

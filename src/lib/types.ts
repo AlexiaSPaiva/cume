@@ -181,6 +181,8 @@ export interface Settings extends Stamped {
   scenario: ScenarioId;
   /** foto própria do cenário (Attachment kind 'photo') */
   photoAttachmentId?: number;
+  /** marcou "Não mostrar de novo" nas boas-vindas */
+  welcomeDismissed?: boolean;
   /** cenário do Cume° (chave nova; sem ela: foto própria se houver, senão automático) */
   sceneMode?: SceneMode;
   widgets: WidgetId[];
@@ -298,6 +300,8 @@ export interface Account {
   email: string;
   passwordHash: string;
   salt: string;
+  /** banco com os dados desta conta; sem ele = o histórico "meuplano" (contas da v6) */
+  dbName?: string;
 }
 
 export interface SuggestionState extends Stamped {

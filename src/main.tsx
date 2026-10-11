@@ -10,10 +10,14 @@ import { App } from './App';
 import { db } from './lib/db';
 import { requestPersistence } from './lib/storage';
 import { purgeExpired } from './lib/trash';
+import { removeExampleData } from './lib/cleanup';
 
 // pede armazenamento persistente e esvazia só o que está na Lixeira há mais de 30 dias
 void requestPersistence();
-void db.open().then(() => purgeExpired(db)).then(goldToCume).catch((e) => console.error('[meuplano] abrir banco', e));
+void db.open().then(() => purgeExpired(db)).then(goldToCume)
+  // tira os dados de exemplo antigos (uma vez só); conta, configurações e o que a pessoa criou ficam
+  .then(() => removeExampleData(db))
+  .catch((e) => console.error('[meuplano] abrir banco', e));
 
 /**
  * Identidade Cume°: o dourado padrão mudou de #c9a77c (v6) para #c8a97e (o mesmo do ícone).

@@ -53,9 +53,10 @@ test('métrica própria: criar, lançar valor e ver na tabela; Exportar PDF abre
   const det = page.getByRole('dialog', { name: 'Copos de água' });
   await det.getByLabel('Valor').fill('8');
   await det.getByRole('button', { name: 'Lançar' }).click();
+  await expect(det.getByLabel('Valor')).toHaveValue('');
   await det.getByLabel('Valor').fill('6');
   await det.getByRole('button', { name: 'Lançar' }).click();
-  await expect(det.locator('.row')).toHaveCount(2);
+  await expect(det.locator('.list .row')).toHaveCount(2);
   await page.keyboard.press('Escape');
 
   const row = page.locator('.table.metrics tr', { hasText: 'Copos de água' });
