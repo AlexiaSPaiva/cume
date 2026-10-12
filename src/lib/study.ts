@@ -231,3 +231,50 @@ export function trackEvents(d: Pick<Data, 'tracks' | 'trackDates'>): CalendarEve
     })),
   ];
 }
+
+/* ---------- tópicos colados do edital ---------- */
+
+export interface ParsedTopic { name: string; code?: string; section?: string }
+
+// "1.", "1.1.", "1.1", "2)", "3 -", "4.2.1:" no começo da linha
+const NUMBERED = /^\s*(\d{1,3}(?:\.\d{1,3})*)\s*[.)]?\s*[-–—:]?\s+(\S.*)$/;
+
+/**
+ * Lê o texto colado do edital.
+ * - Com numeração: só as linhas numeradas viram tópicos; um item que tem subitens (ex.: "1. ANTIGUIDADE" com 1.1, 1.2…)
+ *   vira o nome da SEÇÃO, não um tópico. Linhas sem número são ignoradas, exceto quando continuam a linha de
+ *   cima (texto do PDF quebrado no meio do tópico). O ";" dentro do tópico não quebra o tópico.
+ * - Sem numeração: um tópico por linha (ou separados por ";"), como antes.
+ */
+export function parseTopics(text: string): ParsedTopic[] {
+  const lines = text.replace(/\r/g, '').split('\n').map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const items: { code: string; name: string }[] = [];
+  for (const l of lines) {
+    const m = NUMBERED.exec(l);
+    if (m) { items.push({ code: m[1], name: m[2].trim() }); continue; }
+    const last = items[items.length - 1];
+    // continuação: a linha de cima não terminou (sem ponto final) e esta começa em minúscula
+    if (last && !/[.;:!?]$/.test(last.name) && /^[a-zà-ú(]/.test(l)) last.name = `${last.name} ${l}`;
+  }
+  if (!items.length) {
+    return text.split(/[\n;]/).map((x) => x.trim()).filter(Boolean).map((name) => ({ name }));
+  }
+  const isParent = (code: string) => items.some((x) => x.code.startsWith(`${code}.`));
+  const titleOf = (code: string) => items.find((x) => x.code === code)?.name;
+  const out: ParsedTopic[] = [];
+  for (const it of items) {
+    if (isParent(it.code)) continue;
+    const parent = it.code.includes('.') ? it.code.slice(0, it.code.lastIndexOf('.')) : undefined;
+    out.push({ code: it.code, name: it.name, section: parent ? sectionName(titleOf(parent)) : undefined });
+  }
+  return out;
+}
+
+/** "ANTIGUIDADE" → "Antiguidade"; "MUNDO MEDIEVAL" → "Mundo Medieval" (o resto fica como veio) */
+function sectionName(s?: string): string | undefined {
+  if (!s) return undefined;
+  const t = s.replace(/[.:;]+$/, '');
+  if (t !== t.toUpperCase()) return t;
+  const small = new Set(['a', 'as', 'o', 'os', 'e', 'de', 'da', 'das', 'do', 'dos', 'em', 'na', 'no', 'para']);
+  return t.toLowerCase().split(' ').map((w, i) => (i > 0 && small.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1))).join(' ');
+}

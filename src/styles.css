@@ -847,7 +847,9 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
 /* trilhas: concurso, pesquisa, módulos */
 .table tr.sel td { background: var(--color-gold-soft); }
 .topic-row { padding: 4px 0; border-bottom: 1px solid #172038; }
-.topic-row .grow { flex: 1; min-width: 0; }
+.topic-row .grow { flex: 1; min-width: 0; white-space: normal; overflow: visible; overflow-wrap: anywhere; line-height: 1.35; }
+.topic-row { align-items: flex-start; }
+.topic-row > input, .topic-row > .tag, .topic-row > .muted { margin-top: 1px; }
 .topic-row button.tag { border: 0; cursor: pointer; }
 .stepper { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; position: relative; }
 .stepper li { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font-size: 0.75rem; position: relative; }
@@ -906,3 +908,7 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
 .card.focused .fa-list b { min-width: 2.6em; text-align: right; }
 /* ampliado, grades de 3 viram 2 colunas: os nomes aparecem inteiros */
 @media (min-width: 768px) { .card.focused:not(.wide) .grid.g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* tópicos colados do edital: seção (ex.: Antiguidade) e o número do item */
+.topic-section { font: 700 0.6875rem/1.2 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 10px 0 2px; }
+.topic-section:first-child { margin-top: 0; }
+.topic-code { margin-right: 6px; font-variant-numeric: tabular-nums; }

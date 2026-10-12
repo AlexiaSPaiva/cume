@@ -302,6 +302,10 @@ export interface Topic extends Stamped {
   name: string;
   status: TopicStatus;
   nextReviewAt?: string;
+  /** número do item no edital (ex.: "1.1") */
+  code?: string;
+  /** seção do edital (ex.: "Antiguidade"), quando o item pai tinha subitens */
+  section?: string;
 }
 
 export interface QuestionLog extends Stamped {

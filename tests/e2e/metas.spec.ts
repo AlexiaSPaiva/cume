@@ -74,8 +74,9 @@ test('tarefa semanal da meta: repete até a data final e o progresso conta os di
 
   // aparece em Minha semana e marca o dia de hoje
   await page.goto('/semana');
-  await page.getByRole('button', { name: /^Marcar Estudar Matemática como feita em/ }).click();
-  await expect(page.getByRole('button', { name: /^Desfazer Estudar Matemática em/ })).toHaveCount(1);
+  const hoje = await page.evaluate(() => { const x = new Date(); return `${String(x.getDate()).padStart(2, '0')}/${String(x.getMonth() + 1).padStart(2, '0')}`; });
+  await page.getByRole('button', { name: `Marcar Estudar Matemática como feita em ${hoje}`, exact: true }).click();
+  await expect(page.getByRole('button', { name: `Desfazer Estudar Matemática em ${hoje}`, exact: true })).toHaveCount(1);
   await page.goto('/metas');
   await expect(page.locator('.metric', { hasText: 'Estudar para o vestibular' })).toContainText('14%');
 });

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { Fragment, useState, type FormEvent } from 'react';
 import { AttachmentDrop, AttachmentList } from '../../components/AttachmentDrop';
 import { Card } from '../../components/Card';
 import { ItemMenu } from '../../components/ItemMenu';
@@ -7,7 +7,7 @@ import { Bar, Empty, Modal, Stat, Stats } from '../../components/ui';
 import { useData } from '../../lib/data';
 import { db } from '../../lib/db';
 import { ddmm, diffDays, dur, DOW_SHORT, iso, MONTHS, parse, relDays, today } from '../../lib/dates';
-import { accuracy, coverage, EXAM_STEPS, necessity, necessityLevel, planByNecessity, subjectMinutes, TYPE } from '../../lib/study';
+import { accuracy, coverage, EXAM_STEPS, necessity, necessityLevel, parseTopics, planByNecessity, subjectMinutes, TYPE } from '../../lib/study';
 import type { Attachment, Subject, Task, TopicStatus, Track, TrackDate } from '../../lib/types';
 
 const TOPIC_LABEL: Record<TopicStatus, [string, string]> = {
@@ -136,38 +136,55 @@ function Micro({ s, t, onStudy }: { s: Subject; t: Track; onStudy: (b?: Task) =>
   );
 }
 
-function TopicList({ s, topics, limit }: { s: Subject; topics: { id?: number; name: string; status: TopicStatus; nextReviewAt?: string }[]; limit?: number }) {
+/** grava os tópicos lidos do texto (colado do edital ou digitado); devolve quantos entraram */
+async function addTopics(subjectId: number, text: string): Promise<number> {
+  const list = parseTopics(text);
+  if (list.length) await db.topics.bulkAdd(list.map((x) => ({ subjectId, name: x.name, code: x.code, section: x.section, status: 'todo' as TopicStatus })));
+  return list.length;
+}
+
+function TopicList({ s, topics, limit }: { s: Subject; topics: { id?: number; name: string; status: TopicStatus; nextReviewAt?: string; code?: string; section?: string }[]; limit?: number }) {
   const d = useData();
   const ui = useUI();
   const [name, setName] = useState('');
   const shown = limit ? topics.slice(0, limit) : topics;
   return (
     <div className="list" style={{ gap: 4 }}>
-      {shown.map((x) => {
+      {shown.map((x, i) => {
         const logs = d.questionLogs.filter((q) => q.topicId === x.id);
+        // seção do edital: aparece uma vez, antes do primeiro tópico dela
+        const head = x.section && x.section !== shown[i - 1]?.section ? x.section : null;
         const tot = logs.reduce((a, q) => a + q.total, 0);
         const a = tot ? Math.round((logs.reduce((s2, q) => s2 + q.correct, 0) / tot) * 100) : null;
         return (
-          <div key={x.id} className="row small topic-row">
+          <Fragment key={x.id}>
+          {head && <div className="topic-section">{head}</div>}
+          <div className="row small topic-row">
             <input type="checkbox" checked={x.status === 'studied' || x.status === 'reviewed'} aria-label={`Estudado: ${x.name}`}
               onChange={(e) => db.topics.update(x.id!, { status: e.target.checked ? 'studied' : 'todo' })} />
-            <span className="grow">{x.name}</span>
+            <span className="grow">{x.code && <span className="faint topic-code">{x.code}</span>}{x.name}</span>
             <button type="button" className={`tag ${TOPIC_LABEL[x.status][1]}`} onClick={() => db.topics.update(x.id!, { status: NEXT[x.status] })} title="tocar muda a situação">{TOPIC_LABEL[x.status][0]}</button>
             <span className="muted" style={{ width: '2.6rem', textAlign: 'right' }}>{a == null ? '—' : `${a}%`}</span>
             {!limit && <ItemMenu label={x.name} actions={{ delete: () => void ui.remove('topics', x.id!, `Tópico “${x.name}”`) }} />}
           </div>
+          </Fragment>
         );
       })}
       {limit && topics.length > limit && <span className="muted small">+ {topics.length - limit} tópicos (aba Matérias)</span>}
       {!limit && (
         <form className="row" style={{ gap: 6 }} onSubmit={async (e) => {
           e.preventDefault();
-          const names = name.split(/[\n;]/).map((x) => x.trim()).filter(Boolean);
-          if (!names.length) return;
-          await db.topics.bulkAdd(names.map((n) => ({ subjectId: s.id!, name: n, status: 'todo' as TopicStatus })));
-          setName('');
+          if (await addTopics(s.id!, name)) setName('');
         }}>
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Novo tópico (separe vários com ;)" aria-label={`Novo tópico de ${s.name}`} />
+          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Novo tópico, ou cole o conteúdo do edital" aria-label={`Novo tópico de ${s.name}`}
+            onPaste={async (e) => {
+              // texto de várias linhas (edital): entra direto, só os itens numerados
+              const text = e.clipboardData.getData('text');
+              if (!text.includes('\n')) return;
+              e.preventDefault();
+              const n = await addTopics(s.id!, text);
+              ui.toast(n ? `${n} ${n === 1 ? 'tópico adicionado' : 'tópicos adicionados'} do texto colado.` : 'Nenhum tópico encontrado no texto colado.');
+            }} />
           <button className="btn sm out">+ tópico</button>
         </form>
       )}
@@ -213,8 +230,7 @@ export function SubjectForm({ t, s = {}, onDone, word = 'Matéria' }: { t: Track
     if (!f.name?.trim()) return;
     const rec = { ...f, name: f.name.trim(), trackId: t.id! } as Subject;
     const id = rec.id ? (await db.subjects.put(rec), rec.id) : ((await db.subjects.add(rec)) as number);
-    const names = topics.split(/[\n;]/).map((x) => x.trim()).filter(Boolean);
-    if (names.length) await db.topics.bulkAdd(names.map((n) => ({ subjectId: id, name: n, status: 'todo' as TopicStatus })));
+    await addTopics(id, topics);
     onDone(id);
   }
   return (
@@ -227,13 +243,25 @@ export function SubjectForm({ t, s = {}, onDone, word = 'Matéria' }: { t: Track
           <label className="field"><span>Meta de acertos (%)</span><input inputMode="numeric" value={f.targetAccuracy ?? ''} onChange={(e) => setF({ ...f, targetAccuracy: num(e.target.value) })} placeholder={String(t.targetAccuracy ?? 75)} /></label>
         </div>
       )}
-      {!f.id && (
-        <label className="field"><span>Tópicos (um por linha, opcional)</span>
-          <textarea rows={4} value={topics} onChange={(e) => setTopics(e.target.value)} placeholder={'Modelo relacional\nNormalização\nSQL: joins'} />
-        </label>
-      )}
+      <label className="field"><span>{f.id ? 'Adicionar tópicos (opcional)' : 'Tópicos (opcional)'}</span>
+        <textarea rows={5} value={topics} onChange={(e) => setTopics(e.target.value)} placeholder={'Um por linha, ou cole o conteúdo do edital:\n1. ANTIGUIDADE\n1.1. Os povos do Oriente Próximo…\n1.2. As cidades-estados da Grécia.'} />
+      </label>
+      <TopicsPreview text={topics} />
       <div className="actions"><button className="btn gold">Salvar</button><button type="button" className="btn out" onClick={() => onDone()}>Cancelar</button></div>
     </form>
+  );
+}
+
+/** o que vai entrar: quantos tópicos e de quais seções */
+function TopicsPreview({ text }: { text: string }) {
+  if (!text.trim()) return <p className="hint" style={{ margin: 0 }}>Colando o edital, só os itens numerados viram tópicos; os títulos com subitens (ex.: 1. ANTIGUIDADE) viram seções.</p>;
+  const list = parseTopics(text);
+  const secs = [...new Set(list.map((x) => x.section).filter(Boolean))];
+  return (
+    <p className="hint" style={{ margin: 0 }} data-testid="topics-preview">
+      <b>{list.length} {list.length === 1 ? 'tópico' : 'tópicos'}</b>{secs.length ? ` em ${secs.length} ${secs.length === 1 ? 'seção' : 'seções'}: ${secs.join(', ')}` : ''}.
+      {list[0] && <> Primeiro: “{list[0].code ? `${list[0].code} ` : ''}{list[0].name}”.</>}
+    </p>
   );
 }
 

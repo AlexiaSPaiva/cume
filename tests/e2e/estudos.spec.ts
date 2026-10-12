@@ -138,3 +138,32 @@ test('curso: módulos e progresso; estudar agora registra a sessão; Planejament
   await page.keyboard.press('Escape');
   await expect(page).toHaveURL(/\/planejamento$/);
 });
+
+test('colar o conteúdo do edital: só os itens numerados viram tópicos, agrupados por seção', async ({ page }) => {
+  const { readFileSync } = await import('node:fs');
+  const edital = readFileSync('tests/fixtures/edital-historia.txt', 'utf-8');
+  await newTrack(page, 'Concurso', 'Vestibular');
+  await page.getByRole('navigation', { name: 'Abas da trilha' }).getByRole('button', { name: 'Matérias' }).click();
+  await page.getByRole('button', { name: '+ Matéria' }).first().click();
+  const m = page.getByRole('dialog', { name: 'Nova matéria' });
+  await m.getByLabel('Matéria', { exact: true }).fill('História');
+  await m.getByLabel(/Tópicos/).fill(edital);
+  await expect(m.getByTestId('topics-preview')).toContainText('38 tópicos em 7 seções');
+  await m.getByRole('button', { name: 'Salvar' }).click();
+
+  const card = page.locator('.card', { has: page.getByRole('heading', { name: 'História' }) });
+  await expect(card.locator('.topic-row')).toHaveCount(38);
+  await expect(card.locator('.topic-section')).toHaveText(['Antiguidade', 'Mundo Medieval', 'Mundo Moderno', 'Mundo Contemporâneo', 'Brasil Colônia', 'Brasil Império', 'Brasil República']);
+  await expect(card.locator('.topic-row').first()).toContainText('1.1Os povos do Oriente Próximo');
+  await expect(card.getByText('ANTIGUIDADE', { exact: true })).toHaveCount(0);
+
+  // colar direto no campo "+ tópico" também funciona
+  await card.getByLabel('Novo tópico de História').focus();
+  await page.evaluate((t) => {
+    const el = document.activeElement as HTMLInputElement;
+    const dt = new DataTransfer(); dt.setData('text/plain', t);
+    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  }, '8. EXTRA\n8.1. Tópico colado no campo.\n8.2. Outro tópico.');
+  await expect(card.locator('.topic-row')).toHaveCount(40);
+  await expect(card.locator('.topic-section').last()).toHaveText('Extra');
+});
