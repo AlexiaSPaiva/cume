@@ -59,7 +59,7 @@ export function FocusCard() {
         <div className="row" style={{ gap: 22, flexWrap: 'wrap' }}>
           <Donut size={132} data={AREAS.map((a) => ({ value: pct[a.id], color: a.color }))}
             center={<span className="small" style={{ lineHeight: 1.2 }}><b style={{ fontSize: '1.125rem' }}>{total}h</b><br /><span className="muted">planejadas</span></span>} />
-          <div className="list" style={{ flex: 1, minWidth: '9rem', gap: 6 }}>
+          <div className="list fa-list" style={{ flex: 1, minWidth: '9rem', gap: 6 }}>
             {AREAS.map((a) => {
               const diff = pct[a.id] - desired[a.id];
               const off = Math.abs(diff) >= 5;
@@ -71,6 +71,11 @@ export function FocusCard() {
                     <span className="faint" style={{ display: 'block', fontSize: '0.6875rem' }}>
                       {off && <span style={{ color: diff < 0 ? 'var(--bad)' : 'var(--warn)' }}>{diff < 0 ? '▼' : '▲'} </span>}
                       desejado {desired[a.id]}% · {hours[a.id]}h
+                    </span>
+                    {/* só no modo foco: barra do planejado com o traço do desejado */}
+                    <span className="fa-bar" aria-hidden="true">
+                      <i style={{ width: `${Math.min(100, pct[a.id])}%`, background: a.color }} />
+                      <em style={{ left: `${Math.min(100, desired[a.id])}%` }} />
                     </span>
                   </span>
                   <b style={{ marginTop: -3 }}>{pct[a.id]}%</b>

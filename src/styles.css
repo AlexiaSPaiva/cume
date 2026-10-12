@@ -187,8 +187,21 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 }
 .card.focused > h2 { font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem); position: sticky; top: calc(-1 * max(22px, env(safe-area-inset-top))); background: rgba(10,15,31,.88); backdrop-filter: blur(6px); padding: 6px 0 12px; margin: 0; z-index: 2; }
 .card.focused:focus { outline: none; }
-/* em tela larga o conteúdo do card não se espalha: coluna central confortável */
-.card.focused:not(.wide) > h2, .card.focused:not(.wide) > .card-body > * { width: 100%; max-width: 60rem; margin-inline: auto; }
+/* em tela larga o conteúdo do card não se espalha: coluna central confortável
+   (margin com !important: alguns blocos trazem margem própria e escapavam da coluna) */
+.card.focused:not(.wide) > h2, .card.focused:not(.wide) > .card-body > * { width: 100%; max-width: 44rem; margin-inline: auto !important; }
+.card.focused.wide > h2, .card.focused.wide > .card-body > * { width: 100%; max-width: 90rem; margin-inline: auto !important; }
+/* o fundo fica discreto: o cenário não passa por cima do texto */
+.card.focused { background: linear-gradient(rgba(10,15,31,.9), rgba(10,15,31,.95)), var(--scene-login, none) 62% 50% / cover no-repeat fixed, var(--color-bg) !important; gap: 16px; }
+.card.focused > .card-body > :first-child { margin-top: 6px; }
+/* tablet e computador: o conteúdo AMPLIA de verdade (gráficos, listas e textos maiores), não só o card */
+@media (min-width: 768px) {
+  .card.focused { padding-top: max(28px, env(safe-area-inset-top)); }
+  /* o texto base cresce 25% enquanto um card está ampliado (tudo em rem acompanha: letras, gráficos, espaços) */
+  html:has(.card.focused:not(.wide)) { font-size: 125%; }
+  .card.focused:not(.wide) > h2, .card.focused:not(.wide) > .card-body > * { max-width: 36rem; }
+  .card.focused > h2 { padding-bottom: 18px; }
+}
 .focus-handle { display: none; }
 body.focus-lock { overflow: hidden; }
 body.focus-lock .bottom-nav { display: none; }
@@ -883,3 +896,13 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
 .weekly-pick { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
 .weekly-pick .actions { gap: 4px; }
 .login-version { margin: 0; text-align: center; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
+
+/* Foco por área ampliado: cada área ganha a barra do planejado (cor) e o traço do desejado (branco) */
+.fa-bar { display: none; }
+.card.focused .fa-bar { display: block; position: relative; height: 6px; margin-top: 6px; border-radius: 3px; background: var(--line); }
+.card.focused .fa-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+.card.focused .fa-bar em { position: absolute; top: -3px; width: 2px; height: 12px; background: #fff; border-radius: 1px; }
+.card.focused .fa-list { gap: 12px !important; }
+.card.focused .fa-list b { min-width: 2.6em; text-align: right; }
+/* ampliado, grades de 3 viram 2 colunas: os nomes aparecem inteiros */
+@media (min-width: 768px) { .card.focused:not(.wide) .grid.g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
