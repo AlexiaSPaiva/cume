@@ -8,8 +8,10 @@ import type { Row } from './backup';
  * A chave pública pode ficar no app: cada pessoa só lê e grava as próprias linhas (regras no banco, supabase/schema.sql).
  */
 
-const URL_ = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
-const KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim();
+// tira espaços e caracteres invisíveis (ex.: o BOM que o Windows põe ao colar o valor)
+const clean = (v: unknown) => (typeof v === 'string' ? v.replace(/[^!-~]/g, '') : '') || undefined;
+const URL_ = clean(import.meta.env.VITE_SUPABASE_URL);
+const KEY = clean(import.meta.env.VITE_SUPABASE_ANON_KEY);
 
 // o link do e-mail "esqueci a senha" chega com #...type=recovery; guardado antes do cliente limpar o endereço
 export const recoveryLink = typeof location !== 'undefined' && /type=recovery/.test(location.hash);

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { finishRecovery, hasAccount, resetPassword, signIn, signUp, type Entered } from '../lib/auth';
+import { accounts, finishRecovery, hasAccount, resetPassword, signIn, signUp, type Entered } from '../lib/auth';
 import { cloudOn, cloudSendReset } from '../lib/cloud';
 import { db, openDb } from '../lib/db';
 import { syncDb } from '../lib/syncApp';
@@ -131,10 +131,13 @@ function LoginForm({ onDone, onForgot, empty }: { onDone: (s: Entered) => void; 
 
 /** com nuvem: manda um e-mail com o link para criar a senha nova */
 function ResetForm({ onBack, onDone }: { onBack: () => void; onDone: (s: Entered) => void }) {
-  return cloudOn() ? <ResetByEmail onBack={onBack} /> : <ResetLocal onBack={onBack} onDone={onDone} />;
+  // conta que ainda está só neste aparelho (de antes da nuvem): a senha nova é criada aqui mesmo
+  const [local, setLocal] = useState<string | null>(null);
+  if (!cloudOn() || local != null) return <ResetLocal onBack={onBack} onDone={onDone} email={local ?? ''} />;
+  return <ResetByEmail onBack={onBack} onLocal={setLocal} />;
 }
 
-function ResetByEmail({ onBack }: { onBack: () => void }) {
+function ResetByEmail({ onBack, onLocal }: { onBack: () => void; onLocal: (email: string) => void }) {
   const [email, setEmail] = useState('');
   const [err, setErr] = useState('');
   const [sent, setSent] = useState(false);
@@ -144,6 +147,8 @@ function ResetByEmail({ onBack }: { onBack: () => void }) {
     setErr('');
     setBusy(true);
     try {
+      const acc = (await accounts()).find((a) => a.email === email.trim().toLowerCase());
+      if (acc && !acc.cloudId) return onLocal(acc.email);
       const r = await cloudSendReset(email.trim().toLowerCase());
       if (r.ok) setSent(true);
       else setErr(/rate|seconds/i.test(r.message ?? '') ? 'Muitos pedidos seguidos. Espere alguns minutos e tente de novo.' : `Não foi possível enviar agora. ${r.message ?? ''}`);
@@ -199,8 +204,8 @@ function NewPasswordForm({ onDone, onBack }: { onDone: (s: Entered) => void; onB
   );
 }
 
-function ResetLocal({ onBack, onDone }: { onBack: () => void; onDone: (s: Entered) => void }) {
-  const [email, setEmail] = useState('');
+function ResetLocal({ onBack, onDone, email: initial = '' }: { onBack: () => void; onDone: (s: Entered) => void; email?: string }) {
+  const [email, setEmail] = useState(initial);
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
   const [err, setErr] = useState('');
@@ -213,7 +218,10 @@ function ResetLocal({ onBack, onDone }: { onBack: () => void; onDone: (s: Entere
     setBusy(true);
     try {
       const s = await resetPassword(email, pw);
-      if (s) onDone(s); else setErr(NO_ACCOUNT());
+      if (!s) { setErr(NO_ACCOUNT()); return; }
+      // com nuvem: já entra com a senha nova, e a conta vai para a nuvem com os dados
+      const c = cloudOn() ? await signIn(email, pw) : s;
+      if (typeof c === 'object') { await prepare(c, email); onDone(c); } else onDone(s);
     } finally { setBusy(false); }
   }
   return (
