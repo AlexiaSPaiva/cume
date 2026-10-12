@@ -62,14 +62,14 @@ export function MinhaSemana() {
         <Stat k="Imprevistos" v={dur(impMin)} s={`${imps.length} nesta semana`} />
       </Stats>
 
-      <div className="row" style={{ justifyContent: 'space-between' }}>
+      <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <div className="row">
           <button className="btn sm" onClick={() => setWs(addDays(ws, -7))} aria-label="Semana anterior">‹</button>
-          <b>Semana {rangeLabel}</b>
+          <b style={{ whiteSpace: 'nowrap' }}>Semana {rangeLabel}</b>
           <button className="btn sm" onClick={() => setWs(addDays(ws, 7))} aria-label="Próxima semana">›</button>
           {ws !== weekStart(t0) && <button className="btn sm ghost" onClick={() => setWs(weekStart(t0))}>hoje</button>}
         </div>
-        <span className="muted small"><span className="only-mouse">arraste um card para outro dia</span><span className="only-touch">toque num card para mudar o dia</span></span>
+        <span className="muted small week-nav-hint"><span className="only-mouse">arraste um card para outro dia</span><span className="only-touch">toque num card para mudar o dia</span></span>
       </div>
 
       <div className="week7">

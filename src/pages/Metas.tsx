@@ -124,7 +124,7 @@ function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
   const [draftUntil, setDraftUntil] = useState('');
   // semanais: só as que já são desta meta (os blocos fixos de trabalho etc. não entram na lista)
   const candidates = tasks.filter((t) => !t.freelanceEntryId && !t.bufferFor && (t.goalId == null || t.goalId === g.id)
-    && (isWeekly(t) ? linked.has(t.id!) || t.goalId === g.id : (t.area === area || linked.has(t.id!)) && (t.status !== 'concluido' || linked.has(t.id!))));
+    && (isWeekly(t) ? linked.has(t.id!) || (g.id != null && t.goalId === g.id) : (t.area === area || linked.has(t.id!)) && (t.status !== 'concluido' || linked.has(t.id!))));
   const chosen = tasks.filter((t) => linked.has(t.id!));
   const newTasks = news.map((n) => newTaskRecord(n, area));
   const { current: done, target: total } = taskCount([...chosen, ...newTasks], f);

@@ -918,3 +918,24 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
 .masonry { display: grid; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); gap: 16px; align-items: start; }
 .masonry-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .masonry-item { min-width: 0; }
+
+/* ---------- revisão iPhone ---------- */
+@media (max-width: 767.98px) {
+  /* indicadores: o último card sozinho ocupa a linha inteira (sem meia linha vazia) */
+  .stats > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  /* valores longos (nomes, datas) quebram em vez de sumir em "…" */
+  .stat .v { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; font-size: clamp(1.2rem, 0.85rem + 2vw, 1.45rem); }
+  /* card com filtros no título: título em cima, filtros numa linha inteira embaixo, ⛶ no fim */
+  .card h2 .act.has-fields { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-start; gap: 8px; margin-left: 0; }
+  .card h2 .act.has-fields > .icon-btn:last-child { margin-left: auto; }
+  .card h2 .act.has-fields select, .card h2 .act.has-fields input { flex: 1 1 0; min-width: 0; }
+  .card h2 .act.has-fields > .icon-btn:last-child { flex: none; }
+  /* filtros agrupados num bloco: o bloco encolhe e o ⛶ fica na mesma linha, à direita */
+  .card h2 .act.has-fields > .row { flex: 1 1 0; min-width: 0; }
+  /* cronograma: no modo Dia a coluna ocupa a largura toda (na semana, rola para o lado) */
+  .cg { grid-template-columns: 2.2rem repeat(var(--days, 7), minmax(5.5rem, 1fr)) !important; }
+  /* busca do menu "Mais" na largura toda */
+  .modal .search { width: 100%; }
+  /* navegação de semana: o aviso de gesto vai para a linha de baixo */
+  .week-nav-hint { flex-basis: 100%; }
+}

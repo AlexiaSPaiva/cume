@@ -31,7 +31,7 @@ export function Cronograma({ trackId, embedded = false }: { trackId?: number; em
   const nav = useNavigate();
   const [q] = useSearchParams();
   const focus = usePageFocus();
-  const [view, setView] = useState<'dia' | 'semana' | 'mes'>('semana');
+  const [view, setView] = useState<'dia' | 'semana' | 'mes'>(() => (typeof window !== 'undefined' && window.matchMedia('(max-width: 767.98px)').matches ? 'dia' : 'semana'));
   const [anchor, setAnchor] = useState(today());
   const [types, setTypes] = useState<Set<TrackType>>(new Set());
   const [blockForm, setBlockForm] = useState<Partial<Task> | null>(null);

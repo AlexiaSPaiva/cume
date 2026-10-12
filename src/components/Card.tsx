@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Icon } from './ui';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([type=hidden]), select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -82,6 +82,9 @@ export function Card({ title, act, expandable = true, wide = false, className = 
 }) {
   const box = useRef<HTMLElement>(null);
   const focus = useFocusMode(box);
+  // filtros (campos) no título: no celular eles descem para uma linha inteira
+  const [fields, setFields] = useState(false);
+  useLayoutEffect(() => { setFields(!!box.current?.querySelector(':scope > h2 .act select, :scope > h2 .act input')); });
   const name = typeof title === 'string' ? title : undefined;
 
   return (
@@ -93,7 +96,7 @@ export function Card({ title, act, expandable = true, wide = false, className = 
         {focus.on && <span className="focus-chip">Modo foco</span>}
         <span className="card-title">{title}</span>
         {(act || expandable) && (
-          <span className="act">
+          <span className={`act ${fields ? 'has-fields' : ''}`}>
             {act}
             {expandable && (focus.on
               ? <button type="button" className="icon-btn" onClick={focus.close} aria-label="Fechar modo foco" title="Fechar (Esc)"><Icon name="x" size={18} /></button>
