@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
 import { findRecurring, type RecurringSuggestion } from './recurrence';
 import { isWeekly, weeklyProgress } from './recurring';
+import { expandEvents } from './bills';
 import type {
   ArticleNote, Attachment, CalendarEvent, Client, FinanceTx, FreelanceEntry, FreelanceProject, Goal, GoalRecord, HistorySnapshot, Imprevisto, JournalEntry, Metric, MetricEntry, MockExam, Objective, QuestionLog, Settings, Subject, SuggestionState, Task, Topic, Track, TrackDate, VaultDoc, WeekPlan,
 } from './types';
@@ -50,7 +51,8 @@ export function DataProvider({ settings, fallback = null, children }: { settings
   const imprevistos = useLiveQuery(() => db.imprevistos.toArray().then(live), []);
   const objectives = useLiveQuery(() => db.objectives.toArray().then(live), []);
   const goals = useLiveQuery(() => db.goals.toArray().then(live), []);
-  const events = useLiveQuery(() => db.events.toArray().then(live), []);
+  // contas mensais viram uma ocorrência por mês (Calendário, Financeiro, avisos)
+  const events = useLiveQuery(() => db.events.toArray().then(live).then((x) => expandEvents(x)), []);
   const docs = useLiveQuery(() => db.docs.toArray().then(live), []);
   const attachments = useLiveQuery(() => db.attachments.toArray().then(live), []);
   const plans = useLiveQuery(() => db.plans.toArray(), []);
@@ -109,7 +111,9 @@ export function withTaskProgress(goals: Goal[], tasks: Task[]): Goal[] {
   const by = new Map<number, Task[]>();
   for (const t of tasks) if (t.goalId != null && !t.deletedAt) by.set(t.goalId, [...(by.get(t.goalId) ?? []), t]);
   return goals.map((g) => {
-    const linked = by.get(g.id!) ?? [];
+    // meta ligada a uma trilha inteira: todas as sessões dela contam (as novas também), sem ligar uma a uma
+    const fromTrack = g.trackAll && g.trackId != null ? tasks.filter((t) => t.trackId === g.trackId && !t.deletedAt && t.goalId !== g.id) : [];
+    const linked = [...(by.get(g.id!) ?? []), ...fromTrack];
     // a pessoa escolheu medir por valor (atual/alvo): as tarefas ligadas não mudam o número
     if (g.byTasks === false) return g;
     if (!g.byTasks && !linked.length) return g;

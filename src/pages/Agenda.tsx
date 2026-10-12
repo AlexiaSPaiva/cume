@@ -131,11 +131,12 @@ export function Agenda() {
               {hoursList.filter((_, i) => i % 2 === 1 || view === 'dia').map((m) => <div key={m} style={{ top: (m - FROM) * PX }}>{fromMin(m)}</div>)}
             </div>
             {days.map((d) => {
+              // imprevistos entram na mesma divisão em colunas: ficam ao lado dos blocos, nunca por cima
               const items: Item[] = [
                 ...occ.filter((o) => o.date === d && o.start).map((o) => ({ kind: 'task' as const, o, s: toMin(o.start!), e: toMin(o.start!) + Math.max(15, o.durationMin) })),
+                ...imps.filter((i) => i.date === d && i.start).map((i) => ({ kind: 'imp' as const, i, s: toMin(i.start), e: toMin(i.start) + Math.max(15, i.durationMin) })),
               ];
               const laid = lanes(items);
-              const dImps = imps.filter((i) => i.date === d);
               return (
                 <div key={d} className={`ag-col ${d === t0 ? 'today' : ''} ${over === d ? 'over' : ''}`} style={{ height: (TO - FROM) * PX }}
                   onDragOver={(e) => { e.preventDefault(); setOver(d); }} onDragLeave={() => setOver(null)} onDrop={(e) => drop(d, e)}
@@ -145,14 +146,28 @@ export function Agenda() {
                   }}>
                   {hoursList.map((m) => <div key={m} className="ag-line" style={{ top: (m - FROM) * PX }} />)}
                   {laid.map((it) => {
-                    if (it.kind !== 'task') return null;
-                    const t = it.o.task;
-                    const c = AREA[t.area].color;
                     const top = (Math.max(FROM, it.s) - FROM) * PX;
                     const h = Math.max(16, (Math.min(TO, it.e) - Math.max(FROM, it.s)) * PX - 2);
                     const w = 100 / it.lanes;
+                    // coluna estreita (3+ coisas ao mesmo tempo na semana): letra menor e sem quebrar palavra no meio
+                    const narrow = view === 'semana' && it.lanes >= 3;
+                    // o texto cabe no bloco: blocos curtos = 1 linha com "…"; maiores = quantas linhas couberem
+                    const tiny = h < 26;
+                    const showTime = h >= 46 && !narrow;
+                    const lines = Math.max(1, Math.floor((h - (showTime ? 26 : 8)) / (narrow ? 12 : 14)));
+                    const pos = { top, height: h, left: `calc(${it.lane * w}% + 2px)`, right: 'auto', width: `calc(${w}% - 4px)` };
+                    if (it.kind === 'imp') {
+                      const i = it.i;
+                      return (
+                        <button key={`i${i.id}`} className={`blk imp ${tiny ? 'tiny' : ''} ${narrow ? 'narrow' : ''}`} style={pos} onClick={() => ui.openImprevisto(i)} title={`${i.title} · ${i.start} · ${dur(i.durationMin)}`}>
+                          <span className="blk-t" style={{ WebkitLineClamp: lines } as React.CSSProperties}>! {i.title}</span>
+                        </button>
+                      );
+                    }
+                    const t = it.o.task;
+                    const c = AREA[t.area].color;
                     return (
-                      <button key={`${t.id}-${d}`} className={`blk ${t.soft || t.status === 'adiada' ? 'soft' : ''} ${t.bufferFor ? 'buffer' : ''}`}
+                      <button key={`${t.id}-${d}`} className={`blk ${tiny ? 'tiny' : ''} ${narrow ? 'narrow' : ''} ${t.soft || t.status === 'adiada' ? 'soft' : ''} ${t.bufferFor ? 'buffer' : ''}`}
                         draggable
                         onDragStart={(e) => {
                           e.dataTransfer.setData('task', String(t.id));
@@ -161,22 +176,12 @@ export function Agenda() {
                         onClick={() => ui.openTask(t)}
                         title={`${t.title} · ${it.o.start} · ${dur(it.o.durationMin)}`}
                         style={{
-                          top, height: h, left: `calc(${it.lane * w}% + 3px)`, right: 'auto', width: `calc(${w}% - 6px)`,
+                          ...pos,
                           background: mix(c, 30, '#141b33'), borderColor: mix(c, 55, 'transparent'),
                           color: t.soft || t.status === 'adiada' ? c : undefined,
                         }}>
-                        {t.title}{t.status === 'adiada' && ' (adiada)'}
-                        {h > 34 && <small>{it.o.start} · {dur(it.o.durationMin)}</small>}
-                      </button>
-                    );
-                  })}
-                  {dImps.map((i) => {
-                    const s = toMin(i.start);
-                    const top = (Math.max(FROM, s) - FROM) * PX;
-                    const h = Math.max(16, i.durationMin * PX - 2);
-                    return (
-                      <button key={`i${i.id}`} className="blk imp" style={{ top, height: h, right: 4 }} onClick={() => ui.openImprevisto(i)} title={`${i.title} · ${dur(i.durationMin)}`}>
-                        ! {i.title}
+                        <span className="blk-t" style={{ WebkitLineClamp: lines } as React.CSSProperties}>{t.title}{t.status === 'adiada' && ' (adiada)'}</span>
+                        {showTime && <small>{it.o.start} · {dur(it.o.durationMin)}</small>}
                       </button>
                     );
                   })}

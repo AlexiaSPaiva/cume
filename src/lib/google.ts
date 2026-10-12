@@ -92,7 +92,7 @@ export async function syncCalendars(cals: { id: string; name: string; area: Area
     await db.transaction('rw', db.events, async () => {
       for (const ev of events) {
         const cur = await db.events.where('externalId').equals(ev.externalId!).first();
-        if (cur) await db.events.update(cur.id!, ev);
+        if (cur) await db.events.update(cur.id!, ev as Partial<typeof ev> as never);
         else await db.events.add(ev);
       }
     });

@@ -939,3 +939,16 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
   /* navegação de semana: o aviso de gesto vai para a linha de baixo */
   .week-nav-hint { flex-basis: 100%; }
 }
+/* Agenda: o título do bloco nunca passa da borda (cortado no meio parecia bloco por cima de bloco) */
+.blk { line-height: 14px; display: flex; flex-direction: column; justify-content: flex-start; }
+.blk-t { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.blk.tiny { padding: 0 6px; justify-content: center; }
+.blk.tiny .blk-t { display: block; white-space: nowrap; text-overflow: ellipsis; font-size: 0.625rem; }
+/* objetivo medido por uma trilha: os índices (tempo, acertos, simulados, edital) */
+.obj-track { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; }
+.obj-ind .row { margin-bottom: 4px; }
+
+.blk.narrow { padding: 3px 4px; font-size: 0.625rem; }
+.blk.narrow .blk-t { overflow-wrap: normal; word-break: normal; -webkit-hyphens: auto; hyphens: auto; }
+.obj-ind .row > .grow { flex: none; overflow: visible; }
+.obj-ind .row > .muted { flex: 1; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

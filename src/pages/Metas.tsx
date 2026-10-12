@@ -5,7 +5,8 @@ import { Card } from '../components/Card';
 import { useUI } from '../components/Overlays';
 import { Bar, Empty, Icon, Modal, Ring, Stat, Stats } from '../components/ui';
 import { AREAS, AREA } from '../lib/areas';
-import { taskCount, useData } from '../lib/data';
+import { taskCount, useData, type Data } from '../lib/data';
+import { trackIndicators } from '../lib/study';
 import { addRecord, db } from '../lib/db';
 import { ddmm, dow, DOW_SHORT, MONTHS, parse, today } from '../lib/dates';
 import { goalPct } from '../lib/week';
@@ -13,9 +14,35 @@ import type { AreaId, Goal, Objective, Task } from '../lib/types';
 import { fmtGoal } from './Inicio';
 import { isDoneOn, isWeekly, occursOn, toggleOccurrence, weeklyProgress } from '../lib/recurring';
 
-export function objectivePct(o: Objective, goals: Goal[]): number {
+/** andamento do objetivo: pela trilha de estudos escolhida (tempo, acertos, simulados…) ou pela média das metas */
+export function objectivePct(o: Objective, goals: Goal[], d?: Data): number {
+  const t = o.trackId != null ? d?.tracks.find((x) => x.id === o.trackId) : undefined;
+  if (t && d) return trackIndicators(d, t).progress;
   const gs = goals.filter((g) => g.objectiveId === o.id);
   return gs.length ? Math.round(gs.reduce((s, g) => s + goalPct(g), 0) / gs.length) : 0;
+}
+
+/** os índices da trilha que medem o objetivo */
+function TrackIndicatorList({ o, d }: { o: Objective; d: Data }) {
+  const t = d.tracks.find((x) => x.id === o.trackId);
+  if (!t) return null;
+  const ind = trackIndicators(d, t);
+  const subs = ind.bySubject.filter((s) => s.acc != null);
+  return (
+    <div className="obj-track" data-testid="obj-track">
+      <span className="faint small">medido pela trilha <b>{t.title}</b></span>
+      {ind.parts.map((p) => (
+        <div key={p.label} className="obj-ind">
+          <div className="row small"><span className="grow">{p.label}</span><span className="muted">{p.value}</span></div>
+          <Bar pct={p.pct} color="var(--c)" />
+        </div>
+      ))}
+      {ind.parts.length === 0 && <span className="muted small">Ainda sem dados: estude, lance questões ou simulados na trilha.</span>}
+      {subs.length > 0 && (
+        <span className="muted small">Acertos por matéria: {subs.map((s) => `${s.name} ${s.acc}%`).join(' · ')}</span>
+      )}
+    </div>
+  );
 }
 
 export function goalLabel(g: Goal): string {
@@ -26,13 +53,14 @@ export function goalLabel(g: Goal): string {
 }
 
 export function Metas() {
-  const { objectives, goals } = useData();
+  const data = useData();
+  const { objectives, goals } = data;
   const ui = useUI();
   const [goalEdit, setGoalEdit] = useState<Partial<Goal> | null>(null);
   const [objEdit, setObjEdit] = useState<Partial<Objective> | null>(null);
   const [record, setRecord] = useState<Goal | null>(null);
 
-  const ranked = objectives.map((o) => ({ o, p: objectivePct(o, goals) })).sort((a, b) => b.p - a.p);
+  const ranked = objectives.map((o) => ({ o, p: objectivePct(o, goals, data) })).sort((a, b) => b.p - a.p);
   const nextDeadline = goals.filter((g) => g.deadline && goalPct(g) < 100).sort((a, b) => a.deadline!.localeCompare(b.deadline!))[0];
   // metas sem objetivo (ou cujo objetivo está na Lixeira) continuam visíveis aqui
   const loose = goals.filter((g) => !g.objectiveId || !objectives.some((o) => o.id === g.objectiveId));
@@ -60,7 +88,8 @@ export function Metas() {
                   delete: () => void ui.remove('objectives', o.id!, `Objetivo “${o.title}”`),
                 }} />
               </div>
-              <div className="ring"><Ring pct={objectivePct(o, goals)} color={c} /></div>
+              <div className="ring"><Ring pct={objectivePct(o, goals, data)} color={c} /></div>
+              {o.trackId != null && <TrackIndicatorList o={o} d={data} />}
               {gs.map((g) => <GoalRow key={g.id} g={g} onEdit={() => setGoalEdit(g)} onRecord={() => setRecord(g)} />)}
               <button className="add-link" onClick={() => setGoalEdit({ objectiveId: o.id, area: o.area })}>+ meta</button>
             </section>
@@ -108,7 +137,7 @@ export function GoalRow({ g, onEdit, onRecord }: { g: Goal; onEdit: () => void; 
  * Não há alvo nem valores inicial/final para preencher: ligue tarefas (ou crie aqui) e o progresso anda sozinho.
  */
 function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
-  const { objectives, tasks } = useData();
+  const { objectives, tasks, tracks } = useData();
   const ui = useUI();
   // meta nova: pelas tarefas; meta existente: como estava (antiga por valor sem tarefas = por valor)
   const [mode, setMode] = useState<'tarefas' | 'valor'>(g.id == null ? 'tarefas' : g.byTasks === false || (!g.byTasks && !tasks.some((t) => t.goalId === g.id)) ? 'valor' : 'tarefas');
@@ -123,9 +152,15 @@ function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
   const [draftDays, setDraftDays] = useState<number[]>([]);
   const [draftUntil, setDraftUntil] = useState('');
   // semanais: só as que já são desta meta (os blocos fixos de trabalho etc. não entram na lista)
-  const candidates = tasks.filter((t) => !t.freelanceEntryId && !t.bufferFor && (t.goalId == null || t.goalId === g.id)
-    && (isWeekly(t) ? linked.has(t.id!) || (g.id != null && t.goalId === g.id) : (t.area === area || linked.has(t.id!)) && (t.status !== 'concluido' || linked.has(t.id!))));
-  const chosen = tasks.filter((t) => linked.has(t.id!));
+  // trilha de estudos: todas as tarefas dela contam, ou só as que forem marcadas aqui
+  const trackId = f.trackId;
+  const trackAll = trackId != null && f.trackAll !== false;
+  const trackTasks = trackId != null ? tasks.filter((t) => t.trackId === trackId) : [];
+  const candidates = trackId != null && !trackAll
+    ? trackTasks.filter((t) => t.goalId == null || t.goalId === g.id)
+    : tasks.filter((t) => !t.freelanceEntryId && !t.bufferFor && (t.goalId == null || t.goalId === g.id) && (trackId == null || t.trackId !== trackId)
+      && (isWeekly(t) ? linked.has(t.id!) || (g.id != null && t.goalId === g.id) : (t.area === area || linked.has(t.id!)) && (t.status !== 'concluido' || linked.has(t.id!))));
+  const chosen = [...tasks.filter((t) => linked.has(t.id!)), ...(trackAll ? trackTasks.filter((t) => !linked.has(t.id!)) : [])];
   const newTasks = news.map((n) => newTaskRecord(n, area));
   const { current: done, target: total } = taskCount([...chosen, ...newTasks], f);
   const pct = total ? Math.round((done / total) * 100) : 0;
@@ -143,7 +178,7 @@ function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
     if (!f.title?.trim()) return;
     if (mode === 'valor' && (f.target == null || Number.isNaN(f.target))) return;
     const rec = (mode === 'tarefas'
-      ? { ...f, title: f.title.trim(), area, byTasks: true, metric: 'tarefas', unit: 'tarefas', initial: 0, current: done, target: total }
+      ? { ...f, title: f.title.trim(), area, byTasks: true, metric: 'tarefas', unit: 'tarefas', initial: 0, current: done, target: total, trackId: trackId ?? undefined, trackAll: trackId != null ? trackAll : undefined }
       : { ...f, title: f.title.trim(), area, byTasks: false, metric: f.metric ?? 'valor', initial: f.initial ?? 0, current: f.current ?? f.initial ?? 0 }) as Goal;
     await db.transaction('rw', db.goals, db.tasks, async () => {
       const id = rec.id ?? ((await db.goals.add(rec)) as number);
@@ -198,6 +233,23 @@ function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
           </div>
           <p className="hint" style={{ margin: 0 }}>Ex.: Reserva de emergência · R$ · 0 → 3.500 de 10.000. Depois é só tocar no + da meta para registrar cada novo valor.</p>
         </>
+      )}
+
+      {mode === 'tarefas' && tracks.length > 0 && (
+        <div className="field"><span>Trilha de estudos (opcional)</span>
+          <select value={trackId ?? ''} aria-label="Trilha de estudos da meta"
+            onChange={(e) => set({ trackId: e.target.value ? Number(e.target.value) : undefined, trackAll: e.target.value ? true : undefined })}>
+            <option value="">— sem trilha —</option>
+            {tracks.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+          </select>
+          {trackId != null && (
+            <div className="seg full" role="radiogroup" aria-label="Quais tarefas da trilha contam" style={{ marginTop: 6 }}>
+              <button type="button" role="radio" aria-checked={trackAll} className={trackAll ? 'on' : ''} onClick={() => set({ trackAll: true })}>Todas as tarefas da trilha</button>
+              <button type="button" role="radio" aria-checked={!trackAll} className={!trackAll ? 'on' : ''} onClick={() => set({ trackAll: false })}>Só as que eu escolher</button>
+            </div>
+          )}
+          {trackId != null && trackAll && <p className="hint" style={{ margin: 0 }}>{trackTasks.length} {trackTasks.length === 1 ? 'tarefa' : 'tarefas'} de estudo da trilha contam agora, e as que você criar depois entram sozinhas.</p>}
+        </div>
       )}
 
       <div className="field"><span>{mode === 'tarefas' ? 'Tarefas desta meta' : 'Tarefas ligadas (opcional)'}</span>
@@ -257,11 +309,12 @@ function GoalForm({ g, onDone }: { g: Partial<Goal>; onDone: () => void }) {
 
 function ObjectiveForm({ o, onDone }: { o: Partial<Objective>; onDone: () => void }) {
   const ui = useUI();
+  const { tracks } = useData();
   const [f, setF] = useState<Partial<Objective>>({ subtitle: '', ...o });
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!f.title?.trim()) return;
-    const rec = { ...f, title: f.title.trim() } as Objective;
+    const rec = { ...f, title: f.title.trim(), trackId: f.trackId ?? undefined } as Objective;
     if (rec.id) await db.objectives.put(rec); else await db.objectives.add(rec);
     onDone();
   }
@@ -272,6 +325,13 @@ function ObjectiveForm({ o, onDone }: { o: Partial<Objective>; onDone: () => voi
       <label className="field"><span>Área</span>
         <select value={f.area} onChange={(e) => setF({ ...f, area: e.target.value as AreaId })}>{AREAS.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select>
       </label>
+      <label className="field"><span>Como medir o andamento</span>
+        <select value={f.trackId ?? ''} onChange={(e) => setF({ ...f, trackId: e.target.value ? Number(e.target.value) : undefined, ...(e.target.value && !f.area ? { area: 'academica' as AreaId } : {}) })}>
+          <option value="">Pela média das metas deste objetivo</option>
+          {tracks.map((t) => <option key={t.id} value={t.id}>Pela trilha: {t.title}</option>)}
+        </select>
+      </label>
+      {f.trackId != null && <p className="hint" style={{ margin: 0 }}>O andamento vem da trilha: tempo estudado em relação ao plano, acertos (questões e simulados) em relação à meta e, no concurso, o edital coberto. Nada para lançar à mão.</p>}
       <div className="actions">
         <button className="btn gold">Salvar</button>
         <button className="btn" type="button" onClick={onDone}>Cancelar</button>
@@ -293,7 +353,7 @@ export function RecordForm({ g, onDone }: { g: Goal; onDone: () => void }) {
 
 /** meta pelas tarefas: mostra as tarefas ligadas e cria uma nova já ligada */
 function GoalTasks({ g, tasks, onDone, openTask }: { g: Goal; tasks: Task[]; onDone: () => void; openTask: (t?: Partial<Task>) => void }) {
-  const list = tasks.filter((t) => t.goalId === g.id);
+  const list = tasks.filter((t) => t.goalId === g.id || (g.trackAll && g.trackId != null && t.trackId === g.trackId));
   const weekly = list.some(isWeekly);
   return (
     <div className="form">

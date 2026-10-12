@@ -99,6 +99,8 @@ export interface Objective extends Stamped {
   title: string;
   subtitle: string;
   area: AreaId;
+  /** o andamento do objetivo vem de uma trilha de estudos (tempo, acertos, simulados, edital) em vez da média das metas */
+  trackId?: number;
 }
 
 export type GoalMetric = 'valor' | 'páginas' | 'horas' | 'tarefas' | 'frequência' | 'nota' | 'outro';
@@ -118,6 +120,10 @@ export interface Goal extends Stamped {
   kpi?: boolean;
   /** como medir: true = pelas tarefas ligadas (concluídas ÷ total); false = por valor (atual e alvo) */
   byTasks?: boolean;
+  /** trilha de estudos ligada à meta (pelas tarefas) */
+  trackId?: number;
+  /** true = todas as tarefas da trilha contam (inclusive as que forem criadas depois); senão, só as escolhidas */
+  trackAll?: boolean;
 }
 
 export interface GoalRecord extends Stamped {
@@ -140,6 +146,16 @@ export interface CalendarEvent extends Stamped {
   source: 'local' | 'google';
   calendarName?: string;
   externalId?: string;
+  /** conta que vence todo mês no mesmo dia (vencimentos) */
+  repeat?: 'mensal';
+  /** último dia da repetição (opcional) */
+  repeatUntil?: string;
+  /** valor da conta (R$), opcional */
+  amount?: number;
+  /** datas (AAAA-MM-DD) em que aquela ocorrência foi paga */
+  paid?: string[];
+  /** só nas ocorrências calculadas de uma conta mensal: a data original da série */
+  seriesDate?: string;
 }
 
 export type DocType = 'Documento' | 'Comprovante' | 'Contrato' | 'Imposto' | 'Outro';

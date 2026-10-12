@@ -17,7 +17,8 @@ import {
   saveEntry, ym, type EntryInput,
 } from '../lib/freelance';
 import { occurrencesForWeek } from '../lib/week';
-import type { Billing, FreelanceEntry, FreelanceProject, FreelanceUnit, PayStatus, ProjectStatus } from '../lib/types';
+import type { Billing, CalendarEvent, FreelanceEntry, FreelanceProject, FreelanceUnit, PayStatus, ProjectStatus } from '../lib/types';
+import { isPaid, togglePaid } from '../lib/bills';
 
 /** abas do Financeiro (a sidebar continua com 6 áreas; renda extra é uma aba, não uma área) */
 export const FIN_TABS = [
@@ -479,29 +480,101 @@ function ProjectForm({ p, onDone }: { p: Partial<FreelanceProject>; onDone: () =
 
 function Contas() {
   const d = useData();
-  const t0 = today();
-  const dues = d.events.filter((e) => e.area === 'financeiro' || e.kind === 'vencimento').filter((e) => e.date >= addDays(t0, -7))
-    .sort((a, b) => a.date.localeCompare(b.date));
   const ui = useUI();
+  const t0 = today();
+  const [edit, setEdit] = useState<Partial<CalendarEvent> | null>(null);
+  // próximos 60 dias (e a última semana, para ver o que ficou sem pagar)
+  const dues = d.events.filter((e) => e.kind === 'vencimento' && e.date >= addDays(t0, -7) && e.date <= addDays(t0, 60))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  // as contas em si (uma linha por conta, mesmo as mensais)
+  const bills = [...new Map(d.events.filter((e) => e.kind === 'vencimento' && e.id != null && e.source === 'local').map((e) => [e.id, e])).values()]
+    .sort((a, b) => (a.seriesDate ?? a.date).slice(8).localeCompare((b.seriesDate ?? b.date).slice(8)) || a.title.localeCompare(b.title));
+  const monthTotal = dues.filter((e) => e.date.slice(0, 7) === t0.slice(0, 7)).reduce((s, e) => s + (e.amount ?? 0), 0);
   return (
-    <div className="grid g2">
-      <Card title="Vencimentos">
-        <div className="list">
-          {dues.slice(0, 20).map((e, i) => (
-            <div key={i} className={`row small ${e.date < t0 ? 'muted' : ''}`}>
-              <b style={{ width: '3.5rem' }}>{ddmm(e.date)}</b><span className="grow">{e.title}</span>
-              <span className={e.date < t0 ? 'faint' : diffDays(e.date, t0) <= 3 ? '' : 'muted'} style={{ color: e.date >= t0 && diffDays(e.date, t0) <= 3 ? 'var(--bad)' : undefined }}>{relDays(e.date)}</span>
-            </div>
-          ))}
-          {dues.length === 0 && <Empty>Nenhum vencimento cadastrado. Vencimentos de documentos do Cofre e eventos do Financeiro aparecem aqui.</Empty>}
-        </div>
-      </Card>
-      <Card title="Contas e cartões">
-        <Empty action={{ label: 'Guardar fatura ou contrato no Cofre', run: () => ui.openDoc() }}>
-          Guarde no Cofre as faturas e os contratos das suas contas e cartões; quem tiver data de renovação ganha lembrete no Calendário.
-        </Empty>
-      </Card>
-    </div>
+    <>
+      <div className="grid g2 fit">
+        <Card title="Vencimentos" act={<span className="muted small">{monthTotal ? `${brl(monthTotal)} neste mês` : ''}</span>}>
+          <div className="list">
+            {dues.slice(0, 30).map((e) => {
+              const paid = isPaid(e);
+              const late = !paid && e.date < t0;
+              return (
+                <div key={`${e.id}-${e.date}`} className={`row small due-row ${paid ? 'muted' : ''}`}>
+                  <b style={{ width: '3.2rem', flex: 'none' }}>{ddmm(e.date)}</b>
+                  <span className="grow" style={{ textDecoration: paid ? 'line-through' : undefined }}>
+                    {e.title}{e.amount ? <span className="muted"> · {brl(e.amount)}</span> : null}
+                    {e.repeat === 'mensal' && <span className="faint"> · todo mês</span>}
+                  </span>
+                  <span style={{ color: late ? 'var(--bad)' : !paid && diffDays(e.date, t0) <= 3 ? 'var(--warn)' : undefined }} className={paid ? 'faint' : 'muted'}>
+                    {paid ? 'paga' : late ? 'atrasada' : relDays(e.date)}
+                  </span>
+                  {e.id != null && e.source === 'local' && (
+                    <button type="button" className={`btn sm ${paid ? 'gold' : 'out'}`} aria-pressed={paid} aria-label={`${paid ? 'Desmarcar' : 'Marcar'} ${e.title} de ${ddmm(e.date)} como paga`}
+                      onClick={async () => { const on = await togglePaid(e); if (on) ui.toast(`${e.title} de ${ddmm(e.date)} marcada como paga.`); }}>
+                      {paid ? '✓ paga' : 'pagar'}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {dues.length === 0 && <Empty action={{ label: '+ Conta', run: () => setEdit({}) }}>Nenhum vencimento nos próximos 60 dias. Cadastre suas contas e elas aparecem aqui e no Calendário.</Empty>}
+          </div>
+        </Card>
+        <Card title="Minhas contas" act={<button className="btn sm gold" onClick={() => setEdit({})}>+ Conta</button>}>
+          <div className="list">
+            {bills.map((e) => (
+              <div key={e.id} className="row small">
+                <span className="grow">{e.title}{e.amount ? <span className="muted"> · {brl(e.amount)}</span> : null}</span>
+                <span className="muted">{e.repeat === 'mensal' ? `todo dia ${Number((e.seriesDate ?? e.date).slice(8))}` : ddmm(e.seriesDate ?? e.date)}</span>
+                <ItemMenu label={e.title} actions={{
+                  edit: async () => { const raw = await db.events.get(e.id!); if (raw) setEdit(raw); },
+                  delete: () => void ui.remove('events', e.id!, `Conta “${e.title}”`),
+                }} />
+              </div>
+            ))}
+            {bills.length === 0 && <span className="muted small">Aluguel, cartão, luz, internet… cadastre cada conta com o dia do vencimento.</span>}
+          </div>
+        </Card>
+      </div>
+      {edit && <Modal title={edit.id ? 'Editar conta' : 'Nova conta'} onClose={() => setEdit(null)}><BillForm e={edit} onDone={() => setEdit(null)} /></Modal>}
+    </>
+  );
+}
+
+/** conta com vencimento: entra no Calendário geral (todo mês, se repetir) */
+function BillForm({ e, onDone }: { e: Partial<CalendarEvent>; onDone: () => void }) {
+  const [f, setF] = useState<Partial<CalendarEvent>>({ area: 'financeiro', repeat: 'mensal', date: today(), ...e });
+  const [amount, setAmount] = useState(e.amount != null ? String(e.amount).replace('.', ',') : '');
+  async function save(ev: FormEvent) {
+    ev.preventDefault();
+    if (!f.title?.trim() || !f.date) return;
+    const v = Number(amount.replace(/\./g, '').replace(',', '.'));
+    const rec = {
+      ...f, title: f.title.trim(), kind: 'vencimento' as const, source: 'local' as const,
+      amount: amount.trim() && v > 0 ? v : undefined, repeat: f.repeat || undefined, repeatUntil: f.repeat ? f.repeatUntil || undefined : undefined,
+    } as CalendarEvent;
+    if (rec.id) await db.events.put(rec); else await db.events.add(rec);
+    onDone();
+  }
+  return (
+    <form className="form" onSubmit={save}>
+      <label className="field"><span>Conta</span><input autoFocus required value={f.title ?? ''} onChange={(x) => setF({ ...f, title: x.target.value })} placeholder="Ex.: Aluguel, Cartão Nubank, Luz" /></label>
+      <div className="cols">
+        <label className="field"><span>{f.repeat ? 'Primeiro vencimento' : 'Vence em'}</span><input type="date" required value={f.date ?? ''} onChange={(x) => setF({ ...f, date: x.target.value })} /></label>
+        <label className="field"><span>Valor (R$, opcional)</span><input inputMode="decimal" value={amount} onChange={(x) => setAmount(x.target.value)} placeholder="0,00" /></label>
+      </div>
+      <label className="check"><input type="checkbox" checked={f.repeat === 'mensal'} onChange={(x) => setF({ ...f, repeat: x.target.checked ? 'mensal' : undefined })} /> Vence todo mês nesse dia</label>
+      <div className="cols">
+        <label className="field"><span>Área</span>
+          <select value={f.area} onChange={(x) => setF({ ...f, area: x.target.value as CalendarEvent['area'] })}>
+            <option value="financeiro">Financeiro</option><option value="adultices">Adultices</option><option value="pessoal">Pessoal</option>
+          </select>
+        </label>
+        {f.repeat === 'mensal' && <label className="field"><span>Até (opcional)</span><input type="date" value={f.repeatUntil ?? ''} onChange={(x) => setF({ ...f, repeatUntil: x.target.value || undefined })} /></label>}
+      </div>
+      <p className="hint" style={{ margin: 0 }}>Aparece no Calendário geral, aqui em Vencimentos e nos avisos de prazo. Dia 31 em meses mais curtos vira o último dia do mês.</p>
+      <div className="actions"><button className="btn gold">Salvar</button><button type="button" className="btn out" onClick={onDone}>Cancelar</button></div>
+    </form>
   );
 }
 

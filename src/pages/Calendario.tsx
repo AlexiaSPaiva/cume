@@ -88,12 +88,13 @@ function DayDetail({ day, items, onAdded }: { day: string; items: CalendarEvent[
   const [area, setArea] = useState<AreaId>('pessoal');
   const [kind, setKind] = useState<CalendarKind>('evento');
   const [start, setStart] = useState('');
+  const [monthly, setMonthly] = useState(true);
   const ui = useUI();
 
   async function add(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    await db.events.add({ title: title.trim(), date: day, area, kind, start: start || undefined, source: 'local' });
+    await db.events.add({ title: title.trim(), date: day, area, kind, start: start || undefined, source: 'local', repeat: kind === 'vencimento' && monthly ? 'mensal' : undefined });
     setTitle('');
     onAdded();
   }
@@ -107,7 +108,8 @@ function DayDetail({ day, items, onAdded }: { day: string; items: CalendarEvent[
             <AreaDot area={e.area} /><span className="grow">{e.start && <b>{e.start} </b>}{e.title}</span>
             <span className={`tag ${e.kind === 'vencimento' ? 'warn' : e.kind === 'prazo' ? 'bad' : 'info'}`}>{e.kind}</span>
             {e.source === 'google' && <Icon name="drive" size={12} />}
-            {e.id && e.source === 'local' && <ItemMenu label={e.title} actions={{ delete: () => void ui.remove('events', e.id!, `Evento “${e.title}”`) }} />}
+            {e.repeat === 'mensal' && <span className="faint" title="vence todo mês">↻</span>}
+            {e.id && e.source === 'local' && <ItemMenu label={e.title} actions={{ delete: () => void ui.remove('events', e.id!, e.repeat === 'mensal' ? `Conta mensal “${e.title}” (todos os meses)` : `Evento “${e.title}”`) }} />}
           </div>
         ))}
         {items.length === 0 && <Empty>Nada neste dia.</Empty>}
@@ -121,6 +123,7 @@ function DayDetail({ day, items, onAdded }: { day: string; items: CalendarEvent[
         <select className="input" style={{ width: 'auto' }} value={area} onChange={(e) => setArea(e.target.value as AreaId)} aria-label="Área">
           {AREAS.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
+        {kind === 'vencimento' && <label className="check small"><input type="checkbox" checked={monthly} onChange={(e) => setMonthly(e.target.checked)} /> todo mês</label>}
         <button className="btn gold">Criar</button>
       </form>
     </div>

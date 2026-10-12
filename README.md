@@ -68,6 +68,11 @@ extensão, idioma) · Cronograma de estudos · Cofre de documentos · Personaliz
 - **Metas pelas tarefas** ou **por valor** (atual e alvo). Pelas tarefas: cada tarefa comum vale 1 e cada
   **tarefa semanal** (ex.: Estudar Matemática seg/qua/sex até 31/12) vale os dias em que acontece até a data
   final da repetição (`src/lib/recurring.ts`); cada dia é marcado em Minha semana ou no card da meta.
+- **Trilhas ligadas a metas e objetivos**: uma meta pode contar TODAS as tarefas de uma trilha (inclusive as futuras) ou só as
+  escolhidas (`trackId`/`trackAll` na meta); um objetivo pode ser medido pela trilha (`Objective.trackId`) com os índices de
+  `trackIndicators`: tempo estudado ÷ plano, edital coberto, acertos (questões + simulados) ÷ meta e último simulado.
+- **Vencimentos das contas** (`src/lib/bills.ts`): conta com dia de vencimento, valor e "todo mês"; vira ocorrências no
+  Calendário geral, na aba Contas do Financeiro (com "pagar") e nos avisos de prazo.
 - **Estudos** (`src/lib/study.ts`): trilhas com abas pelo tipo; concurso com necessidade por matéria
   (peso × distância da meta × edital que falta) e "Gerar cronograma pela necessidade"; pesquisa com artigos,
   fichamento salvo sozinho e diário; curso/graduação com módulos, provas e notas; sessões de estudo = tarefas

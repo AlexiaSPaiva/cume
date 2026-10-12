@@ -278,3 +278,57 @@ function sectionName(s?: string): string | undefined {
   const small = new Set(['a', 'as', 'o', 'os', 'e', 'de', 'da', 'das', 'do', 'dos', 'em', 'na', 'no', 'para']);
   return t.toLowerCase().split(' ').map((w, i) => (i > 0 && small.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1))).join(' ');
 }
+
+/* ---------- trilha como indicador de objetivo ---------- */
+
+export interface Indicator { label: string; value: string; /** 0–100: quanto este índice já chegou do esperado */ pct: number }
+export interface TrackIndicators { progress: number; parts: Indicator[]; bySubject: { name: string; acc: number | null; target: number }[] }
+
+/**
+ * Índices de andamento de uma trilha, para medir um objetivo (ex.: aprovação no concurso):
+ * - Tempo: horas estudadas (sessões concluídas) ÷ horas que o plano pedia até hoje (horas/semana × semanas, ou as sessões já marcadas);
+ * - Acertos: questões + simulados ÷ meta de acertos;  - Simulados: último simulado ÷ meta;
+ * - Edital (concurso) ou o andamento próprio da trilha (módulos, notas, etapas).
+ * O progresso é a média dos índices que já têm dado.
+ */
+export function trackIndicators(d: SD & Pick<Data, 'tracks'>, t: Track, ref = today()): TrackIndicators {
+  const parts: Indicator[] = [];
+  const sessions = d.tasks.filter((x) => x.trackId === t.id && x.status !== 'adiada');
+  const studied = sessions.filter((x) => x.status === 'concluido').reduce((s, x) => s + (x.durationMin ?? 0), 0);
+  const since = t.createdAt?.slice(0, 10) ?? ref;
+  const weeks = Math.max(1, Math.ceil((diffDays(ref, since) + 1) / 7));
+  const plannedSoFar = t.hoursPerWeek
+    ? t.hoursPerWeek * 60 * weeks
+    : sessions.filter((x) => x.date && x.date <= ref).reduce((s, x) => s + (x.durationMin ?? 0), 0);
+  const h = (m: number) => `${Math.round((m / 60) * 10) / 10}`.replace('.', ',');
+  if (plannedSoFar > 0) parts.push({ label: 'Tempo', value: `${h(studied)}h de ${h(plannedSoFar)}h`, pct: Math.min(100, Math.round((studied / plannedSoFar) * 100)) });
+
+  const subs = d.subjects.filter((s) => s.trackId === t.id);
+  const target = t.targetAccuracy ?? 75;
+  const bySubject = subs.map((s) => ({ name: s.name, acc: accuracy(d, s.id!), target: s.targetAccuracy ?? target }));
+  if (t.type === 'exam') {
+    const all = subs.flatMap((s) => d.topics.filter((x) => x.subjectId === s.id));
+    if (all.length) {
+      const cov = Math.round((all.filter((x) => x.status === 'studied' || x.status === 'reviewed').length / all.length) * 100);
+      parts.push({ label: 'Edital', value: `${cov}% coberto`, pct: cov });
+    }
+    const logs = d.questionLogs.filter((q) => subs.some((s) => s.id === q.subjectId));
+    const mocks = d.mockExams.filter((m) => m.trackId === t.id).sort((a, b) => a.date.localeCompare(b.date));
+    const tot = logs.reduce((s, q) => s + q.total, 0) + mocks.reduce((s, m) => s + m.total, 0);
+    const ok = logs.reduce((s, q) => s + q.correct, 0) + mocks.reduce((s, m) => s + m.correct, 0);
+    if (tot) {
+      const acc = Math.round((ok / tot) * 100);
+      parts.push({ label: 'Acertos', value: `${acc}% · meta ${target}%`, pct: Math.min(100, Math.round((acc / target) * 100)) });
+    }
+    const last = mocks.at(-1);
+    if (last && last.total) {
+      const m = Math.round((last.correct / last.total) * 100);
+      parts.push({ label: 'Simulados', value: `último ${m}%`, pct: Math.min(100, Math.round((m / target) * 100)) });
+    }
+  } else {
+    const s = trackSummary(d, t);
+    parts.push({ label: TYPE[t.type].label, value: s.metric, pct: s.progress });
+  }
+  const progress = parts.length ? Math.round(parts.reduce((s, p) => s + p.pct, 0) / parts.length) : 0;
+  return { progress, parts, bySubject };
+}
