@@ -912,3 +912,5 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
 .topic-section { font: 700 0.6875rem/1.2 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 10px 0 2px; }
 .topic-section:first-child { margin-top: 0; }
 .topic-code { margin-right: 6px; font-variant-numeric: tabular-nums; }
+/* cards de alturas diferentes (ex.: matérias com mais ou menos tópicos): cada um do tamanho do conteúdo */
+.grid.fit { align-items: start; }

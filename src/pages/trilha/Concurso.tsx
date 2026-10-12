@@ -203,7 +203,7 @@ export function ConcursoMaterias({ t, onStudy }: { t: Track; onStudy: (b?: Task)
   return (
     <>
       <div className="row"><button className="btn gold" style={{ marginLeft: 'auto' }} onClick={() => setEdit({})}>+ Matéria</button></div>
-      <div className="grid g2">
+      <div className="grid g2 fit">
         {subs.map((s) => (
           <Card key={s.id} title={s.name} act={<ItemMenu label={s.name} actions={{
             open: { label: '▶ Estudar agora', run: () => onStudy() },
