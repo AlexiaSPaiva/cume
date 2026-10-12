@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Imprevisto, Task } from '../lib/types';
+import type { Attachment, Imprevisto, Task } from '../lib/types';
+import { setAttachmentViewer } from '../lib/attachments';
+import { FileViewer } from './FileViewer';
 import type { RecurringSuggestion } from '../lib/recurrence';
 import { useData } from '../lib/data';
 import { db, type TrashableTable } from '../lib/db';
@@ -16,6 +18,7 @@ type Open =
   | { kind: 'suggest'; s: RecurringSuggestion }
   | { kind: 'resched'; task: Task }
   | { kind: 'postpone'; task: Task }
+  | { kind: 'file'; a: Attachment }
   | null;
 
 interface UI {
@@ -49,6 +52,12 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
   }, [toastMsg]);
 
   const close = useCallback(() => setOpen(null), []);
+
+  // arquivos anexados abrem no visualizador do app (em qualquer tela que chame openAttachment)
+  useEffect(() => {
+    setAttachmentViewer((a) => setOpen({ kind: 'file', a }));
+    return () => setAttachmentViewer(null);
+  }, []);
   const toast: UI['toast'] = useCallback((msg, action) => setToast({ msg, action }), []);
 
   const afterImprevisto = useCallback((became: boolean) => {
@@ -111,6 +120,11 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
       {open?.kind === 'postpone' && (
         <Modal title="Adiar tarefa" onClose={close}>
           <PostponeForm task={open.task} onDone={(m) => { close(); if (m) toast(m); }} />
+        </Modal>
+      )}
+      {open?.kind === 'file' && (
+        <Modal title="Arquivo" onClose={close} wide>
+          <FileViewer a={open.a} />
         </Modal>
       )}
       {toastMsg && (

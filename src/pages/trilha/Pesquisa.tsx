@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AttachmentDrop, AttachmentList } from '../../components/AttachmentDrop';
+import { AttachmentDrop, AttachmentList, QuickLinks } from '../../components/AttachmentDrop';
 import { Card } from '../../components/Card';
 import { ItemMenu } from '../../components/ItemMenu';
 import { useUI } from '../../components/Overlays';
@@ -42,6 +42,9 @@ export function PesquisaVisao({ t }: { t: Track }) {
         <NoteEditor t={t} id={sel} />
         <Journal t={t} />
       </div>
+      <Card title="Links da trilha" wide>
+        <QuickLinks owner={{ type: 'track', id: t.id! }} kinds={['link']} empty="Guarde aqui os sites que você usa nesta trilha (aulas, questões, vídeos, pastas). Um toque e abre." />
+      </Card>
     </>
   );
 }

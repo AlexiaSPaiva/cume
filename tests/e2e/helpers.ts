@@ -45,16 +45,24 @@ export async function attachPdf(page: Page, name = 'Edital concurso.pdf') {
   await expect(page.getByTestId('doc-open').filter({ hasText: name })).toBeVisible();
 }
 
-/** abre o PDF pelo app e confere que os bytes são exatamente os do arquivo anexado */
+/** abre o PDF pelo app (visualizador) e confere que os bytes são exatamente os do arquivo anexado */
 export async function expectPdfOpens(page: Page, name = 'Edital concurso.pdf') {
   await page.goto('/area/adultices/cofre');
   await page.getByTestId('doc-open').filter({ hasText: name }).click();
-  await expect.poll(() => page.evaluate(() => (window as unknown as { __opened: string[] }).__opened.length)).toBeGreaterThan(0);
-  const content = await page.evaluate(async () => {
-    const urls = (window as unknown as { __opened: string[] }).__opened;
-    const r = await fetch(urls[urls.length - 1]);
-    return { type: r.headers.get('content-type'), text: await r.text() };
-  });
+  await expectViewer(page);
+}
+
+/** o visualizador abriu e o "Baixar" entrega o PDF certo */
+export async function expectViewer(page: Page) {
+  const v = page.getByRole('dialog', { name: 'Arquivo' });
+  await expect(v.getByRole('link', { name: /Abrir em tela cheia/ })).toBeVisible();
+  const href = await v.getByRole('link', { name: 'Baixar' }).getAttribute('href');
+  const content = await page.evaluate(async (u) => {
+    const r = await fetch(u!);
+    return { type: r.headers.get('content-type') ?? (await r.clone().blob()).type, text: await r.text() };
+  }, href);
   expect(content.type).toContain('application/pdf');
   expect(content.text).toBe(PDF.toString());
+  await page.keyboard.press('Escape');
+  await expect(v).toBeHidden();
 }

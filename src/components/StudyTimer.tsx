@@ -3,6 +3,7 @@ import { useData } from '../lib/data';
 import { db } from '../lib/db';
 import { fromMin, today } from '../lib/dates';
 import { reviewDates } from '../lib/study';
+import { QuickLinks } from './AttachmentDrop';
 import type { Task, Track } from '../lib/types';
 
 /** configurações de estudo (alarmes e pomodoro) com padrões */
@@ -111,6 +112,13 @@ export function StudyTimer({ track, block, onDone }: { track: Track; block?: Tas
           </label>
         </div>
       )}
+      {/* os links da trilha, da matéria e do tópico à mão durante o estudo */}
+      <div className="study-links">
+        <span className="lab-up">Links para estudar</span>
+        <QuickLinks owner={{ type: 'track', id: track.id! }} kinds={['link']} showAdd={subjectId === ''} />
+        {subjectId !== '' && <QuickLinks owner={{ type: 'subject', id: subjectId }} showAdd={topicId === ''} />}
+        {topicId !== '' && <QuickLinks owner={{ type: 'topic', id: topicId }} />}
+      </div>
       {track.type === 'exam' && subjectId !== '' && (
         <div className="cols">
           <label className="field"><span>Questões feitas</span><input inputMode="numeric" value={q.total} onChange={(e) => setQ({ ...q, total: e.target.value })} /></label>

@@ -1,5 +1,5 @@
 import { Fragment, useState, type FormEvent } from 'react';
-import { AttachmentDrop, AttachmentList } from '../../components/AttachmentDrop';
+import { AttachmentDrop, AttachmentList, QuickLinks } from '../../components/AttachmentDrop';
 import { Card } from '../../components/Card';
 import { Masonry } from '../../components/Masonry';
 import { ItemMenu } from '../../components/ItemMenu';
@@ -72,6 +72,9 @@ export function ConcursoVisao({ t, onStudy }: { t: Track; onStudy: (b?: Task) =>
         {sel != null && subs.find((s) => s.id === sel) ? <Micro s={subs.find((s) => s.id === sel)!} t={t} onStudy={onStudy} />
           : <Card title="Visão micro"><Empty action={{ label: '+ Matéria', run: () => setModal('materia') }}>Cadastre as matérias do edital para ver o detalhe de cada uma.</Empty></Card>}
       </div>
+      <Card title="Links da trilha" wide>
+        <QuickLinks owner={{ type: 'track', id: t.id! }} kinds={['link']} empty="Guarde aqui os sites que você usa nesta trilha (aulas, questões, vídeos, pastas). Um toque e abre." />
+      </Card>
       {modal === 'questoes' && <Modal title="Lançar questões" onClose={() => setModal(null)}><QuestionsForm t={t} subjectId={sel} onDone={() => setModal(null)} /></Modal>}
       {modal === 'simulado' && <Modal title="Simulado" onClose={() => setModal(null)}><MockForm t={t} onDone={() => setModal(null)} /></Modal>}
       {modal === 'materia' && <Modal title="Nova matéria" onClose={() => setModal(null)}><SubjectForm t={t} onDone={(id) => { setModal(null); if (id) setSel(id); }} /></Modal>}
@@ -121,6 +124,7 @@ function Micro({ s, t, onStudy }: { s: Subject; t: Track; onStudy: (b?: Task) =>
   return (
     <Card title={`Visão micro · ${s.name}`}>
       <div className="row small muted" style={{ justifyContent: 'space-between' }}><span>{c.done} de {c.total} tópicos</span><span>{nextRev ? `próxima revisão: ${relDays(nextRev)}` : ''}</span></div>
+      <div style={{ margin: '6px 0 10px' }}><QuickLinks owner={{ type: 'subject', id: s.id! }} /></div>
       <TopicList s={s} topics={topics} limit={6} />
       <span className="lab-up" style={{ display: 'block', marginTop: 12 }}>Acertos nas últimas {logs.length || 6} sessões</span>
       {logs.length ? (
@@ -148,6 +152,7 @@ function TopicList({ s, topics, limit }: { s: Subject; topics: { id?: number; na
   const d = useData();
   const ui = useUI();
   const [name, setName] = useState('');
+  const [linkFor, setLinkFor] = useState<number | null>(null);
   const shown = limit ? topics.slice(0, limit) : topics;
   return (
     <div className="list" style={{ gap: 4 }}>
@@ -160,20 +165,26 @@ function TopicList({ s, topics, limit }: { s: Subject; topics: { id?: number; na
         return (
           <Fragment key={x.id}>
           {head && <div className="topic-section">{head}</div>}
+          <div className="topic-item">
           <div className="row small topic-row">
             <input type="checkbox" checked={x.status === 'studied' || x.status === 'reviewed'} aria-label={`Estudado: ${x.name}`}
               onChange={(e) => db.topics.update(x.id!, { status: e.target.checked ? 'studied' : 'todo' })} />
             <span className="grow">{x.code && <span className="faint topic-code">{x.code}</span>}{x.name}</span>
             <button type="button" className={`tag ${TOPIC_LABEL[x.status][1]}`} onClick={() => db.topics.update(x.id!, { status: NEXT[x.status] })} title="tocar muda a situação">{TOPIC_LABEL[x.status][0]}</button>
             <span className="muted" style={{ width: '2.6rem', textAlign: 'right' }}>{a == null ? '—' : `${a}%`}</span>
-            {!limit && <ItemMenu label={x.name} actions={{ delete: () => void ui.remove('topics', x.id!, `Tópico “${x.name}”`) }} />}
+            {!limit && <ItemMenu label={x.name} actions={{
+              edit: { label: 'Adicionar link', run: () => setLinkFor(x.id!) },
+              delete: () => void ui.remove('topics', x.id!, `Tópico “${x.name}”`),
+            }} />}
+          </div>
+          <div className="topic-links"><QuickLinks owner={{ type: 'topic', id: x.id! }} showAdd={false} adding={linkFor === x.id} onAdding={(v) => setLinkFor(v ? x.id! : null)} /></div>
           </div>
           </Fragment>
         );
       })}
       {limit && topics.length > limit && <span className="muted small">+ {topics.length - limit} tópicos (aba Matérias)</span>}
       {!limit && (
-        <form className="row" style={{ gap: 6 }} onSubmit={async (e) => {
+        <form className="row topic-add" style={{ gap: 6 }} onSubmit={async (e) => {
           e.preventDefault();
           if (await addTopics(s.id!, name)) setName('');
         }}>
@@ -214,6 +225,7 @@ export function ConcursoMaterias({ t, onStudy }: { t: Track; onStudy: (b?: Task)
             delete: () => void ui.remove('subjects', s.id!, `Matéria “${s.name}”`),
           }} />}>
             <p className="muted small" style={{ margin: '-6px 0 8px' }}>{s.questionsCount ?? '—'} questões · peso {s.weight ?? 1} · meta {s.targetAccuracy ?? t.targetAccuracy ?? 75}% · acertos {pct(accuracy(d, s.id!))}</p>
+            <div style={{ margin: '0 0 10px' }}><QuickLinks owner={{ type: 'subject', id: s.id! }} /></div>
             <TopicList s={s} topics={d.topics.filter((x) => x.subjectId === s.id)} />
           </Card>
         )} />

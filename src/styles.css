@@ -843,7 +843,41 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
 .att-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--color-input); }
 .att-row .grow { flex: 1; min-width: 0; }
 .att-row b { display: block; font-size: 0.8125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.att-row small { font-size: 0.6875rem; }
+.att-row small { font-size: 0.6875rem; display: block; line-height: 1.35; }
+.att-row > .btn, .att-row > a.btn { flex-shrink: 0; }
+/* anexar: tipo + arquivo numa linha; o link embaixo, sem estourar a caixa no celular */
+.att-drop { min-width: 0; }
+.att-drop-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; width: 100%; }
+.att-drop-row > select { width: auto; min-width: 0; flex: 0 1 auto; }
+.att-drop-row > .btn { flex-shrink: 0; white-space: nowrap; }
+.att-drop-link { display: flex; gap: 6px; width: 100%; min-width: 0; }
+.att-drop-link > .input { flex: 1 1 auto; min-width: 0; width: auto; }
+.att-drop-link > .btn { flex-shrink: 0; white-space: nowrap; }
+/* visualizador de arquivo */
+.file-viewer { display: flex; flex-direction: column; gap: 10px; }
+.file-preview { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+img.file-preview { height: auto; max-height: 60vh; object-fit: contain; background: transparent; }
+.file-preview.pdf { height: 60vh; min-height: 18rem; }
+.file-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.file-actions > .btn { flex: 1 1 10rem; justify-content: center; text-align: center; text-decoration: none; }
+/* links rápidos de matéria, tópico, módulo e trilha */
+.qlinks { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.qlinks-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.qlink { display: inline-flex; align-items: center; max-width: 100%; border: 1px solid var(--line-2); background: var(--color-input); border-radius: 99px; font-size: 0.75rem; overflow: hidden; }
+.qlink > a, .qlink > button:first-child { display: inline-flex; align-items: center; gap: 5px; min-width: 0; padding: 5px 4px 5px 10px; color: var(--color-text-2); text-decoration: none; background: none; border: 0; font: inherit; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 16rem; }
+.qlink > a:hover, .qlink > button:first-child:hover { color: var(--accent); }
+.qlink-x { display: inline-grid; place-items: center; width: 26px; height: 26px; flex-shrink: 0; background: none; border: 0; color: var(--muted); cursor: pointer; }
+.qlink-x:hover { color: var(--text); }
+.qlink-add { align-self: flex-start; background: none; border: 1px dashed var(--line-2); border-radius: 99px; color: var(--muted); font-size: 0.75rem; padding: 5px 12px; cursor: pointer; }
+.qlink-add:hover { color: var(--accent); border-color: var(--accent); }
+.qlinks-form { display: flex; flex-direction: column; gap: 6px; }
+.topic-links { padding: 2px 0 6px 26px; }
+.mod-links { padding: 4px 0 2px 30px; }
+.topic-links:empty, .mod-links:empty { display: none; }
+.topic-item { border-bottom: 1px solid #172038; }
+.topic-item > .topic-row { border-bottom: 0; }
+.topic-add > .input { flex: 1 1 auto; min-width: 0; width: auto; }
+.topic-add > .btn { flex-shrink: 0; white-space: nowrap; }
 /* trilhas: concurso, pesquisa, módulos */
 .table tr.sel td { background: var(--color-gold-soft); }
 .topic-row { padding: 4px 0; border-bottom: 1px solid #172038; }
@@ -883,6 +917,9 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
 .mod-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #172038; }
 .mod-row .grow { flex: 1; min-width: 0; }
 .mod-row b { display: block; font-size: 0.875rem; }
+.mod-item { border-bottom: 1px solid #172038; }
+.mod-item > .mod-row { border-bottom: 0; }
+.mod-links { padding-bottom: 8px; }
 .mod-row small { font-size: 0.75rem; }
 @media (max-width: 767.98px) {
   .stepper { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 14px; }
@@ -952,3 +989,4 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
 .blk.narrow .blk-t { overflow-wrap: normal; word-break: normal; -webkit-hyphens: auto; hyphens: auto; }
 .obj-ind .row > .grow { flex: none; overflow: visible; }
 .obj-ind .row > .muted { flex: 1; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.study-links { display: flex; flex-direction: column; gap: 6px; }

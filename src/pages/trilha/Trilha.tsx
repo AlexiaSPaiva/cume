@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { QuickLinks } from '../../components/AttachmentDrop';
 import { Card } from '../../components/Card';
 import { ItemMenu } from '../../components/ItemMenu';
 import { Page } from '../../components/Layout';
@@ -139,6 +140,9 @@ function VisaoGeral({ t, onStudy }: { t: Track; onStudy: (b?: Task) => void }) {
           <p className="hint" style={{ margin: '6px 0 0' }}>Salva ao sair do campo.</p>
         </Card>
       </div>
+      <Card title="Links da trilha" wide>
+        <QuickLinks owner={{ type: 'track', id: t.id! }} kinds={['link']} empty="Guarde aqui os sites que você usa nesta trilha (aulas, questões, vídeos, pastas). Um toque e abre." />
+      </Card>
     </>
   );
 }

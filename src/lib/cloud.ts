@@ -127,3 +127,25 @@ export class SupabaseRemote implements Remote {
     return error ? null : data;
   }
 }
+
+/** endereço temporário (1 h) do arquivo na nuvem: abre no leitor do próprio aparelho (Safari, Chrome, Livros…) */
+export async function cloudFileUrl(key: string): Promise<string | null> {
+  if (!cloud) return null;
+  try {
+    const uid = await cloudUserId();
+    if (!uid) return null;
+    const { data, error } = await cloud.storage.from('arquivos').createSignedUrl(`${uid}/${key}`, 3600);
+    return error ? null : data.signedUrl;
+  } catch { return null; }
+}
+
+/** arquivo que ainda não desceu para este aparelho */
+export async function cloudFile(key: string): Promise<Blob | null> {
+  if (!cloud) return null;
+  try {
+    const uid = await cloudUserId();
+    if (!uid) return null;
+    const { data, error } = await cloud.storage.from('arquivos').download(`${uid}/${key}`);
+    return error ? null : data;
+  } catch { return null; }
+}

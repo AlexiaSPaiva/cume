@@ -192,7 +192,10 @@ export interface Attachment extends Stamped {
 
 export interface StoredBlob {
   key: string;
-  blob: Blob;
+  /** o arquivo; nos Safari que não aceitam Blob no banco, vem em `bytes` + `type` (ver blobstore.ts) */
+  blob?: Blob;
+  bytes?: ArrayBuffer;
+  type?: string;
 }
 
 export interface Draft {

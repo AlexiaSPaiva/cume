@@ -1,5 +1,6 @@
 import { applyRemote, newId, onLocalChange, STAMPED_TABLES, type MeuPlanoDB } from './db';
 import { NUMERIC_TABLES, remapRefs, type NumTable, type Row } from './backup';
+import { readStored, toStored } from './blobstore';
 
 /**
  * Sincronização com a nuvem. O aparelho continua sendo o lugar principal (funciona sem internet);
@@ -186,7 +187,8 @@ export class SyncEngine {
           const blobKey = tbl === 'attachments' ? (r.blobKey as string | undefined) : undefined;
           if (blobKey && !sent.has(blobKey)) {
             const b = await this.d.blobs.get(blobKey);
-            if (b) { await this.remote.upload(blobKey, b.blob); sent.add(blobKey); this.kv.set(sentKey(this.dbName), JSON.stringify([...sent])); }
+            const file = readStored(b);
+            if (file) { await this.remote.upload(blobKey, file); sent.add(blobKey); this.kv.set(sentKey(this.dbName), JSON.stringify([...sent])); }
           }
           rows.push({ tbl, pk, data: r, deleted: false, cu: r.updatedAt ?? '' });
         } else {
@@ -242,7 +244,7 @@ export class SyncEngine {
     for (const a of atts) {
       if (await this.d.blobs.get(a.blobKey!)) continue;
       const blob = await this.remote.download(a.blobKey!).catch(() => null);
-      if (blob) await this.d.blobs.put({ key: a.blobKey!, blob });
+      if (blob) await this.d.blobs.put(await toStored(this.d, a.blobKey!, blob));
     }
   }
 }

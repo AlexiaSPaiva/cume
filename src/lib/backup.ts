@@ -1,5 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import type { MeuPlanoDB } from './db';
+import { canStoreBlobs, readStored } from './blobstore';
 
 /**
  * Backup = .zip com `meuplano-backup.json` (todas as tabelas, inclusive a Lixeira) e `files/<blobKey>`
@@ -27,7 +28,7 @@ interface BackupFile {
   blobs: { key: string; type: string; size: number }[];
 }
 
-const OWNER_TABLE: Record<string, NumTable> = { doc: 'docs', task: 'tasks', goal: 'goals', track: 'tracks' };
+const OWNER_TABLE: Record<string, NumTable> = { doc: 'docs', task: 'tasks', goal: 'goals', track: 'tracks', subject: 'subjects', topic: 'topics' };
 
 /**
  * Troca as referências de uma linha (goalId, trackId, ownerId…) pelo mapa de ids novos.
@@ -72,9 +73,11 @@ export async function exportBackup(d: MeuPlanoDB): Promise<Uint8Array> {
   for (const t of [...NUMERIC_TABLES, ...KEYED_TABLES]) tables[t] = await d.table(t).toArray();
   const files: Record<string, Uint8Array> = {};
   const blobs: BackupFile['blobs'] = [];
-  for (const b of await d.blobs.toArray()) {
-    files[`files/${b.key}`] = new Uint8Array(await b.blob.arrayBuffer());
-    blobs.push({ key: b.key, type: b.blob.type, size: b.blob.size });
+  for (const s of await d.blobs.toArray()) {
+    const b = readStored(s);
+    if (!b || s.key.startsWith('__')) continue;
+    files[`files/${s.key}`] = new Uint8Array(await b.arrayBuffer());
+    blobs.push({ key: s.key, type: b.type, size: b.size });
   }
   const data: BackupFile = { format: FORMAT, version: 1, schema: d.verno, exportedAt: new Date().toISOString(), tables, blobs };
   files['meuplano-backup.json'] = strToU8(JSON.stringify(data));
@@ -94,12 +97,14 @@ export async function importBackup(d: MeuPlanoDB, zip: Uint8Array): Promise<Impo
   const res: ImportResult = { added: 0, updated: 0, kept: 0, files: 0 };
   const allTables = [...NUMERIC_TABLES, ...KEYED_TABLES, 'blobs'];
 
+  const asBlob = await canStoreBlobs(d); // testado antes: dentro da transação não pode
   await d.transaction('rw', allTables, async () => {
     // 1) arquivos: entram se ainda não existirem (a chave é única)
     for (const b of data.blobs ?? []) {
       const bytes = entries[`files/${b.key}`];
       if (!bytes || (await d.blobs.get(b.key))) continue;
-      await d.blobs.add({ key: b.key, blob: new Blob([bytes as Uint8Array<ArrayBuffer>], { type: b.type }) });
+      const u8 = bytes as Uint8Array<ArrayBuffer>;
+      await d.blobs.add(asBlob ? { key: b.key, blob: new Blob([u8], { type: b.type }) } : { key: b.key, bytes: u8.slice().buffer, type: b.type });
       res.files++;
     }
 

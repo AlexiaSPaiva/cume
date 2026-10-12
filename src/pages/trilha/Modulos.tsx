@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AttachmentDrop, AttachmentList } from '../../components/AttachmentDrop';
+import { AttachmentDrop, AttachmentList, QuickLinks } from '../../components/AttachmentDrop';
 import { Card } from '../../components/Card';
 import { ItemMenu } from '../../components/ItemMenu';
 import { useUI } from '../../components/Overlays';
@@ -25,6 +25,7 @@ export function Modulos({ t }: { t: Track }) {
   const [w, ws] = WORD[t.type];
   const subs = d.subjects.filter((s) => s.trackId === t.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
   const [edit, setEdit] = useState<Partial<Subject> | null>(null);
+  const [linkFor, setLinkFor] = useState<number | null>(null);
   const done = subs.filter((s) => s.done).length;
   return (
     <>
@@ -38,13 +39,17 @@ export function Modulos({ t }: { t: Track }) {
           {subs.map((s, i) => {
             const c = coverage(d, s.id!);
             return (
-              <div key={s.id} className="mod-row">
+              <div key={s.id} className="mod-item">
+              <div className="mod-row">
                 <input type="checkbox" checked={!!s.done} onChange={(e) => db.subjects.update(s.id!, { done: e.target.checked })} aria-label={`${s.name} concluído`} />
                 <span className="grow"><b>{i + 1}. {s.name}</b>
                   <small className="muted">{c.total ? `${c.done}/${c.total} tópicos · ` : ''}{dur(subjectMinutes(d, s.id!)) || '0h'} estudadas{t.type === 'degree' && s.grade != null ? ` · nota ${fmt(s.grade)}` : ''}</small>
                 </span>
                 {s.done && <span className="tag ok">concluído</span>}
+                <button type="button" className="qlink-add" onClick={() => setLinkFor(s.id!)} aria-label={`Adicionar link em ${s.name}`}>+ link</button>
                 <ItemMenu label={s.name} actions={{ edit: () => setEdit(s), delete: () => void ui.remove('subjects', s.id!, `${w} “${s.name}”`) }} />
+              </div>
+              <div className="mod-links"><QuickLinks owner={{ type: 'subject', id: s.id! }} showAdd={false} adding={linkFor === s.id} onAdding={(v) => setLinkFor(v ? s.id! : null)} /></div>
               </div>
             );
           })}
