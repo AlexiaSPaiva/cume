@@ -83,6 +83,8 @@ export function Login({ settings, onIn, recovery }: { settings?: Settings; onIn:
           )}
         </div>}
         <p className="motto">Foco · Clareza · Ação</p>
+        {/* para conferir se o app já está na versão nova (com nuvem) */}
+        <p className="faint small login-version">versão {__APP_VERSION__}{cloudOn() ? ' · nuvem' : ''}</p>
       </div>
     </div>
   );

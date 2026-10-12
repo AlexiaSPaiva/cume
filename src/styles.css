@@ -882,3 +882,4 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
 /* tarefa semanal criada dentro da meta */
 .weekly-pick { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
 .weekly-pick .actions { gap: 4px; }
+.login-version { margin: 0; text-align: center; text-shadow: 0 1px 6px rgba(0,0,0,.6); }

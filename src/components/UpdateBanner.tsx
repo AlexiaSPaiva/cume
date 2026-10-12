@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import { hasSession } from '../lib/auth';
 
 /** o app acabou de abrir (ninguém começou a digitar ainda) */
 const JUST_OPENED_MS = 8000;
@@ -26,7 +27,8 @@ export function UpdateBanner() {
   useEffect(() => {
     if (!needRefresh) return;
     document.documentElement.dataset.update = 'available';
-    if (performance.now() < JUST_OPENED_MS) { void updateServiceWorker(true); return; }
+    // logo ao abrir, ou na tela de entrada (nada sendo editado): entra na hora
+    if (performance.now() < JUST_OPENED_MS || !hasSession()) { void updateServiceWorker(true); return; }
     const away = () => { if (document.visibilityState === 'hidden') void updateServiceWorker(true); };
     document.addEventListener('visibilitychange', away);
     return () => document.removeEventListener('visibilitychange', away);

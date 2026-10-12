@@ -14,7 +14,8 @@ async function newTrack(page: Page, type: string, title: string, extra?: (dlg: R
   await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
 }
 
-const inDays = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+// data local (toISOString é UTC: depois das 21h no Brasil já seria o dia seguinte)
+const inDays = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 test.beforeEach(async ({ page }) => {
   await useBuild(page, 'a');
