@@ -61,8 +61,10 @@ test('concurso: matérias, necessidade, questões, gerar cronograma, edital no C
   await expect(page.getByRole('status')).toContainText('blocos criados');
   await tabs.getByRole('button', { name: 'Cronograma' }).click();
   // os blocos começam amanhã: podem cair na semana seguinte
-  if (!(await page.locator('.cg-blk:not(.other)').count())) await page.getByRole('button', { name: 'Próximo' }).click();
-  await expect(page.locator('.cg-blk:not(.other)').first()).toBeVisible();
+  // (espera a semana desenhar antes de decidir; olhar cedo demais pulava para a semana errada)
+  const blk = page.locator('.cg-blk:not(.other)').first();
+  try { await expect(blk).toBeVisible({ timeout: 2500 }); } catch { await page.getByRole('button', { name: 'Próximo' }).click(); }
+  await expect(blk).toBeVisible();
 
   // edital: data com alerta e no Calendário geral
   await tabs.getByRole('button', { name: 'Edital e prazos' }).click();
