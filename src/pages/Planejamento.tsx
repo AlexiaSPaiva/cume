@@ -15,6 +15,7 @@ import type { AreaId, WeekPlan } from '../lib/types';
 import { rescheduleTask } from '../lib/tasks';
 import { Link } from 'react-router-dom';
 import { studyMinutesWeek, TRACK_TYPES } from '../lib/study';
+import { mix } from '../lib/color';
 
 export function Planejamento() {
   const data = useData();
@@ -117,7 +118,7 @@ export function Planejamento() {
             {[0, 1, 2].map((i) => {
               const t = tasks.find((x) => x.id === plan.top3[i]);
               return (
-                <div key={i} className="card" style={{ background: t ? `color-mix(in srgb, ${AREA[t.area].color} 10%, #121931)` : '#121931', borderColor: t ? `color-mix(in srgb, ${AREA[t.area].color} 40%, transparent)` : undefined, display: 'flex', gap: 14, alignItems: 'center', padding: 14 }}>
+                <div key={i} className="card" style={{ background: t ? mix(AREA[t.area].color, 10, '#121931') : '#121931', borderColor: t ? mix(AREA[t.area].color, 40, 'transparent') : undefined, display: 'flex', gap: 14, alignItems: 'center', padding: 14 }}>
                   <span style={{ font: '400 2.25rem var(--serif)', color: t ? AREA[t.area].color : 'var(--faint)' }}>{i + 1}</span>
                   <div style={{ flex: 1, minWidth: 0 }} className="list">
                     <select className="input" value={plan.top3[i] ?? ''} aria-label={`Prioridade ${i + 1}`}

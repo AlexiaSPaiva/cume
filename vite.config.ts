@@ -8,6 +8,12 @@ const APP_VERSION = `${pkg.version}+${process.env.MEUPLANO_BUILD_ID ?? new Date(
 
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(APP_VERSION) },
+  // iPhones com iOS mais antigo (Safari 14–16.3) também precisam funcionar: sem isso o CSS sai com
+  // "@media (width<=767.98px)", que eles não entendem, e o celular caía no layout de computador
+  build: {
+    target: ['es2020', 'safari14', 'chrome100', 'firefox100', 'edge100'],
+    cssTarget: ['safari14', 'chrome100', 'firefox100', 'edge100'],
+  },
   plugins: [
     react(),
     VitePWA({

@@ -178,7 +178,7 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 .card h2 .expand:hover, .card:focus-within h2 .expand { color: var(--text); }
 
 /* ---------- modo foco ---------- */
-.focus-chip { font: 700 0.625rem/1 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 6px; padding: 5px 7px; flex: none; }
+.focus-chip { font: 700 0.625rem/1 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); border: 1px solid rgba(200, 169, 126, 0.55); border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 6px; padding: 5px 7px; flex: none; }
 .card.focused {
   position: fixed; inset: 0; z-index: 45; border-radius: 0; border: 0; overflow: auto; overscroll-behavior: contain;
   background: linear-gradient(rgba(10,15,31,.7), rgba(10,15,31,.7)), var(--scene-login, none) 62% 50% / cover no-repeat fixed, var(--color-bg) !important;
@@ -285,7 +285,7 @@ button.stat:hover { border-color: var(--line-2); }
 .input, .field input, .field select, .field textarea {
   background: #0a0f22; border: 1px solid var(--line-2); border-radius: 8px; padding: 10px 12px; width: 100%; min-width: 0;
 }
-.field input:focus, .field select:focus, .field textarea:focus, .input:focus { outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent); border-color: transparent; }
+.field input:focus, .field select:focus, .field textarea:focus, .input:focus { outline: 2px solid rgba(200, 169, 126, 0.6); outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent); border-color: transparent; }
 .check { display: flex; align-items: center; gap: 8px; font-size: 0.8125rem; cursor: pointer; }
 .check input { width: 16px; height: 16px; accent-color: var(--accent); }
 .form { display: flex; flex-direction: column; gap: 13px; }
@@ -598,7 +598,7 @@ button.stat:hover { border-color: var(--line-2); }
 .legend { display: inline-flex; align-items: center; gap: 6px; }
 .lg { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 .lg.paid, .bars .paid { background: var(--accent); }
-.lg.rec, .bars .rec { background: color-mix(in srgb, var(--accent) 38%, transparent); }
+.lg.rec, .bars .rec { background: rgba(200, 169, 126, 0.38); background: color-mix(in srgb, var(--accent) 38%, transparent); }
 .bars { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; height: 11rem; align-items: end; }
 .bcol { height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 6px; min-width: 0; }
 .bcol .stack { width: min(2.5rem, 70%); display: flex; flex-direction: column; border-radius: 4px 4px 0 0; overflow: hidden; min-height: 2px; }
@@ -636,7 +636,7 @@ button.stat:hover { border-color: var(--line-2); }
 .delta.up { color: var(--ok); }
 .delta.down { color: var(--bad); }
 .lg.cur { background: var(--accent); }
-.lg.ref { background: color-mix(in srgb, var(--accent) 35%, #1a2140); }
+.lg.ref { background: #575156; background: color-mix(in srgb, var(--accent) 35%, #1a2140); }
 .area-bars { display: grid; grid-template-columns: repeat(var(--n, 6), minmax(0, 1fr)); gap: 8px; height: 12rem; align-items: end; }
 .ab-col { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px; min-width: 0; }
 .ab-v { font-size: 0.6875rem; color: var(--color-text-2); white-space: nowrap; }
@@ -779,8 +779,8 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
 .swipe { position: relative; overflow: hidden; }
 .swipe-actions { position: absolute; inset: 0 0 0 auto; display: flex; }
 .sw-btn { width: 84px; border: 0; font-weight: 700; font-size: 0.8125rem; cursor: pointer; color: var(--text); background: var(--panel-2); }
-.sw-btn.gold { background: color-mix(in srgb, var(--accent) 35%, #1a2140); }
-.sw-btn.danger { background: color-mix(in srgb, var(--bad) 40%, #1a2140); }
+.sw-btn.gold { background: #575156; background: color-mix(in srgb, var(--accent) 35%, #1a2140); }
+.sw-btn.danger { background: #664451; background: color-mix(in srgb, var(--bad) 40%, #1a2140); }
 .swipe-front { position: relative; transition: transform .18s ease-out; touch-action: pan-y; }
 @media (prefers-reduced-motion: reduce) { .swipe-front { transition: none; } }
 @media (max-width: 1199.98px) {
@@ -820,7 +820,7 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
 .cg-col.today .cg-h { color: var(--accent); }
 .cg-body { position: relative; border-left: 1px solid #1b2240; background: repeating-linear-gradient(180deg, transparent 0 89px, #1b2240 89px 90px); }
 .cg-col.over .cg-body { background-color: rgba(200,169,126,.08); }
-.cg-blk { position: absolute; left: 2px; right: 2px; border-radius: 6px; border-left: 3px solid var(--c, var(--accent)); background: color-mix(in srgb, var(--c, var(--accent)) 22%, #141b33); display: flex; align-items: flex-start; overflow: hidden; z-index: 2; }
+.cg-blk { position: absolute; left: 2px; right: 2px; border-radius: 6px; border-left: 3px solid var(--c, var(--accent)); background: #3c3a44; background: color-mix(in srgb, var(--c, var(--accent)) 22%, #141b33); display: flex; align-items: flex-start; overflow: hidden; z-index: 2; }
 .cg-blk.done { opacity: .6; }
 .cg-blk.other { border: 1px dashed #4a5274; border-left-width: 1px; background: rgba(40,48,80,.35); color: var(--muted); z-index: 1; padding: 3px 5px; flex-direction: column; pointer-events: auto; }
 .cg-blk b { display: block; font-size: 0.6875rem; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; }

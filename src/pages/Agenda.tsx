@@ -10,6 +10,7 @@ import { addDays, ddmm, DOW_SHORT, dur, fromMin, parse, toMin, today, weekDays, 
 import { impByArea, impsForWeek, occurrencesForWeek, plannedByArea, sum, capacityMin, type Occurrence } from '../lib/week';
 import type { Imprevisto } from '../lib/types';
 import { rescheduleTask } from '../lib/tasks';
+import { mix } from '../lib/color';
 
 const FROM = 7 * 60;
 const TO = 23 * 60;
@@ -161,7 +162,7 @@ export function Agenda() {
                         title={`${t.title} · ${it.o.start} · ${dur(it.o.durationMin)}`}
                         style={{
                           top, height: h, left: `calc(${it.lane * w}% + 3px)`, right: 'auto', width: `calc(${w}% - 6px)`,
-                          background: `color-mix(in srgb, ${c} 30%, #141b33)`, borderColor: `color-mix(in srgb, ${c} 55%, transparent)`,
+                          background: mix(c, 30, '#141b33'), borderColor: mix(c, 55, 'transparent'),
                           color: t.soft || t.status === 'adiada' ? c : undefined,
                         }}>
                         {t.title}{t.status === 'adiada' && ' (adiada)'}

@@ -14,6 +14,7 @@ import {
   prevLabel, series, shiftAnchor, summary, type Compare, type Delta, type MetricDef,
 } from '../lib/history';
 import type { AreaId, HistPeriod, Metric, MetricAggregation } from '../lib/types';
+import { mix } from '../lib/color';
 
 const PERIODS: [HistPeriod, string][] = [['dia', 'Dia'], ['semana', 'Semana'], ['mes', 'Mês'], ['ano', 'Ano']];
 const isPeriod = (x: string | null): x is HistPeriod => !!x && PERIODS.some(([k]) => k === x);
@@ -138,7 +139,7 @@ function AreaBars({ cur, ref_, only }: { cur: Record<AreaId, number>; ref_?: Rec
         <div key={a.id} className="ab-col">
           <b className="ab-v">{fmtH(cur[a.id])}</b>
           <div className="ab-pair">
-            {ref_ && <i className="ref" style={{ height: `${(ref_[a.id] / max) * 100}%`, background: `color-mix(in srgb, ${a.color} 38%, #1a2140)` }} />}
+            {ref_ && <i className="ref" style={{ height: `${(ref_[a.id] / max) * 100}%`, background: mix(a.color, 38, '#1a2140') }} />}
             <i style={{ height: `${(cur[a.id] / max) * 100}%`, background: a.color }} />
           </div>
           <small>{a.name}</small>
@@ -151,7 +152,7 @@ function AreaBars({ cur, ref_, only }: { cur: Record<AreaId, number>; ref_?: Rec
 function heat(min: number, max: number): string {
   if (!min) return 'var(--panel-2)';
   const t = Math.min(1, min / max);
-  return `color-mix(in srgb, var(--accent) ${Math.round(18 + t * 72)}%, #1a2140)`;
+  return mix('var(--accent)', Math.round(18 + t * 72), '#1a2140');
 }
 
 function MonthMap({ anchor, area, sel, onPick }: { anchor: string; area?: AreaId; sel?: string; onPick: (day: string) => void }) {

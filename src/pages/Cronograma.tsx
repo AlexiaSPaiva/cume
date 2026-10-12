@@ -15,6 +15,7 @@ import { planByNecessity, studyMinutesWeek, TRACK_TYPES, TYPE } from '../lib/stu
 import { rescheduleTask } from '../lib/tasks';
 import type { Task, Track, TrackType } from '../lib/types';
 import { capacityMin, occurrencesForWeek, type Occurrence } from '../lib/week';
+import { mix } from '../lib/color';
 
 const FROM = 6 * 60, TO = 23 * 60, PX = 0.75; // 06:00–23:00, 0,75px por minuto
 
@@ -225,7 +226,7 @@ function MonthView({ anchor, visible, onPick }: { anchor: string; visible: (t: T
         const m = occ.filter((o) => o.date === day).reduce((s, o) => s + o.durationMin, 0);
         return (
           <button key={day} type="button" className="hc" onClick={() => onPick(day)} aria-label={`${ddmm(day)}: ${dur(m) || '0h'} de estudo`}
-            style={{ background: m ? `color-mix(in srgb, var(--accent) ${Math.min(90, 20 + m / 3)}%, #1a2140)` : 'var(--panel-2)' }}>
+            style={{ background: m ? mix('var(--accent)', Math.min(90, 20 + m / 3), '#1a2140') : 'var(--panel-2)' }}>
             {i + 1}{m ? <small style={{ marginLeft: 'auto' }}>{dur(m)}</small> : null}
           </button>
         );

@@ -2,6 +2,7 @@ import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AREA } from '../lib/areas';
 import type { AreaId } from '../lib/types';
+import { mix } from '../lib/color';
 
 export function Stat({ k, v, s, onClick }: { k: string; v: ReactNode; s?: ReactNode; onClick?: () => void }) {
   const body = (
@@ -36,7 +37,7 @@ export function AreaDot({ area, size = 8 }: { area: AreaId; size?: number }) {
 
 export function AreaTag({ area }: { area: AreaId }) {
   const c = AREA[area].color;
-  return <span className="tag" style={{ background: `color-mix(in srgb, ${c} 18%, #141b30)`, color: c }}>{AREA[area].name}</span>;
+  return <span className="tag" style={{ background: mix(c, 18, '#141b30'), color: c }}>{AREA[area].name}</span>;
 }
 
 /** rosca com vários segmentos */
