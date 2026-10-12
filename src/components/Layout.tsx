@@ -31,7 +31,7 @@ const SYSTEM: [to: string, label: string, icon: string][] = [
 ];
 
 /** itens novos da v7 ganham o selo "novo" no menu */
-const NEW = new Set(['/historico']);
+const NEW = new Set<string>([]);
 
 /** modo foco da página inteira (⛶ no topo): esconde menu, cenário e rodapé */
 const PageFocus = createContext<ReturnType<typeof useFocusMode> | null>(null);

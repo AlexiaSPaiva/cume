@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { signup, useBuild } from './helpers';
 
-test('Histórico: menu com selo novo, períodos, navegação, comparação e filtro de área', async ({ page }) => {
+test('Histórico: menu sem selo, períodos, navegação, comparação e filtro de área', async ({ page }) => {
   await useBuild(page, 'a');
   await signup(page);
   const link = page.locator('aside.side').getByRole('link', { name: /Histórico/ });
-  await expect(link).toContainText(/novo/i);
+  await expect(link).not.toContainText(/novo/i);
   await link.click();
   await expect(page).toHaveURL(/\/historico$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Histórico e desempenho' })).toBeVisible();
