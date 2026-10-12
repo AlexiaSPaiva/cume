@@ -1,6 +1,7 @@
 import { Fragment, useState, type FormEvent } from 'react';
 import { AttachmentDrop, AttachmentList } from '../../components/AttachmentDrop';
 import { Card } from '../../components/Card';
+import { Masonry } from '../../components/Masonry';
 import { ItemMenu } from '../../components/ItemMenu';
 import { useUI } from '../../components/Overlays';
 import { Bar, Empty, Modal, Stat, Stats } from '../../components/ui';
@@ -203,9 +204,11 @@ export function ConcursoMaterias({ t, onStudy }: { t: Track; onStudy: (b?: Task)
   return (
     <>
       <div className="row"><button className="btn gold" style={{ marginLeft: 'auto' }} onClick={() => setEdit({})}>+ Matéria</button></div>
-      <div className="grid g2 fit">
-        {subs.map((s) => (
-          <Card key={s.id} title={s.name} act={<ItemMenu label={s.name} actions={{
+      {/* caixas encaixadas em colunas: cada matéria do tamanho dos seus tópicos, sem buracos entre elas */}
+      <Masonry items={subs} keyOf={(s) => s.id!}
+        weight={(s) => { const tp = d.topics.filter((x) => x.subjectId === s.id); return 4 + tp.length * 1.3 + new Set(tp.map((x) => x.section)).size; }}
+        render={(s) => (
+          <Card title={s.name} act={<ItemMenu label={s.name} actions={{
             open: { label: '▶ Estudar agora', run: () => onStudy() },
             edit: () => setEdit(s),
             delete: () => void ui.remove('subjects', s.id!, `Matéria “${s.name}”`),
@@ -213,8 +216,7 @@ export function ConcursoMaterias({ t, onStudy }: { t: Track; onStudy: (b?: Task)
             <p className="muted small" style={{ margin: '-6px 0 8px' }}>{s.questionsCount ?? '—'} questões · peso {s.weight ?? 1} · meta {s.targetAccuracy ?? t.targetAccuracy ?? 75}% · acertos {pct(accuracy(d, s.id!))}</p>
             <TopicList s={s} topics={d.topics.filter((x) => x.subjectId === s.id)} />
           </Card>
-        ))}
-      </div>
+        )} />
       {subs.length === 0 && <Card title="Matérias do edital"><Empty action={{ label: '+ Matéria', run: () => setEdit({}) }}>Cadastre cada matéria do edital com o número de questões e o peso.</Empty></Card>}
       {edit && <Modal title={edit.id ? 'Editar matéria' : 'Nova matéria'} onClose={() => setEdit(null)}><SubjectForm t={t} s={edit} onDone={() => setEdit(null)} /></Modal>}
     </>

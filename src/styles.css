@@ -914,3 +914,7 @@ select { -webkit-appearance: none; appearance: none; background-image: linear-gr
 .topic-code { margin-right: 6px; font-variant-numeric: tabular-nums; }
 /* cards de alturas diferentes (ex.: matérias com mais ou menos tópicos): cada um do tamanho do conteúdo */
 .grid.fit { align-items: start; }
+/* colunas que se encaixam (matérias): cada coluna empilha suas caixas com o mesmo espaço */
+.masonry { display: grid; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); gap: 16px; align-items: start; }
+.masonry-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.masonry-item { min-width: 0; }
