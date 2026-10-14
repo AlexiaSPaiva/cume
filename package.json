@@ -1,7 +1,7 @@
 {
-  "name": "meuplano",
+  "name": "cume",
   "version": "1.0.0",
-  "description": "MeuPlano · Personal Life OS (PWA)",
+  "description": "Cume° · Personal Life OS (PWA)",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

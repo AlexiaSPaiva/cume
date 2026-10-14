@@ -1,104 +1,123 @@
-<p align="center"><img src="docs/brand/cume-brand/icon-rounded.svg" width="96" alt="" /></p>
+<p align="center"><img src="docs/brand/cume-brand/icon-rounded.svg" width="88" alt="" /></p>
 
-# Cume° · Personal Life OS
+<h1 align="center">Cume°</h1>
 
-**Foco · Clareza · Ação**
+<p align="center">
+  A personal planning app that turns life goals into measurable targets and daily tasks.<br />
+  Installable, works offline, syncs across devices.
+</p>
 
-PWA (instalável e offline) feito a partir do `MeuPlano_Design_v6.pdf` e da v7 (`docs/v7/`).
-Identidade visual em `docs/brand/` (guia `Cume_Guia_de_Identidade.pdf`).
+<p align="center">
+  <a href="https://meuplano-rouge.vercel.app"><b>▶ Live app</b></a> ·
+  <a href="https://github.com/AlexiaSPaiva/cume/actions/workflows/ci.yml"><img src="https://github.com/AlexiaSPaiva/cume/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+</p>
 
-<p align="center"><img src="docs/brand/cume-brand/preview-marca.png" width="720" alt="Ícone e logo do Cume°" /></p>
+<p align="center"><img src="docs/screenshots/desktop-home.png" width="820" alt="Cume home screen: today's top 3, upcoming deadlines and time per life area" /></p>
 
-| Amanhecer · 05h–10h | Dia · 10h–16h | Entardecer · 16h–19h | Noite · 19h–05h |
-| --- | --- | --- | --- |
-| <img src="public/scenes/cume-bg-amanhecer-hero-mobile.jpg" width="180" alt="" /> | <img src="public/scenes/cume-bg-dia-hero-mobile.jpg" width="180" alt="" /> | <img src="public/scenes/cume-bg-entardecer-hero-mobile.jpg" width="180" alt="" /> | <img src="public/scenes/cume-bg-noite-hero-mobile.jpg" width="180" alt="" /> |
+## The problem
 
-O cenário do topo e do login muda pelo horário (`src/lib/scene.ts`) ou fica fixo em Personalizar → Cenário.
+I wanted one place to go from *"where do I want to be"* to *"what do I do today"*, across studies, work, health and
+money, and to see when unplanned events were eating my week. Planners I tried kept these apart, so I designed
+and built my own.
 
-> **Nomes históricos que não mudam:** o banco IndexedDB `meuplano`, as chaves `meuplano.*` do localStorage,
-> o formato `meuplano-backup` e o endereço `meuplano-rouge.vercel.app`. Os dados ficam no navegador,
-> e cada endereço tem um armazenamento separado: trocar o nome ou o endereço esconderia os dados.
+Cume° is built around three ideas:
 
-## Rodar
+| | What it is | Example |
+| --- | --- | --- |
+| **Objective** | where you want to get | pass a public exam |
+| **Goal** | a measurable step, with a number and a deadline | study 200 h by March |
+| **Task** | what to do today | 20 practice questions at 7 pm |
+
+Finishing tasks moves goals forward, and goals move objectives forward. Progress is derived from the data,
+never typed in by hand.
+
+## Features
+
+- **Weekly planning** by hours available per life area, with a weekly and daily Top 3.
+- **Agenda, week view and calendar** with fixed blocks, rest blocks and unplanned events side by side.
+- **Unplanned events log**: when the same interruption repeats (e.g. 3× in 30 days), the app suggests reserving time for it.
+- **Goals measured by tasks or by value**, including recurring weekly tasks and study tracks.
+- **Study tracks** (exam prep, courses, research) with schedules, spaced reviews and a Pomodoro timer.
+- **Postponed tasks and trash**: nothing is lost; tasks can be rescheduled without being recreated, deletes can be undone.
+- **History** comparing day / week / month / year against the previous period.
+- **Document vault** for files and Google Drive links, plus a `.zip` backup.
+- **Animated onboarding tour** with generated background music (Web Audio, no audio files).
+
+<p align="center">
+  <img src="docs/screenshots/desktop-goals.png" width="560" alt="Objectives and goals with progress rings" />
+  <img src="docs/screenshots/mobile-home.png" width="200" alt="Home screen on a phone" />
+</p>
+
+## Tech stack
+
+| Area | Choices |
+| --- | --- |
+| Front end | React 19, TypeScript, Vite, React Router, CSS (no UI kit) |
+| Offline & PWA | IndexedDB via Dexie, `vite-plugin-pwa` (Workbox), installable on iOS and Android |
+| Back end | Supabase: Postgres with Row Level Security, Auth, private Storage bucket |
+| Testing | Vitest + fake-indexeddb (unit), Playwright on Chrome and WebKit/iPhone (end to end) |
+| Delivery | GitHub Actions CI, continuous deployment on Vercel |
+
+## Architecture
+
+```
+ ┌──────────── device (works offline) ────────────┐          ┌──────── Supabase ────────┐
+ │ React UI ──► Dexie / IndexedDB (source of truth)│  sync    │ Postgres `rows` table    │
+ │                │                               │ ◄──────► │ RLS: each user sees only │
+ │                └─ pending-changes queue ────────┤          │ their own rows           │
+ │ Service worker: app shell cached, update banner │          │ Storage: private files   │
+ └────────────────────────────────────────────────┘          └──────────────────────────┘
+```
+
+- **Local-first.** Every read and write hits IndexedDB, so the app is instant and fully usable offline.
+- **Sync engine** (`src/lib/sync.ts`): pushes queued local changes, pulls remote changes, and resolves conflicts
+  per record with last-write-wins on `updatedAt`. IDs are unique across devices; colliding legacy IDs are
+  renumbered with their references fixed.
+- **Versioned schema** (`src/lib/db.ts`): migrations only add tables, never drop data. A test suite proves that
+  data from every previous version survives an upgrade.
+- **Soft delete** with a 6-second undo and a 30-day trash.
+- Database schema and policies: [`supabase/schema.sql`](supabase/schema.sql).
+
+## Engineering notes
+
+- **A layout bug only on older iPhones.** On iOS < 16.4 the phone showed the desktop layout squeezed. The cause:
+  Vite emitted media queries in range syntax (`@media (width <= 767px)`), which Safari 14–16.3 ignores. Fixed by
+  setting explicit build targets and adding fallbacks for `color-mix()`, plus a test that keeps it from coming back.
+  Modern WebKit in Playwright did not catch it, which is why there is now a compatibility test.
+- **Opening PDFs on iOS.** `window.open` after an `await` is blocked by Safari, so files now open in an in-app
+  viewer with signed URLs, and there is a fallback for when Safari refuses to store a `Blob` in IndexedDB.
+- **Updates without losing work.** A new version waits until the app is reopened or left, so drafts are never
+  interrupted.
+
+## Tests
+
+```sh
+pnpm test        # unit: migrations, sync, trash, backup, recurrence, goal progress…
+pnpm test:e2e    # end to end: Chrome (flows, 360–1280 px layouts) and WebKit (320–430 px iPhones)
+```
+
+Around 80 unit tests and 50+ end-to-end tests run on every push in GitHub Actions.
+
+## Run locally
 
 ```sh
 pnpm install
-pnpm dev        # http://localhost:5173
-pnpm build      # gera dist/ com service worker
-pnpm preview    # testa o build (instalação e offline)
+pnpm dev          # http://localhost:5173  (add /?exemplos=1 for sample data)
 ```
 
-## Publicação
+Without Supabase variables the app runs local-only. To enable sync, copy your project's URL and public key into
+`.env.local` as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, and apply `supabase/schema.sql`.
 
-No ar em https://meuplano-rouge.vercel.app (Vercel). Cada push na branch `main` do GitHub publica sozinho.
+## How it was built
 
-## Nuvem (Supabase)
+I came up with the product, designed the screens and wrote the specification (features, data rules, what must
+never break), then built it iteratively. I used Claude Code as an AI coding assistant for implementation and
+refactoring; commits where it helped are marked `Co-Authored-By`. The product, the decisions between the technical
+options on the table, review and testing on real devices were mine.
 
-Contas e cópia dos dados ficam no Supabase (projeto `cume`, São Paulo), para entrar em qualquer aparelho.
+The interface is in Portuguese (Brazil). Detailed development notes, also in Portuguese:
+[`docs/DEVELOPMENT.pt-BR.md`](docs/DEVELOPMENT.pt-BR.md).
 
-- Variáveis: `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (chave pública) em `.env.local` e na Vercel.
-  Sem elas o app funciona só no aparelho, como antes (os testes rodam assim).
-- Banco: `supabase/schema.sql` (uma tabela `rows` com tabela + chave + JSON; cada pessoa só vê as próprias
-  linhas por RLS; arquivos no bucket privado `arquivos/<id da pessoa>/`).
-- Sincronização (`src/lib/sync.ts`, `src/lib/syncApp.ts`): o aparelho continua sendo o principal e funciona offline.
-  Sobe o que mudou (lista de pendentes no localStorage), desce o que mudou na nuvem; no mesmo registro vence o
-  `updatedAt` mais recente. Ids novos são únicos entre aparelhos (`newId` em `db.ts`); ao ligar um aparelho com
-  ids antigos que colidem com a nuvem, os daqui são renumerados com as ligações corrigidas.
-- Login (`src/lib/auth.ts`): confere na nuvem e no aparelho. Conta de antes da nuvem: ao entrar, a mesma conta é
-  criada na nuvem com a mesma senha e os dados sobem. Aparelho novo: entra e os dados descem.
-  "Esqueci a senha" manda um link por e-mail.
+## License
 
-## Telas
-
-Entrada (Entrar em cima, Criar conta embaixo; várias contas por aparelho) · boas-vindas · Início · Minha semana ·
-Agenda · Tarefas (Quadro · Lista · Adiadas · Lixeira) · Planejamento (com Estudos da semana) · Calendário ·
-Objetivos e Metas · Imprevistos · Histórico e desempenho · painéis das 6 áreas · Financeiro (Visão geral · Renda extra ·
-Contas e cartões · Reserva · Cofre de comprovantes) · Acadêmica por trilhas (concurso, curso, graduação, pesquisa,
-extensão, idioma) · Cronograma de estudos · Cofre de documentos · Personalizar.
-
-## Recursos (v7 + pedidos)
-
-- **Modo foco** (⛶ em todo card e no topo), menu lateral recolhível, menu ⋯ com ordem fixa, estados de
-  carregando/erro/vazio/offline.
-- **Renda extra** como aba do Financeiro (`src/lib/freelance.ts`): dias ↔ horas só na exibição; pago entra no saldo.
-- **Histórico e desempenho** (`src/lib/history.ts`, só lê): dia/semana/mês/ano × anterior/média/meta, métricas
-  próprias, fechamento automático no dia 1º às 08:00.
-- **Tarefas adiadas** (`src/lib/tasks.ts`): adiar com motivo, Realocar a MESMA tarefa (dia, Planejamento ou backlog),
-  histórico de adiamentos, gesto de deslizar no celular.
-- **Metas pelas tarefas** ou **por valor** (atual e alvo). Pelas tarefas: cada tarefa comum vale 1 e cada
-  **tarefa semanal** (ex.: Estudar Matemática seg/qua/sex até 31/12) vale os dias em que acontece até a data
-  final da repetição (`src/lib/recurring.ts`); cada dia é marcado em Minha semana ou no card da meta.
-- **Trilhas ligadas a metas e objetivos**: uma meta pode contar TODAS as tarefas de uma trilha (inclusive as futuras) ou só as
-  escolhidas (`trackId`/`trackAll` na meta); um objetivo pode ser medido pela trilha (`Objective.trackId`) com os índices de
-  `trackIndicators`: tempo estudado ÷ plano, edital coberto, acertos (questões + simulados) ÷ meta e último simulado.
-- **Vencimentos das contas** (`src/lib/bills.ts`): conta com dia de vencimento, valor e "todo mês"; vira ocorrências no
-  Calendário geral, na aba Contas do Financeiro (com "pagar") e nos avisos de prazo.
-- **Estudos** (`src/lib/study.ts`): trilhas com abas pelo tipo; concurso com necessidade por matéria
-  (peso × distância da meta × edital que falta) e "Gerar cronograma pela necessidade"; pesquisa com artigos,
-  fichamento salvo sozinho e diário; curso/graduação com módulos, provas e notas; sessões de estudo = tarefas
-  da Agenda com `trackId` (nunca duplicadas); pomodoro, revisões 24h/7d/30d e alarmes (`src/lib/reminders.ts`).
-- **Imprevistos recorrentes** (`src/lib/recurrence.ts`) e **link do Google Drive** no Cofre.
-- **Contas**: cada conta tem o próprio banco no aparelho (`src/lib/auth.ts`) e uma cópia na nuvem; a conta antiga
-  continua no banco histórico `meuplano`. Os avisos funcionam com o app aberto.
-
-## Dados (regras que não podem ser quebradas)
-
-- Tudo fica no IndexedDB (Dexie, `src/lib/db.ts`, hoje na versão 5). Arquivos: binário em `blobs`, metadados em
-  `attachments` (`src/lib/attachments.ts`). URLs de arquivo são criadas na hora de exibir.
-- **Schema versionado**: toda mudança de estrutura = nova `db.version(n)`; as versões 3, 4 e 5 só ACRESCENTARAM
-  tabelas. Proibido apagar/recriar o banco. Os testes em `tests/unit/migration.test.ts` provam isso.
-- **Exclusão** = soft delete (`deletedAt`) + "Desfazer" (6 s) + Lixeira de 30 dias (`src/lib/trash.ts`).
-- **Formulários**: rascunho (novo) ou autosave (edição) com debounce, "salvo às HH:MM" (`src/lib/drafts.ts`).
-- **Versão nova do app**: entra sozinha ao abrir o app ou quando a pessoa sai dele (`UpdateBanner.tsx`);
-  os dados e rascunhos ficam.
-- **Backup** `.zip` (JSON + arquivos) em Personalizar; importar soma, nunca apaga (`src/lib/backup.ts`).
-- **Dados de exemplo**: o app começa vazio; exemplos só com `/?exemplos=1` (demonstração e testes). A limpeza
-  automática (`src/lib/cleanup.ts`) tira os exemplos das contas antigas, mas nunca o que a pessoa criou, editou
-  ou usa; guarda uma cópia do que saiu.
-
-## Testes
-
-```sh
-pnpm test        # Vitest + fake-indexeddb: migração, lixeira, backup, limpeza, renda extra, histórico, tarefas, estudos
-pnpm test:e2e    # Playwright: Chrome (fluxos, layout 360–1280, 44px) e iPhone/WebKit (320, 375, 390, 430 px)
-```
+[MIT](LICENSE) © Alexia Paiva
