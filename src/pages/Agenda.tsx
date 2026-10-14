@@ -42,6 +42,20 @@ function lanes(items: Item[]): (Item & { lane: number; lanes: number })[] {
   return out;
 }
 
+type Laid = Item & { lane: number; lanes: number; top: boolean };
+
+/** o bloco mais longo ocupa a coluna inteira; o que conflita com ele fica centralizado por cima */
+function layers(items: Item[]): Laid[] {
+  const ranked = [...items].sort((a, b) => (b.e - b.s) - (a.e - a.s) || a.s - b.s);
+  const base: Item[] = [];
+  const over: Item[] = [];
+  for (const it of ranked) ([...base, ...over].some((b) => b.s < it.e && it.s < b.e) ? over : base).push(it);
+  return [
+    ...base.map((it) => ({ ...it, lane: 0, lanes: 1, top: false })),
+    ...lanes(over).map((it) => ({ ...it, top: true })),
+  ];
+}
+
 export function Agenda() {
   const { tasks, imprevistos, settings } = useData();
   const ui = useUI();
@@ -136,7 +150,7 @@ export function Agenda() {
                 ...occ.filter((o) => o.date === d && o.start).map((o) => ({ kind: 'task' as const, o, s: toMin(o.start!), e: toMin(o.start!) + Math.max(15, o.durationMin) })),
                 ...imps.filter((i) => i.date === d && i.start).map((i) => ({ kind: 'imp' as const, i, s: toMin(i.start), e: toMin(i.start) + Math.max(15, i.durationMin) })),
               ];
-              const laid = lanes(items);
+              const laid = layers(items);
               return (
                 <div key={d} className={`ag-col ${d === t0 ? 'today' : ''} ${over === d ? 'over' : ''}`} style={{ height: (TO - FROM) * PX }}
                   onDragOver={(e) => { e.preventDefault(); setOver(d); }} onDragLeave={() => setOver(null)} onDrop={(e) => drop(d, e)}
@@ -148,14 +162,17 @@ export function Agenda() {
                   {laid.map((it) => {
                     const top = (Math.max(FROM, it.s) - FROM) * PX;
                     const h = Math.max(16, (Math.min(TO, it.e) - Math.max(FROM, it.s)) * PX - 2);
-                    const w = 100 / it.lanes;
-                    // coluna estreita (3+ coisas ao mesmo tempo na semana): letra menor e sem quebrar palavra no meio
-                    const narrow = view === 'semana' && it.lanes >= 3;
+                    // camada de cima: faixa central (10%–90%) dividida entre os conflitos
+                    const x0 = it.top ? 10 : 0;
+                    const w = (it.top ? 80 : 100) / it.lanes;
+                    // coluna estreita (2+ conflitos ao mesmo tempo na semana): letra menor e sem quebrar palavra no meio
+                    const narrow = view === 'semana' && it.lanes >= 2;
                     // o texto cabe no bloco: blocos curtos = 1 linha com "…"; maiores = quantas linhas couberem
                     const tiny = h < 26;
                     const showTime = h >= 46 && !narrow;
                     const lines = Math.max(1, Math.floor((h - (showTime ? 26 : 8)) / (narrow ? 12 : 14)));
-                    const pos = { top, height: h, left: `calc(${it.lane * w}% + 2px)`, right: 'auto', width: `calc(${w}% - 4px)` };
+                    const pos = { top, height: h, left: `calc(${x0 + it.lane * w}% + 2px)`, right: 'auto', width: `calc(${w}% - 4px)`,
+                      ...(it.top && { zIndex: 2, boxShadow: '0 4px 14px rgba(0,0,0,.55)' }) };
                     if (it.kind === 'imp') {
                       const i = it.i;
                       return (
