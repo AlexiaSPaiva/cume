@@ -119,8 +119,13 @@ function Articles({ t, sel, onSel, compact }: { t: Track; sel?: number; onSel: (
       {compact && links.length > 0 && (
         <>
           <span className="lab-up" style={{ display: 'block', margin: '12px 0 6px' }}>Arquivos e links</span>
-          <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
-            {links.slice(0, 6).map((l) => <button key={l.id} type="button" className="chip" onClick={() => void openAttachment(l)}>{l.url ? '🔗' : '📄'} {l.name}</button>)}
+          <div className="art-links">
+            {links.slice(0, 6).map((l) => (
+              <button key={l.id} type="button" title={l.url ?? l.name} onClick={() => void openAttachment(l)}>
+                <Icon name={l.url ? 'link' : 'file'} size={14} /><span>{l.name}</span>
+              </button>
+            ))}
+            {links.length > 6 && <small className="muted">+{links.length - 6} em Arquivos</small>}
           </div>
         </>
       )}
