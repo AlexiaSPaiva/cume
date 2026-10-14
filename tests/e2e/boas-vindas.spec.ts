@@ -17,6 +17,27 @@ test('boas-vindas: explica o Cume°, ensina a usar, fecha e pode não aparecer m
   await expect(w).toContainText('topo da sua vida');
   await expect(w).toContainText('objetivo que você alcança');
 
+  // resumo: objetivo × meta × tarefa
+  await expect(w).toContainText('aonde você quer chegar');
+  await expect(w).toContainText('com número e prazo');
+  await expect(w).toContainText('o que fazer hoje');
+
+  // vídeo logo depois do resumo: toca, pausa, pula de capítulo e tem o roteiro em texto
+  const v = w.getByRole('region', { name: 'Vídeo: tour do Cume°' });
+  await expect(v).toBeVisible();
+  await v.getByRole('button', { name: 'Assistir ao vídeo' }).click();
+  await expect(v).toContainText('Em 3 minutos');
+  await expect(v.getByRole('button', { name: 'Pausar' })).toBeVisible();
+  await v.getByRole('button', { name: /Capítulo 6: Como tudo se liga/ }).click();
+  await expect(v).toContainText('6/15 · Como tudo se liga');
+  await expect(v).toContainText('cada tarefa feita faz a meta andar');
+  await v.getByRole('button', { name: 'Desligar a música' }).click();
+  await expect(v.getByRole('button', { name: 'Ligar a música' })).toBeVisible();
+  await v.getByRole('button', { name: 'Pausar' }).click();
+  await expect(v.getByRole('button', { name: 'Reproduzir' })).toBeVisible();
+  await v.getByText('Ler o roteiro do vídeo').click();
+  await expect(v).toContainText('Calendário: o mês inteiro');
+
   // tutorial em passos
   await w.getByRole('button', { name: 'Como usar o app' }).click();
   await expect(w).toContainText('Passo 1 de 5');

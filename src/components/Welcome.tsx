@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { db } from '../lib/db';
 import { DegreeTarget } from './Brand';
+import { TourVideo } from './TourVideo';
 import { Icon, Modal } from './ui';
 
 const STEPS: { icon: string; title: string; text: ReactNode }[] = [
@@ -48,14 +49,26 @@ export function Welcome({ name, onClose }: { name: string; onClose: () => void }
             <span className="welcome-mark" aria-hidden="true"><DegreeTarget /></span>
             <p className="welcome-lead">Olá, {name}!</p>
             <p>
-              <b>Cume</b> é o ponto mais alto de uma montanha. Aqui, ele é o <b>topo da sua vida</b>: cada objetivo que você alcança.
-              O alvo no lugar do grau lembra que chegar lá é acertar a meta.
+              O Cume° organiza a sua vida inteira num lugar só: estudos, trabalho, saúde, dinheiro e burocracias.
+              O nome vem de <b>cume</b>, o topo da montanha: o <b>topo da sua vida</b> é cada objetivo que você alcança.
             </p>
-            <p>
-              O Cume° te ajuda a subir um passo de cada vez, com <b>foco</b>, <b>clareza</b> e <b>ação</b>: você escolhe aonde quer chegar,
-              planeja o caminho e acompanha cada passo.
-            </p>
-            <p className="muted small">Seus dados ficam neste aparelho e guardados na nuvem: entre com o mesmo e-mail e senha em qualquer aparelho. Em Personalizar dá para fazer um backup quando quiser.</p>
+            <p>Tudo no app gira em torno de três palavras:</p>
+            <ul className="welcome-ladder">
+              <li style={{ '--c': '#e9cf9f' } as CSSProperties}>
+                <b>Objetivo</b><span>aonde você quer chegar.</span><small>Ex.: passar no concurso.</small>
+              </li>
+              <li style={{ '--c': '#7da0c9' } as CSSProperties}>
+                <b>Meta</b><span>um trecho que dá para medir, com número e prazo.</span><small>Ex.: estudar 200 h até março.</small>
+              </li>
+              <li style={{ '--c': '#7fb8a0' } as CSSProperties}>
+                <b>Tarefa</b><span>o que fazer hoje.</span><small>Ex.: 20 questões às 19h.</small>
+              </li>
+            </ul>
+            <p>Cada <b>tarefa</b> feita faz a <b>meta</b> andar, e as metas levam você ao <b>objetivo</b>.</p>
+            <p className="muted small">Seus dados ficam guardados na nuvem: entre com o mesmo e-mail e senha em qualquer aparelho.</p>
+
+            <h3 className="welcome-video-h">Assista ao tour do app</h3>
+            <TourVideo />
           </div>
         ) : (
           <div className="welcome-step" aria-live="polite">
