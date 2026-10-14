@@ -7,7 +7,9 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # the layout tests measure real text widths; Linux runners ship different fonts than Windows/macOS/iOS,
+    # which shifts some layouts by a pixel, so the suite runs on Windows like local development
+    runs-on: windows-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
