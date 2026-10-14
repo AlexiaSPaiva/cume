@@ -155,7 +155,7 @@ export function TrackForm({ t, onDone }: { t: Partial<Track>; onDone: (id?: numb
       </div>
       <label className="field"><span>Nome da trilha</span>
         <input autoFocus required value={f.title ?? ''} onChange={(e) => set({ title: e.target.value })}
-          placeholder={f.type === 'exam' ? 'Prefeitura do Rio · Analista' : f.type === 'research' ? 'GEUX · iniciação científica' : f.type === 'degree' ? 'Mackenzie' : 'Python para Dados'} />
+          placeholder={f.type === 'exam' ? 'Prefeitura do Rio · Analista' : f.type === 'research' ? 'Iniciação científica · grupo de pesquisa' : f.type === 'degree' ? 'Graduação em ADS' : 'Python para Dados'} />
       </label>
       <div className="cols">
         <label className="field"><span>{f.type === 'exam' ? 'Banca' : f.type === 'research' ? 'Orientação' : 'Instituição'} (opcional)</span><input value={f.org ?? ''} onChange={(e) => set({ org: e.target.value || undefined })} /></label>

@@ -255,7 +255,7 @@ test('capturas estudos', async ({ page }) => {
   await page.getByRole('navigation', { name: 'Abas da trilha' }).getByRole('button', { name: 'Edital e prazos' }).click();
   await shot('7d-edital', true);
   await page.goto('/area/academica');
-  await page.locator('.track h3 a', { hasText: 'GEUX' }).click();
+  await page.locator('.track h3 a', { hasText: 'Iniciação científica' }).click();
   await shot('7d-pesquisa');
   await page.goto('/area/academica/cronograma');
   await shot('7d-cronograma', true);

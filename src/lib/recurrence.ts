@@ -24,7 +24,7 @@ export function tokens(title: string): string[] {
     .filter((w) => w.length > 1 && !STOP.has(w));
 }
 
-/** coeficiente de sobreposição: "Reunião extra" ~ "Reunião extra na Antena 1" = 1 */
+/** coeficiente de sobreposição: "Reunião extra" ~ "Reunião extra no trabalho" = 1 */
 function overlap(a: string[], b: string[]): number {
   if (!a.length || !b.length) return 0;
   const sb = new Set(b);

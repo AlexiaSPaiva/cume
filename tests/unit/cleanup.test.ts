@@ -92,3 +92,13 @@ describe('remover dados de exemplo', () => {
     d.close();
   });
 });
+
+describe('pacote de exemplo antigo', () => {
+  it('os títulos de antes da troca por nomes genéricos continuam reconhecidos (só por hash)', async () => {
+    const { labelHash } = await import('../../src/lib/labelHash');
+    const { LEGACY_EXAMPLE_HASHES } = await import('../../src/lib/seedLegacy');
+    // títulos que existiam no pacote antigo e saíram do atual
+    for (const old of ['Resultado 42', 'Recarregar Riocard']) expect(LEGACY_EXAMPLE_HASHES.tasks).toContain(labelHash(old));
+    expect(LEGACY_EXAMPLE_HASHES.tasks).not.toContain(labelHash('Minha tarefa de verdade'));
+  });
+});

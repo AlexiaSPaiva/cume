@@ -558,7 +558,7 @@ function BillForm({ e, onDone }: { e: Partial<CalendarEvent>; onDone: () => void
   }
   return (
     <form className="form" onSubmit={save}>
-      <label className="field"><span>Conta</span><input autoFocus required value={f.title ?? ''} onChange={(x) => setF({ ...f, title: x.target.value })} placeholder="Ex.: Aluguel, Cartão Nubank, Luz" /></label>
+      <label className="field"><span>Conta</span><input autoFocus required value={f.title ?? ''} onChange={(x) => setF({ ...f, title: x.target.value })} placeholder="Ex.: Aluguel, cartão de crédito, luz" /></label>
       <div className="cols">
         <label className="field"><span>{f.repeat ? 'Primeiro vencimento' : 'Vence em'}</span><input type="date" required value={f.date ?? ''} onChange={(x) => setF({ ...f, date: x.target.value })} /></label>
         <label className="field"><span>Valor (R$, opcional)</span><input inputMode="decimal" value={amount} onChange={(x) => setAmount(x.target.value)} placeholder="0,00" /></label>

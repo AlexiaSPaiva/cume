@@ -12,23 +12,6 @@ test('readme screenshots', async ({ page }) => {
   const shot = async (name: string) => {
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(1200);
-    // the sample data mirrors a real routine: swap personal names for generic ones before the picture
-    await page.evaluate(() => {
-      const swaps: [RegExp, string][] = [
-        [/Reunião extra na Antena 1/g, 'Reunião extra no trabalho'], [/Antena 1 · dev técnico/g, 'Trabalho · sprint'],
-        [/Antena 1/g, 'Trabalho'], [/Nubank/g, 'cartão A'], [/Itaú/g, 'cartão B'], [/Candidaturas LinkedIn/g, 'Revisar portfólio'],
-        [/Candidaturas/g, 'Portfólio'], [/Proposta WomanTech/g, 'Proposta freelance'], [/WomanTech/g, 'freelance'],
-        [/Mackenzie e Cruzeiro do Sul/g, 'Faculdade e pós'], [/Mackenzie/g, 'Faculdade'], [/Cruzeiro/g, 'Pós'], [/GEUX/g, 'Grupo de estudos'],
-        [/Renda R\$ 10k\/mês/g, 'Renda extra'], [/R\$ 10k\/mês até/g, 'até'], [/R\$ 10k\/mês/g, 'meta'],
-      ];
-      const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-      for (let n = walk.nextNode(); n; n = walk.nextNode()) {
-        let t = n.nodeValue ?? '';
-        for (const [re, to] of swaps) t = t.replace(re, to);
-        if (t !== n.nodeValue) n.nodeValue = t;
-      }
-    });
-    await page.waitForTimeout(400);
     await page.screenshot({ path: `${DIR}/${name}.png` });
   };
   await useBuild(page, 'a');

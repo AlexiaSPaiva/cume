@@ -1,12 +1,15 @@
 import { openDb, TRASHABLE_TABLES, type MeuPlanoDB } from './db';
 import { seedExample } from './seed';
+import { labelHash } from './labelHash';
+import { LEGACY_EXAMPLE_HASHES } from './seedLegacy';
 
 /**
  * Remove os DADOS DE EXEMPLO que entraram quando a conta foi criada com "Começar com dados de exemplo".
  * Não toca na conta, nas configurações nem em nada que a pessoa criou.
  *
  * Como reconhece o exemplo (as duas coisas juntas):
- * 1) os títulos/nomes são exatamente os do pacote de exemplo (gerado na hora num banco descartável);
+ * 1) os títulos/nomes são exatamente os do pacote de exemplo (gerado na hora num banco descartável)
+ *    ou os do pacote antigo, guardados só como hash em seedLegacy.ts;
  * 2) foram criados no mesmo instante em que o exemplo entrou (o exemplo grava tudo em poucos segundos).
  * Tudo o que foi criado nessa janela sai junto (registros de metas, anexos, lançamentos…).
  * Uma cópia do que saiu fica guardada em meta['exemplos-removidos-copia'], por segurança.
@@ -23,8 +26,11 @@ const NAMED = new Set<string>(['objectives', 'goals', 'events']);
 type Row = Record<string, unknown> & { id?: number; createdAt?: string; title?: string; name?: string };
 const label = (r: Row) => (r.title ?? r.name ?? '') as string;
 
+/** reconhece um título do exemplo: o pacote atual (texto) ou o antigo (hash) */
+interface Signature { has: (table: string, title: string) => boolean }
+
 /** títulos do pacote de exemplo, por tabela */
-async function exampleSignature(): Promise<Map<string, Set<string>>> {
+async function exampleSignature(): Promise<Signature> {
   const name = `cume-exemplo-${Date.now()}`;
   const probe = openDb(name);
   try {
@@ -35,7 +41,8 @@ async function exampleSignature(): Promise<Map<string, Set<string>>> {
       const rows = (await probe.table(t).toArray()) as Row[];
       sig.set(t, new Set(rows.map(label).filter(Boolean)));
     }
-    return sig;
+    const legacy = new Map(Object.entries(LEGACY_EXAMPLE_HASHES).map(([t, hs]) => [t, new Set(hs)]));
+    return { has: (t, title) => !!title && (!!sig.get(t)?.has(title) || !!legacy.get(t)?.has(labelHash(title))) };
   } finally {
     probe.close();
     await probe.delete();
@@ -108,11 +115,10 @@ export async function removeExampleData(d: MeuPlanoDB): Promise<number> {
   if (await d.meta.get(SEEDED_KEY)) { await d.meta.put({ key: DONE_KEY, value: 'exemplo pedido de propósito' }); return 0; }
 
   const sig = await exampleSignature();
-  const seedTitles = sig.get('tasks')!;
   const tasks = (await d.tasks.toArray()) as unknown as Row[];
   // instante do exemplo: o createdAt mais comum entre as tarefas com títulos do exemplo
   const counts = new Map<string, number>();
-  for (const t of tasks) if (t.createdAt && seedTitles.has(label(t))) counts.set(t.createdAt, (counts.get(t.createdAt) ?? 0) + 1);
+  for (const t of tasks) if (t.createdAt && sig.has('tasks', label(t))) counts.set(t.createdAt, (counts.get(t.createdAt) ?? 0) + 1);
   const [seedAt, n] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
   // precisa de muitas coincidências: uma tarefa real chamada "Academia" não basta
   if (!seedAt || n < 10) { await d.meta.put({ key: DONE_KEY, value: 'sem exemplo' }); return 0; }
@@ -128,8 +134,8 @@ export async function removeExampleData(d: MeuPlanoDB): Promise<number> {
     const cand = new Map<string, Row[]>();
     for (const t of TRASHABLE_TABLES) {
       // na v6 metas, objetivos e eventos de exemplo não tinham data de criação: aí vale o nome exato do exemplo
-      const byName = NAMED.has(t) ? sig.get(t)! : new Set<string>();
-      cand.set(t, ((await d.table(t).toArray()) as Row[]).filter((r) => (inWindow(r) || byName.has(label(r))) && !edited(r)));
+      const byName = (r: Row) => NAMED.has(t) && sig.has(t, label(r));
+      cand.set(t, ((await d.table(t).toArray()) as Row[]).filter((r) => (inWindow(r) || byName(r)) && !edited(r)));
     }
     // o que a pessoa usa fica: meta ligada a uma tarefa dela, objetivo de uma meta que fica, anexo de um documento que fica
     keepReferenced(cand, (await d.tasks.toArray()) as unknown as Row[], (await d.goals.toArray()) as unknown as Row[], (await d.docs.toArray()) as unknown as Row[]);

@@ -252,7 +252,7 @@ export function ImprevistoForm({ initial, onDone, onSaved, compact }: {
   return (
     <form className="form" onSubmit={save}>
       <label className="field"><span>O que aconteceu</span>
-        <input autoFocus={!compact} required value={f.title ?? ''} onChange={(e) => set({ title: e.target.value })} placeholder="Ex.: Reunião extra na Antena 1" />
+        <input autoFocus={!compact} required value={f.title ?? ''} onChange={(e) => set({ title: e.target.value })} placeholder="Ex.: Reunião extra no trabalho" />
       </label>
       {similar > 0 && (
         <div className="hint" style={{ color: similar + 1 >= settings.recurrenceThreshold ? 'var(--imp)' : undefined }}>
@@ -475,7 +475,7 @@ export function DocForm({ onDone, initial }: { onDone: (msg?: string) => void; i
           <select value={f.type} onChange={(e) => set({ type: e.target.value as DocType })}>{DOC_TYPES.map((t) => <option key={t}>{t}</option>)}</select>
         </label>
         <label className="field"><span>Data</span><input type="date" value={f.date ?? ''} onChange={(e) => set({ date: e.target.value })} /></label>
-        <label className="field"><span>Vincular a</span><input value={f.linkedTo ?? ''} onChange={(e) => set({ linkedTo: e.target.value })} placeholder="Aluguel, Cartão Nubank…" /></label>
+        <label className="field"><span>Vincular a</span><input value={f.linkedTo ?? ''} onChange={(e) => set({ linkedTo: e.target.value })} placeholder="Aluguel, cartão de crédito…" /></label>
         <label className="field"><span>Valor (opcional)</span><input type="number" step="0.01" min={0} value={f.value ?? ''} onChange={(e) => set({ value: e.target.value ? Number(e.target.value) : undefined })} placeholder="R$" /></label>
       </div>
       <label className="check"><input type="checkbox" checked={!!f.remind} onChange={(e) => set({ remind: e.target.checked })} /> Lembrar de renovar este documento</label>
