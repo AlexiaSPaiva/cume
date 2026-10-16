@@ -1,4 +1,4 @@
-import { buildIcs } from '../src/lib/ics';
+import { buildIcs } from '../src/lib/ics.js';
 import type { CalendarEvent, Task } from '../src/lib/types';
 
 /**
