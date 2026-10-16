@@ -1212,5 +1212,5 @@ img.file-preview { height: auto; max-height: 60vh; object-fit: contain; backgrou
 .noday-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border: 1px solid #262f4b; border-radius: 8px; background: #161d35; }
 .noday-t { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1; text-align: left; font-size: 0.8125rem; cursor: pointer; color: inherit; }
 .noday-t span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.noday-pick { width: auto; min-width: 0; padding: 4px 6px; font-size: 0.75rem; }
+.noday-pick { width: 7.5rem; flex: none; padding: 4px 6px; font-size: 0.75rem; }
 @media (pointer: coarse) { .noday-pick { min-height: 44px; font-size: 1rem; } }

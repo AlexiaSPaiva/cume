@@ -247,7 +247,7 @@ function NoDay({ tasks, onSchedule }: { tasks: Task[]; onSchedule: (id: number, 
                           <select className="input noday-pick" value="" aria-label={`Marcar dia para ${t.title}`}
                             onChange={(e) => e.target.value && onSchedule(t.id!, e.target.value)}>
                             <option value="">Marcar dia</option>
-                            {days.map((d) => <option key={d} value={d}>{dayLabel(d)}{t.deadline && d > t.deadline ? ' (depois do prazo)' : ''}</option>)}
+                            {days.map((d) => <option key={d} value={d}>{t.deadline && d > t.deadline ? '⚠ ' : ''}{dayLabel(d)}</option>)}
                           </select>
                         </span>
                       </div>
