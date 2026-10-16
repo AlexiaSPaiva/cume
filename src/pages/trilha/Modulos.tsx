@@ -8,6 +8,7 @@ import { useData } from '../../lib/data';
 import { db } from '../../lib/db';
 import { ddmm, dur, relDays, today } from '../../lib/dates';
 import { coverage, subjectMinutes, TYPE } from '../../lib/study';
+import { topicMinutes } from '../../lib/studyToday';
 import type { Subject, Track } from '../../lib/types';
 import { SubjectForm } from './Concurso';
 import { DatesList } from './Trilha';
@@ -65,12 +66,6 @@ export function Modulos({ t }: { t: Track }) {
       {edit && <Modal title={edit.id ? `Editar ${w.toLowerCase()}` : `Novo(a) ${w.toLowerCase()}`} onClose={() => setEdit(null)}><SubjectForm t={t} s={edit} word={w} onDone={() => setEdit(null)} /></Modal>}
     </>
   );
-}
-
-/** minutos de vídeo escritos no nome do tópico, ex.: "(Duração – 00:14:41)" */
-export function topicMinutes(name: string): number {
-  const m = /(\d{2}):(\d{2}):(\d{2})/.exec(name);
-  return m ? Number(m[1]) * 60 + Number(m[2]) + Number(m[3]) / 60 : 0;
 }
 
 /** tópicos de uma disciplina, por aula (seção), para marcar um a um o que já estudou */

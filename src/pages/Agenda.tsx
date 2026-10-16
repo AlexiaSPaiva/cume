@@ -11,6 +11,7 @@ import { impByArea, impsForWeek, occurrencesForWeek, plannedByArea, sum, capacit
 import type { Imprevisto } from '../lib/types';
 import { rescheduleTask } from '../lib/tasks';
 import { mix } from '../lib/color';
+import { currentSubject } from '../lib/studyToday';
 
 // faixa padrão; a grade estica sozinha quando a semana tem algo antes das 7h ou depois das 23h
 const DEFAULT_FROM = 7 * 60;
@@ -68,7 +69,9 @@ function layers(items: Item[]): Laid[] {
 }
 
 export function Agenda() {
-  const { tasks, imprevistos, settings } = useData();
+  const { tasks, imprevistos, settings, tracks, subjects, topics } = useData();
+  // bloco de estudo da graduação mostra a matéria da vez no próprio bloco
+  const subjectOf = (trackId?: number) => (trackId != null && tracks.find((x) => x.id === trackId)?.type === 'degree' ? currentSubject({ tracks, subjects, topics }, trackId)?.name : undefined);
   const ui = useUI();
   const t0 = today();
   const [ws, setWs] = useState(weekStart(t0));
@@ -208,14 +211,14 @@ export function Agenda() {
                           e.dataTransfer.setData('task', String(t.id));
                           e.dataTransfer.setData('grab', String(e.clientY - e.currentTarget.getBoundingClientRect().top));
                         }}
-                        onClick={() => ui.openTask(t, d)}
+                        onClick={() => ui.openActions(t, d)}
                         title={`${t.title} · ${it.o.start} · ${dur(it.o.durationMin)}${it.o.done ? ' · feita' : ''}`}
                         style={{
                           ...pos,
                           background: mix(c, 30, '#141b33'), borderColor: mix(c, 55, 'transparent'),
                           color: t.soft || t.status === 'adiada' ? c : undefined,
                         }}>
-                        <span className="blk-t" style={{ WebkitLineClamp: lines } as React.CSSProperties}>{t.title}{t.status === 'adiada' && ' (adiada)'}</span>
+                        <span className="blk-t" style={{ WebkitLineClamp: lines } as React.CSSProperties}>{t.repeatDays?.length && subjectOf(t.trackId) ? `📖 ${subjectOf(t.trackId)}` : t.title}{t.status === 'adiada' && ' (adiada)'}</span>
                         {showTime && <small>{it.o.start} · {dur(it.o.durationMin)}</small>}
                       </button>
                     );

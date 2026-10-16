@@ -79,15 +79,17 @@ test('fechamento automático no dia 1º às 08:00: chega no sino e fica salvo', 
   await page.clock.setFixedTime(new Date(2026, 10, 1, 9, 0));
   await page.reload();
   await expect(page.getByRole('heading', { name: /Olá, Teste/ })).toBeVisible();
+  // reabrir não duplica o fechamento
+  await page.reload();
   await page.getByRole('button', { name: 'Notificações' }).click();
   const note = page.getByRole('button', { name: /Fechamento de outubro/ });
-  await expect(note).toBeVisible();
+  await expect(note).toHaveCount(1);
   await note.click();
   await expect(page).toHaveURL(/\/historico\?periodo=mes&data=2026-10-01/);
   await expect(page.locator('.resumo .note')).toContainText('outubro');
 
-  // reabrir não duplica o fechamento
+  // abrir a notificação marca como lida: ao reabrir o app ela não volta
   await page.reload();
   await page.getByRole('button', { name: 'Notificações' }).click();
-  await expect(page.getByRole('button', { name: /Fechamento de outubro/ })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /Fechamento de outubro/ })).toHaveCount(0);
 });

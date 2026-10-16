@@ -42,6 +42,8 @@ export interface Task extends Stamped {
   repeatUntil?: string;
   /** dias (YYYY-MM-DD) em que a tarefa semanal foi feita */
   doneDates?: string[];
+  /** dias em que a tarefa semanal NÃO acontece (foi adiada/realocada só naquele dia) */
+  skipDates?: string[];
   /** bloco com ponto (ex.: expediente): registra a chegada e a saída reais de cada dia */
   clock?: boolean;
   /** ponto de cada dia (YYYY-MM-DD → horários HH:MM reais) */

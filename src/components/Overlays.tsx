@@ -11,9 +11,11 @@ import { DocForm, ImprevistoForm, SuggestionForm, TaskForm } from './forms';
 import { Modal } from './ui';
 import { PostponeForm, RescheduleForm } from './Reschedule';
 import { QuickDone } from './QuickDone';
+import { TaskActions } from './TaskActions';
 
 type Open =
   | { kind: 'task'; task?: Partial<Task>; day?: string }
+  | { kind: 'actions'; task: Task; day?: string }
   | { kind: 'imp'; imp?: Partial<Imprevisto> }
   | { kind: 'doc' }
   | { kind: 'suggest'; s: RecurringSuggestion }
@@ -25,6 +27,8 @@ type Open =
 interface UI {
   /** `day`: o dia clicado na Agenda (nas tarefas semanais, é esse dia que fica marcado como feito) */
   openTask(task?: Partial<Task>, day?: string): void;
+  /** janela curta da tarefa: Concluir · Adiar · Realocar · Editar */
+  openActions(task: Task, day?: string): void;
   openImprevisto(imp?: Partial<Imprevisto>): void;
   openDoc(): void;
   openSuggestion(s: RecurringSuggestion): void;
@@ -77,6 +81,7 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
 
   const ui: UI = {
     openTask: (task, day) => setOpen({ kind: 'task', task, day }),
+    openActions: (task, day) => setOpen({ kind: 'actions', task, day }),
     openImprevisto: (imp) => setOpen({ kind: 'imp', imp }),
     openDoc: () => setOpen({ kind: 'doc' }),
     openSuggestion: (s) => setOpen({ kind: 'suggest', s }),
@@ -97,6 +102,14 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
         <Modal title={open.task?.id ? 'Editar tarefa' : 'Nova tarefa'} onClose={close}>
           {open.task?.id != null && <QuickDone task={open.task as Task} day={open.day} onDone={close} />}
           <TaskForm task={open.task} onDone={close} />
+        </Modal>
+      )}
+      {open?.kind === 'actions' && (
+        <Modal title="Tarefa" onClose={close} drawer>
+          <TaskActions task={open.task} day={open.day} onClose={close} toast={toast}
+            onEdit={() => setOpen({ kind: 'task', task: open.task, day: open.day })}
+            onPostpone={() => setOpen({ kind: 'postpone', task: open.task })}
+            onReschedule={() => setOpen({ kind: 'resched', task: open.task })} />
         </Modal>
       )}
       {open?.kind === 'imp' && (

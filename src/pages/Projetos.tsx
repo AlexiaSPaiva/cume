@@ -170,3 +170,27 @@ export function Projeto() {
     </Page>
   );
 }
+
+/** resumo na Visão geral do Profissional: projetos em andamento e o próximo passo de cada um */
+export function ProjectsSummary() {
+  const { devProjects, tasks } = useData();
+  const active = devProjects.filter((p) => p.status === 'andamento').slice(0, 4);
+  return (
+    <Card title="Projetos em andamento">
+      <div className="list" style={{ gap: 10 }}>
+        {active.map((p) => {
+          const pr = projectProgress(tasks, p.id);
+          return (
+            <Link key={p.id} to={`/area/profissional/projetos/${p.id}`} className="plain" style={{ color: 'inherit', textDecoration: 'none', display: 'grid', gap: 4 }}>
+              <div className="row small"><b className="grow">{p.title}</b><span className="muted">{pr.pct}%</span></div>
+              <Bar pct={pr.pct} color="#7da0c9" />
+              <span className="faint small">{pr.next ? `próximo: ${pr.next.title}` : 'sem próximo passo'}</span>
+            </Link>
+          );
+        })}
+        {active.length === 0 && <Empty>Nenhum projeto em andamento.</Empty>}
+        <Link className="add-link" to="/area/profissional?aba=projetos">{active.length ? 'todos os projetos →' : '+ criar projeto →'}</Link>
+      </div>
+    </Card>
+  );
+}

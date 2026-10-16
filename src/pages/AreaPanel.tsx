@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { Page } from '../components/Layout';
 import { Card } from '../components/Card';
 import { useUI } from '../components/Overlays';
 import { PunctualityCard } from '../components/PunctualityCard';
 import { ReadingCard } from '../components/ReadingCard';
-import { ProjectsCard } from './Projetos';
+import { ProjectsCard, ProjectsSummary } from './Projetos';
+import { AreaTabs, PunctualityMini, ReadingMini, TodayCard } from '../components/AreaParts';
 import { Bar, Empty, Modal, RhythmLine, Stat, Stats } from '../components/ui';
 import { AREA, AREAS } from '../lib/areas';
 import { useData } from '../lib/data';
@@ -24,6 +25,7 @@ export function AreaPanel() {
   const ui = useUI();
   const [record, setRecord] = useState<Goal | null>(null);
   const finTab = useFinTab();
+  const [params] = useSearchParams();
   if (!AREAS.some((a) => a.id === id)) return <Navigate to="/" replace />;
   const area = id as AreaId;
   const isFin = area === 'financeiro';
@@ -80,6 +82,9 @@ export function AreaPanel() {
   }
 
   const isAdult = area === 'adultices';
+  const extraTabs: [string, string][] = area === 'profissional' ? [['projetos', 'Projetos'], ['pontualidade', 'Pontualidade']] : area === 'pessoal' ? [['leitura', 'Leitura']] : [];
+  const tabs = ['geral', ...extraTabs.map(([k]) => k), 'metas', 'ritmo'];
+  const tab = isFin ? 'geral' : tabs.find((k) => k === params.get('aba')) ?? 'geral';
   const imm = wn.imp[area];
 
   return (
@@ -103,16 +108,49 @@ export function AreaPanel() {
         </Link>
       )}
 
-      {area === 'profissional' && <ProjectsCard />}
-      {area === 'pessoal' && <ReadingCard />}
+      {!isFin && <AreaTabs area={area} tab={tab} extra={extraTabs} attention={failures.length} />}
 
-      <div className="grid g3">
-        <Card title="Progresso">
+      {tab === 'geral' && (
+        <div className="grid g3">
+          <TodayCard area={area} color={A.color} />
+          <Card title="Próximos prazos">
+            <div className="list">
+              {deadlines.slice(0, 6).map((x, i) => (
+                <div key={i} className="row small"><span className="dotc" style={{ background: A.color }} /><b>{ddmm(x.date)}</b><span className="grow">{x.title}</span><span className="muted">{relDays(x.date)}</span></div>
+              ))}
+              {deadlines.length === 0 && <Empty>Nenhum prazo à vista.</Empty>}
+            </div>
+          </Card>
+          <Card title="Metas que pedem atenção">
+            <div className="list" style={{ gap: 14 }}>
+              {[...goals].sort((a, b) => goalPct(a) - goalPct(b)).slice(0, 4).map((g) => <GoalRow key={g.id} g={g} onEdit={() => setRecord(g)} onRecord={() => setRecord(g)} />)}
+              {goals.length === 0 && <Empty>Sem metas nesta área. Crie em <Link to="/metas">Objetivos e Metas</Link>.</Empty>}
+              {goals.length > 4 && <Link className="add-link" to={`/area/${area}?aba=metas`}>ver todas as {goals.length} metas →</Link>}
+            </div>
+          </Card>
+          {area === 'profissional' && <ProjectsSummary />}
+          {area === 'profissional' && <PunctualityMini tasks={d.tasks} />}
+          {area === 'pessoal' && <ReadingMini />}
+        </div>
+      )}
+
+      {tab === 'projetos' && <ProjectsCard />}
+      {tab === 'pontualidade' && <div className="grid g2"><PunctualityCard tasks={d.tasks} /></div>}
+      {tab === 'leitura' && <ReadingCard />}
+
+      {tab === 'metas' && (
+        <div className="grid g2">
+          <Card title="Progresso">
           <div className="list" style={{ gap: 14 }}>
             {goals.map((g) => <GoalRow key={g.id} g={g} onEdit={() => setRecord(g)} onRecord={() => setRecord(g)} />)}
             {goals.length === 0 && <Empty>Sem metas nesta área. Crie em <Link to="/metas">Objetivos e Metas</Link>.</Empty>}
           </div>
         </Card>
+        </div>
+      )}
+
+      {tab === 'ritmo' && (
+        <div className="grid g3">
         <Card title={<>Ritmo da semana · <span className="muted" style={{ fontSize: '1.0625rem' }}>progresso e regresso</span></>}>
           <RhythmLine values={rhythm} color={A.color} labels={days.map((x) => DOW_SHORT[parse(x).getDay()][0])} />
           <div className="row small" style={{ gap: 14, marginTop: 6 }}>
@@ -133,15 +171,6 @@ export function AreaPanel() {
             <div><div className="row small"><span>Tempo real</span><b className="right" style={{ color: A.color }}>{sum.realPct}%</b></div><div style={{ marginTop: 6 }}><Bar pct={sum.realPct * 2} color={A.color} /></div></div>
           </div>
           <span className={`tag ${sum.focusLabel.startsWith('abaixo') ? 'bad' : sum.focusLabel.startsWith('acima') ? 'warn' : 'ok'}`} style={{ marginTop: 14 }}>{sum.focusLabel}</span>
-        </Card>
-        {area === 'profissional' && <PunctualityCard tasks={d.tasks} />}
-        <Card title="Prazos">
-          <div className="list">
-            {deadlines.slice(0, 6).map((x, i) => (
-              <div key={i} className="row small"><span className="dotc" style={{ background: A.color }} /><b>{ddmm(x.date)}</b><span className="grow">{x.title}</span><span className="muted">{relDays(x.date)}</span></div>
-            ))}
-            {deadlines.length === 0 && <Empty>Nenhum prazo à vista.</Empty>}
-          </div>
         </Card>
         <Card title="Falhas, regressos e imprevistos">
           <div className="list">
@@ -169,7 +198,8 @@ export function AreaPanel() {
             <button className="add-link" onClick={() => ui.openTask({ area })}>+ tarefa em {A.name}</button>
           </div>
         </Card>
-      </div>
+        </div>
+      )}
 
       {record && (
         <Modal title={`${record.byTasks ? "Tarefas" : "Registrar"} · ${record.title}`} onClose={() => setRecord(null)}>

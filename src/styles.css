@@ -1243,3 +1243,21 @@ img.file-preview { height: auto; max-height: 60vh; object-fit: contain; backgrou
 .topic-it { font-size: 0.8125rem; padding: 3px 0; }
 .topic-it.done span { text-decoration: line-through; opacity: .6; }
 .gold-tag { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+/* janela curta da tarefa (Agenda) */
+.ta { display: flex; flex-direction: column; gap: 14px; }
+.ta-head { display: flex; gap: 10px; align-items: flex-start; }
+.ta-head .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ta-title { font-size: 1.0625rem; }
+.ta-study { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 10px; border: 1px solid #262f4b; background: #141b33; }
+.ta-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.ta-actions .btn { justify-content: center; min-height: 48px; }
+@media (max-width: 479.98px) { .ta-actions { grid-template-columns: 1fr 1fr; } }
+.ta-move { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 10px; border: 1px dashed var(--line-2); }
+
+/* painel de área › Hoje */
+.today-row { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.today-check { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 2px solid; background: transparent; color: #0b1020; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.today-t { flex: 1; min-width: 0; display: flex; justify-content: space-between; gap: 8px; text-align: left; color: inherit; cursor: pointer; font-size: 0.875rem; }
+.today-t span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.today-row.done .today-t span { text-decoration: line-through; opacity: .55; }

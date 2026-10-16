@@ -19,6 +19,7 @@ export const repeatStart = (t: Task) => t.date ?? t.createdAt?.slice(0, 10) ?? t
 /** a tarefa acontece neste dia? */
 export function occursOn(t: Task, day: string): boolean {
   if (!t.repeatDays?.includes(dow(day))) return false;
+  if (t.skipDates?.includes(day)) return false;
   if (t.date && day < t.date) return false;
   return !t.repeatUntil || day <= t.repeatUntil;
 }
