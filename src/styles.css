@@ -1235,3 +1235,11 @@ img.file-preview { height: auto; max-height: 60vh; object-fit: contain; backgrou
 .kanban { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 @media (max-width: 767.98px) { .kanban { grid-template-columns: 1fr; } }
 .done-row .noday-t span { text-decoration: line-through; opacity: .7; }
+
+/* trilha › disciplinas: tópicos por aula */
+.topics-panel { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px 34px; }
+.topic-sec { border: 1px solid #262f4b; border-radius: 8px; padding: 6px 10px; background: #141b33; }
+.topic-sec summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; font-size: 0.8125rem; min-height: 32px; }
+.topic-it { font-size: 0.8125rem; padding: 3px 0; }
+.topic-it.done span { text-decoration: line-through; opacity: .6; }
+.gold-tag { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }

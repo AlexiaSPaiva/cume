@@ -27,6 +27,10 @@ export function Modulos({ t }: { t: Track }) {
   const [edit, setEdit] = useState<Partial<Subject> | null>(null);
   const [linkFor, setLinkFor] = useState<number | null>(null);
   const done = subs.filter((s) => s.done).length;
+  // a matéria da vez: a primeira (na ordem) que ainda não foi concluída
+  const current = subs.find((s) => !s.done);
+  const [open, setOpen] = useState<number | null>(null);
+  const shown = open ?? (t.type === 'degree' ? current?.id ?? null : null);
   return (
     <>
       <Stats n={3}>
@@ -42,14 +46,16 @@ export function Modulos({ t }: { t: Track }) {
               <div key={s.id} className="mod-item">
               <div className="mod-row">
                 <input type="checkbox" checked={!!s.done} onChange={(e) => db.subjects.update(s.id!, { done: e.target.checked })} aria-label={`${s.name} concluído`} />
-                <span className="grow"><b>{i + 1}. {s.name}</b>
+                <span className="grow"><b>{i + 1}. {s.name}</b>{s.id === current?.id && t.type === 'degree' && <span className="tag gold-tag" style={{ marginLeft: 8 }}>matéria da vez</span>}
                   <small className="muted">{c.total ? `${c.done}/${c.total} tópicos · ` : ''}{dur(subjectMinutes(d, s.id!)) || '0h'} estudadas{t.type === 'degree' && s.grade != null ? ` · nota ${fmt(s.grade)}` : ''}</small>
                 </span>
                 {s.done && <span className="tag ok">concluído</span>}
+                {c.total > 0 && <button type="button" className="btn sm" aria-expanded={shown === s.id} onClick={() => setOpen(shown === s.id ? -1 : s.id!)}>{shown === s.id ? 'fechar tópicos' : 'ver tópicos'}</button>}
                 <button type="button" className="qlink-add" onClick={() => setLinkFor(s.id!)} aria-label={`Adicionar link em ${s.name}`}>+ link</button>
                 <ItemMenu label={s.name} actions={{ edit: () => setEdit(s), delete: () => void ui.remove('subjects', s.id!, `${w} “${s.name}”`) }} />
               </div>
               <div className="mod-links"><QuickLinks owner={{ type: 'subject', id: s.id! }} showAdd={false} adding={linkFor === s.id} onAdding={(v) => setLinkFor(v ? s.id! : null)} /></div>
+              {shown === s.id && <SubjectTopics subjectId={s.id!} />}
               </div>
             );
           })}
@@ -58,6 +64,49 @@ export function Modulos({ t }: { t: Track }) {
       </Card>
       {edit && <Modal title={edit.id ? `Editar ${w.toLowerCase()}` : `Novo(a) ${w.toLowerCase()}`} onClose={() => setEdit(null)}><SubjectForm t={t} s={edit} word={w} onDone={() => setEdit(null)} /></Modal>}
     </>
+  );
+}
+
+/** minutos de vídeo escritos no nome do tópico, ex.: "(Duração – 00:14:41)" */
+export function topicMinutes(name: string): number {
+  const m = /(\d{2}):(\d{2}):(\d{2})/.exec(name);
+  return m ? Number(m[1]) * 60 + Number(m[2]) + Number(m[3]) / 60 : 0;
+}
+
+/** tópicos de uma disciplina, por aula (seção), para marcar um a um o que já estudou */
+function SubjectTopics({ subjectId }: { subjectId: number }) {
+  const d = useData();
+  const topics = d.topics.filter((x) => x.subjectId === subjectId)
+    .sort((a, b) => (a.code ?? '').localeCompare(b.code ?? '', undefined, { numeric: true }));
+  const sections = [...new Set(topics.map((x) => x.section ?? ''))];
+  const left = topics.filter((x) => x.status === 'todo');
+  const vids = Math.round(left.reduce((a, x) => a + topicMinutes(x.name), 0));
+  const next = left[0];
+  return (
+    <div className="topics-panel">
+      <div className="row small" style={{ flexWrap: 'wrap', gap: 10 }}>
+        <span><b>{topics.length - left.length}</b> de {topics.length} itens feitos</span>
+        {vids > 0 && <span className="muted">· {dur(vids)} de vídeo pela frente</span>}
+        {next && <span className="right">Próximo: <b>{next.name.split(' · ')[0]}</b></span>}
+      </div>
+      {sections.map((sec) => {
+        const items = topics.filter((x) => (x.section ?? '') === sec);
+        const ok = items.filter((x) => x.status !== 'todo').length;
+        return (
+          <details key={sec} className="topic-sec" open={ok < items.length && items.some((x) => x === next)}>
+            <summary><b>{sec || 'Tópicos'}</b><span className={`tag ${ok === items.length ? 'ok' : ''}`}>{ok}/{items.length}</span></summary>
+            <div className="list" style={{ gap: 2 }}>
+              {items.map((x) => (
+                <label key={x.id} className={`check topic-it ${x.status !== 'todo' ? 'done' : ''}`}>
+                  <input type="checkbox" checked={x.status !== 'todo'} onChange={(e) => db.topics.update(x.id!, { status: e.target.checked ? 'studied' : 'todo' })} />
+                  <span>{x.name}</span>
+                </label>
+              ))}
+            </div>
+          </details>
+        );
+      })}
+    </div>
   );
 }
 
