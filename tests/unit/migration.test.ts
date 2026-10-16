@@ -10,7 +10,7 @@ describe('migração de schema', () => {
     await makeV1(name);
     const d = open(name);
     await d.open();
-    expect(d.verno).toBe(5); // v1 → v2 → v3 → v4 → v5 de uma vez
+    expect(d.verno).toBe(6); // v1 → v2 → v3 → v4 → v5 → v6 de uma vez
 
     // nada some
     expect(await d.tasks.count()).toBe(2);
@@ -74,7 +74,7 @@ describe('migração de schema', () => {
 
     const d = open(name);
     await d.open();
-    expect(d.verno).toBe(5);
+    expect(d.verno).toBe(6);
     expect(await d.tasks.toArray()).toEqual(before.tasks);
     expect(await d.docs.toArray()).toEqual(before.docs);
     expect(await d.attachments.toArray()).toEqual(before.atts);
@@ -85,7 +85,7 @@ describe('migração de schema', () => {
     d.close();
   });
 
-  it('uma migração futura (v6) mantém anexos, arquivos e notas', async () => {
+  it('uma migração futura (v7) mantém anexos, arquivos e notas', async () => {
     const name = uniqueName('mig3');
     await makeV1(name);
     const v2 = openDb(name);
@@ -96,13 +96,13 @@ describe('migração de schema', () => {
     // simula a próxima versão do app: nova tabela + transformação de um campo
     const v3 = new Dexie(name);
     defineSchema(v3);
-    v3.version(6).stores({ diario2: '++id, trackId' }).upgrade(async (tx) => {
+    v3.version(7).stores({ diario2: '++id, trackId' }).upgrade(async (tx) => {
       await tx.table('tasks').toCollection().modify((t: Record<string, unknown>) => {
         t.postponeCount = (t.postponedCount as number | undefined) ?? 0;
       });
     });
     await v3.open();
-    expect(v3.verno).toBe(6);
+    expect(v3.verno).toBe(7);
     const tasks = await v3.table('tasks').toArray();
     expect(tasks.map((t) => t.title)).toContain('Nota: ler paper ViT');
     expect(tasks.find((t) => t.title === 'Corrida no parque')?.postponeCount).toBe(2);

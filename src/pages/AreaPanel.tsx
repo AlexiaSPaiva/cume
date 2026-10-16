@@ -4,6 +4,8 @@ import { Page } from '../components/Layout';
 import { Card } from '../components/Card';
 import { useUI } from '../components/Overlays';
 import { PunctualityCard } from '../components/PunctualityCard';
+import { ReadingCard } from '../components/ReadingCard';
+import { ProjectsCard } from './Projetos';
 import { Bar, Empty, Modal, RhythmLine, Stat, Stats } from '../components/ui';
 import { AREA, AREAS } from '../lib/areas';
 import { useData } from '../lib/data';
@@ -100,6 +102,9 @@ export function AreaPanel() {
           <b>Cofre de documentos</b><span className="muted small">{d.docs.length} arquivos e links do Drive · vencimentos e comprovantes</span><span className="right" style={{ color: 'var(--accent)' }}>abrir →</span>
         </Link>
       )}
+
+      {area === 'profissional' && <ProjectsCard />}
+      {area === 'pessoal' && <ReadingCard />}
 
       <div className="grid g3">
         <Card title="Progresso">

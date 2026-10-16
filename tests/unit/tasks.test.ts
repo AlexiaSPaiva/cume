@@ -66,7 +66,8 @@ describe('tarefas adiadas e realocar', () => {
     });
     const free = freeByDay(d, ws);
     expect(free).toHaveLength(7);
-    expect(free.find((x) => x.date === '2026-10-13')!.freeMin).toBe(600 - 120);
+    // a base é o dia real de 24h (a semana de 168h), não mais a capacidade configurada
+    expect(free.find((x) => x.date === '2026-10-13')!.freeMin).toBe(24 * 60 - 120);
     const s = suggestSlot(d, { ...base, postponedCount: 3 }, '2026-10-14');
     expect(s.start).toBe('07:00');
     expect(s.why).toMatch(/de manhã/);

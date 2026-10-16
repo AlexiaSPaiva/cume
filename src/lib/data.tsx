@@ -4,8 +4,9 @@ import { db } from './db';
 import { findRecurring, type RecurringSuggestion } from './recurrence';
 import { isWeekly, weeklyProgress } from './recurring';
 import { expandEvents } from './bills';
+import { withReading } from './reading';
 import type {
-  ArticleNote, Attachment, CalendarEvent, Client, FinanceTx, FreelanceEntry, FreelanceProject, Goal, GoalRecord, HistorySnapshot, Imprevisto, JournalEntry, Metric, MetricEntry, MockExam, Objective, QuestionLog, Settings, Subject, SuggestionState, Task, Topic, Track, TrackDate, VaultDoc, WeekPlan,
+  ArticleNote, Attachment, Book, DevProject, CalendarEvent, Client, FinanceTx, FreelanceEntry, FreelanceProject, Goal, GoalRecord, HistorySnapshot, Imprevisto, JournalEntry, Metric, MetricEntry, MockExam, Objective, QuestionLog, Settings, Subject, SuggestionState, Task, Topic, Track, TrackDate, VaultDoc, WeekPlan,
 } from './types';
 
 export interface Data {
@@ -40,6 +41,10 @@ export interface Data {
   trackDates: TrackDate[];
   articleNotes: ArticleNote[];
   journal: JournalEntry[];
+  /** Pessoal › Leitura */
+  books: Book[];
+  /** Profissional › Projetos */
+  devProjects: DevProject[];
 }
 
 const Ctx = createContext<Data | null>(null);
@@ -73,9 +78,12 @@ export function DataProvider({ settings, fallback = null, children }: { settings
   const trackDates = useLiveQuery(() => db.trackDates.toArray().then(live), []);
   const articleNotes = useLiveQuery(() => db.articleNotes.toArray().then(live), []);
   const journal = useLiveQuery(() => db.journal.toArray().then(live), []);
+  const books = useLiveQuery(() => db.books.toArray().then(live), []);
+  const devProjects = useLiveQuery(() => db.devProjects.toArray().then(live), []);
 
   // metas: o progresso vem das tarefas ligadas (concluídas ÷ total)
-  const goalsView = useMemo(() => (goals && tasks ? withTaskProgress(goals, tasks) : undefined), [goals, tasks]);
+  // metas da Leitura (páginas hoje, livros no mês) são calculadas pela estante
+  const goalsView = useMemo(() => (goals && tasks && books ? withReading(withTaskProgress(goals, tasks), books) : undefined), [goals, tasks, books]);
 
   const suggestions = useMemo(
     () => (imprevistos && suggestionStates && tasks ? findRecurring(imprevistos, suggestionStates, tasks, settings.recurrenceThreshold) : []),
@@ -84,12 +92,12 @@ export function DataProvider({ settings, fallback = null, children }: { settings
 
   if (!tasks || !imprevistos || !objectives || !goals || !events || !docs || !attachments || !plans || !suggestionStates
     || !clients || !projects || !entries || !txs || !records || !metrics || !metricEntries || !snapshots
-    || !tracks || !subjects || !topics || !questionLogs || !mockExams || !trackDates || !articleNotes || !journal) return fallback;
+    || !tracks || !subjects || !topics || !questionLogs || !mockExams || !trackDates || !articleNotes || !journal || !books || !devProjects) return fallback;
   return (
     <Ctx.Provider value={{
       settings, tasks, imprevistos, objectives, goals: goalsView!, events, docs, attachments, plans, suggestionStates, suggestions,
       clients, projects, entries, txs, records, metrics, metricEntries, snapshots,
-      tracks, subjects, topics, questionLogs, mockExams, trackDates, articleNotes, journal,
+      tracks, subjects, topics, questionLogs, mockExams, trackDates, articleNotes, journal, books, devProjects,
     }}>
       {children}
     </Ctx.Provider>

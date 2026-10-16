@@ -14,6 +14,7 @@ export const NUMERIC_TABLES = [
   'objectives', 'goals', 'tasks', 'records', 'imprevistos', 'events', 'docs', 'attachments',
   'clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs', 'metrics', 'metricEntries', 'snapshots',
   'tracks', 'subjects', 'topics', 'questionLogs', 'mockExams', 'trackDates', 'articleNotes', 'journal',
+  'books', 'devProjects',
 ] as const;
 export const KEYED_TABLES = ['plans', 'suggestions', 'settings'] as const;
 export type NumTable = (typeof NUMERIC_TABLES)[number];
@@ -39,7 +40,7 @@ export function remapRefs(t: string, r: Row, m: (t: NumTable, v: unknown) => unk
   const ownerTable = OWNER_TABLE;
   if (t === 'goals') o.objectiveId = m('objectives', r.objectiveId);
   if (t === 'records') o.goalId = m('goals', r.goalId);
-  if (t === 'tasks') { o.goalId = m('goals', r.goalId); o.freelanceEntryId = m('freelanceEntries', r.freelanceEntryId); }
+  if (t === 'tasks') { o.goalId = m('goals', r.goalId); o.freelanceEntryId = m('freelanceEntries', r.freelanceEntryId); o.projectId = m('devProjects', r.projectId); }
   if (t === 'freelanceProjects') o.clientId = m('clients', r.clientId);
   if (t === 'metricEntries') o.metricId = m('metrics', r.metricId);
   if (['subjects', 'mockExams', 'trackDates', 'articleNotes', 'journal'].includes(t)) o.trackId = m('tracks', r.trackId);

@@ -4,6 +4,8 @@ import { db } from '../lib/db';
 import { isWeekly, toggleOccurrence } from '../lib/recurring';
 import { moveTask } from '../lib/tasks';
 import type { Task } from '../lib/types';
+import { useData } from '../lib/data';
+import { readUntil } from '../lib/reading';
 
 /**
  * Faixa no topo da janela da tarefa: concluir com um toque, sem precisar editar.
@@ -22,6 +24,17 @@ export function QuickDone({ task, day, onDone }: { task: Task; day?: string; onD
   const punch = task.punches?.[d] ?? {};
   const [pin, setPin] = useState(punch.in ?? '');
   const [pout, setPout] = useState(punch.out ?? '');
+  const { goals, books } = useData();
+  const reading = goals.find((g) => g.id === task.goalId)?.auto === 'pagesToday';
+  const book = books.find((b) => b.status === 'lendo');
+  const [page, setPage] = useState('');
+
+  async function saveReading() {
+    setBusy(true);
+    if (book && page) await readUntil(book.id!, Number(page), d);
+    if (weekly && !task.doneDates?.includes(d)) await toggleOccurrence(task.id!, d);
+    onDone();
+  }
 
   async function run() {
     setBusy(true);
@@ -40,6 +53,16 @@ export function QuickDone({ task, day, onDone }: { task: Task; day?: string; onD
     const doneDates = pin && !cur?.doneDates?.includes(d) ? [...(cur?.doneDates ?? []), d].sort() : cur?.doneDates;
     await db.tasks.update(task.id!, { punches, doneDates });
     onDone();
+  }
+
+  if (reading && book) {
+    return (
+      <div className="quick-done punch">
+        <b className="small">{book.title} · você está na página {book.currentPage} de {book.totalPages}</b>
+        <label className="field"><span>Li até a página</span><input type="number" inputMode="numeric" min={book.currentPage} max={book.totalPages} value={page} onChange={(e) => setPage(e.target.value)} /></label>
+        <button className="btn gold" onClick={saveReading} disabled={busy}>✓ Salvar leitura</button>
+      </div>
+    );
   }
 
   if (weekly && task.clock) {

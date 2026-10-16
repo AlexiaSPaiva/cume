@@ -1,7 +1,7 @@
 import Dexie, { type EntityTable, type Transaction } from 'dexie';
 import type {
   Account, Attachment, CalendarEvent, Client, Draft, FinanceTx, FreelanceEntry, FreelanceProject, Goal, GoalRecord,
-  ArticleNote, HistorySnapshot, Imprevisto, JournalEntry, Metric, MetricEntry, MockExam, Objective, QuestionLog, Settings, StoredBlob,
+  ArticleNote, Book, DevProject, HistorySnapshot, Imprevisto, JournalEntry, Metric, MetricEntry, MockExam, Objective, QuestionLog, Settings, StoredBlob,
   Subject, SuggestionState, Task, Topic, Track, TrackDate, VaultDoc, WeekPlan,
 } from './types';
 
@@ -43,6 +43,8 @@ export type MeuPlanoDB = Dexie & {
   trackDates: EntityTable<TrackDate, 'id'>;
   articleNotes: EntityTable<ArticleNote, 'id'>;
   journal: EntityTable<JournalEntry, 'id'>;
+  books: EntityTable<Book, 'id'>;
+  devProjects: EntityTable<DevProject, 'id'>;
 };
 
 // nome histórico, não alterar: guarda os dados da usuária
@@ -57,6 +59,7 @@ const STAMPED_V2 = [
 export const STAMPED_TABLES = [
   ...STAMPED_V2, 'clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs', 'metrics', 'metricEntries', 'snapshots',
   'tracks', 'subjects', 'topics', 'questionLogs', 'mockExams', 'trackDates', 'articleNotes', 'journal',
+  'books', 'devProjects',
 ] as const;
 
 /** tabelas cujos itens podem ir para a Lixeira */
@@ -64,6 +67,7 @@ export const TRASHABLE_TABLES = [
   'tasks', 'imprevistos', 'objectives', 'goals', 'records', 'events', 'docs', 'attachments',
   'clients', 'freelanceProjects', 'freelanceEntries', 'financeTxs', 'metrics', 'metricEntries',
   'tracks', 'subjects', 'topics', 'questionLogs', 'mockExams', 'trackDates', 'articleNotes', 'journal',
+  'books', 'devProjects',
 ] as const;
 export type TrashableTable = (typeof TRASHABLE_TABLES)[number];
 
@@ -107,6 +111,12 @@ export const SCHEMA_V3 = {
   freelanceProjects: '++id, clientId, status, deletedAt',
   freelanceEntries: '++id, clientId, projectId, dateStart, status, dueDate, deletedAt',
   financeTxs: '++id, date, account, sourceId, deletedAt',
+};
+
+/** v6: estante de livros e projetos de desenvolvimento */
+export const SCHEMA_V6_EXTRA = {
+  books: '++id, status, deletedAt',
+  devProjects: '++id, folder, status, deletedAt',
 };
 
 /** v5 (v7, estudos): só ACRESCENTA trilhas, matérias/módulos, tópicos, questões, simulados, datas, fichamentos e diário */
@@ -195,6 +205,8 @@ export function defineSchema(d: Dexie) {
   d.version(3).stores(SCHEMA_V3);
   d.version(4).stores(SCHEMA_V4);
   d.version(5).stores({ ...SCHEMA_V4, ...SCHEMA_V5_EXTRA });
+  // v6: estante de livros e projetos de desenvolvimento (só ACRESCENTA)
+  d.version(6).stores({ ...SCHEMA_V4, ...SCHEMA_V5_EXTRA, ...SCHEMA_V6_EXTRA });
 }
 
 /**

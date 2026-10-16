@@ -225,7 +225,10 @@ function TopBar({ crumbs, onDoc, onFocus }: { crumbs: { to?: string; label: stri
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  const notes = useNotifications();
+  const allNotes = useNotifications();
+  const read = new Set(settings.readNotes ?? []);
+  const notes = allNotes.filter((n) => !read.has(n.key));
+  const markRead = (keys: string[]) => db.settings.update('me', { readNotes: [...new Set([...(settings.readNotes ?? []), ...keys])].slice(-300) });
 
   return (
     <div className="top">
@@ -250,13 +253,17 @@ function TopBar({ crumbs, onDoc, onFocus }: { crumbs: { to?: string; label: stri
         </button>
         {bell && (
           <div className="drop">
-            <b style={{ fontSize: '0.8125rem' }}>Notificações</b>
+            <div className="row"><b style={{ fontSize: '0.8125rem' }}>Notificações</b>
+              {notes.length > 1 && <button className="btn sm ghost right" onClick={() => markRead(notes.map((n) => n.key))}>marcar todas como lidas</button>}</div>
             {notes.length === 0 && <div className="empty">Tudo em dia.</div>}
-            {notes.map((n, i) => (
-              <button key={i} className="item btn" style={{ textAlign: 'left', fontWeight: 400, whiteSpace: 'normal', display: 'block' }}
-                onClick={() => { setBell(false); n.suggestion ? ui.openSuggestion(n.suggestion) : n.to && nav(n.to); }}>
-                {n.text}
-              </button>
+            {notes.map((n) => (
+              <div key={n.key} className="note-row">
+                <button className="item btn" style={{ textAlign: 'left', fontWeight: 400, whiteSpace: 'normal', display: 'block', flex: 1 }}
+                  onClick={() => { setBell(false); markRead([n.key]); n.suggestion ? ui.openSuggestion(n.suggestion) : n.to && nav(n.to); }}>
+                  {n.text}
+                </button>
+                <button className="icon-btn note-read" onClick={() => markRead([n.key])} aria-label="Marcar como lida" title="Marcar como lida">✓</button>
+              </div>
             ))}
           </div>
         )}
@@ -268,31 +275,33 @@ function TopBar({ crumbs, onDoc, onFocus }: { crumbs: { to?: string; label: stri
   );
 }
 
-function useNotifications(): { text: ReactNode; to?: string; suggestion?: RecurringSuggestion }[] {
+function useNotifications(): { key: string; text: ReactNode; to?: string; suggestion?: RecurringSuggestion }[] {
   const { suggestions, events, tasks, snapshots } = useData();
   return useMemo(() => {
-    const out: { text: ReactNode; to?: string; suggestion?: RecurringSuggestion }[] = [];
+    const out: { key: string; text: ReactNode; to?: string; suggestion?: RecurringSuggestion }[] = [];
     // fechamento do mês: fica no sino por 7 dias
     const week = new Date(Date.now() - 7 * 86_400_000).toISOString();
     for (const s of snapshots.filter((x) => x.period === 'mes' && (x.createdAt ?? '') >= week)) {
       const k = s.data as { minutes?: number; done?: number };
       out.push({
+        key: `mes:${s.start}`,
         to: `/historico?periodo=mes&data=${s.start}`,
         text: <><b style={{ color: 'var(--accent)' }}>Fechamento de {MONTHS[parse(s.start).getMonth()]}:</b> {fmtH(k.minutes ?? 0)} produtivas, {k.done ?? 0} tarefas concluídas. Ver o histórico ›</>,
       });
     }
     for (const s of suggestions) {
       out.push({
+        key: `sug:${s.label}:${s.count}`,
         suggestion: s,
         text: <><b style={{ color: 'var(--imp)' }}>Imprevisto recorrente:</b> “{s.label}” aconteceu {s.count}x em 30 dias ({dur(s.totalMin)}). Incluir {s.weekdayStrong ? `às ${DOW_LONG[s.weekday]}s ` : ''}no planejamento?</>,
       });
     }
     const t = today(), lim = addDays(t, 3);
     for (const e of events.filter((e) => e.date >= t && e.date <= lim && e.kind !== 'evento')) {
-      out.push({ to: '/calendario', text: <><b>{ddmm(e.date)}</b> {e.title} · {relDays(e.date)} <span className="muted">({AREA[e.area].name})</span></> });
+      out.push({ key: `ev:${e.id ?? e.title}:${e.date}`, to: '/calendario', text: <><b>{ddmm(e.date)}</b> {e.title} · {relDays(e.date)} <span className="muted">({AREA[e.area].name})</span></> });
     }
     const late = tasks.filter((x) => (x.postponedCount ?? 0) >= 2 && x.status === 'adiada');
-    for (const x of late) out.push({ to: '/tarefas', text: <><b style={{ color: 'var(--bad)' }}>Adiada {x.postponedCount}x:</b> {x.title}</> });
+    for (const x of late) out.push({ key: `adiada:${x.id}:${x.postponedCount}`, to: '/tarefas', text: <><b style={{ color: 'var(--bad)' }}>Adiada {x.postponedCount}x:</b> {x.title}</> });
     return out;
   }, [suggestions, events, tasks, snapshots]);
 }

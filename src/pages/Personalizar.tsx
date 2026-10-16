@@ -195,9 +195,7 @@ export function Personalizar({ onLogout }: { onLogout: () => void }) {
               {[2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n} vezes em 30 dias</option>)}
             </select>
           </label>
-          <label className="field"><span>Horas por semana disponíveis para planejar</span>
-            <input type="number" min={10} max={120} value={settings.weekCapacityH ?? 80} onChange={(e) => set({ weekCapacityH: Number(e.target.value) || 80 })} />
-          </label>
+          <p className="muted small" style={{ margin: 0 }}>Base do planejamento: a semana real, de segunda a domingo, com 168h (24h por dia). Planejado e livre são sempre contados sobre ela.</p>
         </Card>
 
         <Card title="Seus dados" className="form span2">

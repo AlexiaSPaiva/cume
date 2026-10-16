@@ -9,6 +9,10 @@ async function dependents(d: MeuPlanoDB, table: TrashableTable, id: number): Pro
     const doc = await d.docs.get(id);
     return doc?.attachmentId ? [['attachments', doc.attachmentId]] : [];
   }
+  if (table === 'devProjects') {
+    // o projeto leva junto as tarefas dele
+    return (await d.tasks.toArray()).filter((t) => t.projectId === id).map((t) => ['tasks', t.id!] as [TrashableTable, number]);
+  }
   if (table === 'tracks') {
     // a trilha leva junto matérias, tópicos, questões, simulados, datas, fichamentos, diário, anexos e blocos de estudo
     const out: [TrashableTable, number][] = [];
@@ -94,6 +98,7 @@ const LABEL: Record<TrashableTable, string> = {
   metrics: 'Métrica', metricEntries: 'Valor de métrica',
   tracks: 'Trilha', subjects: 'Matéria/módulo', topics: 'Tópico', questionLogs: 'Questões', mockExams: 'Simulado', trackDates: 'Data',
   articleNotes: 'Fichamento', journal: 'Registro do diário',
+  books: 'Livro', devProjects: 'Projeto',
 };
 
 export function daysLeft(deletedAt: string, now = Date.now()): number {

@@ -15,6 +15,7 @@ import { Academica } from './pages/Academica';
 import { Agenda } from './pages/Agenda';
 import { Cronograma } from './pages/Cronograma';
 import { Trilha } from './pages/trilha/Trilha';
+import { Projeto } from './pages/Projetos';
 import { AreaPanel } from './pages/AreaPanel';
 import { Calendario } from './pages/Calendario';
 import { Cofre } from './pages/Cofre';
@@ -64,6 +65,7 @@ export function App() {
               <Route path="area/academica" element={<Academica />} />
               <Route path="area/academica/trilha/:id" element={<Trilha />} />
               <Route path="area/academica/cronograma" element={<Cronograma />} />
+              <Route path="area/profissional/projetos/:id" element={<Projeto />} />
               <Route path="area/:id" element={<AreaPanel />} />
               <Route path="personalizar" element={<Personalizar onLogout={() => setSession(false)} />} />
               <Route path="*" element={<Navigate to="/" replace />} />

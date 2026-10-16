@@ -68,6 +68,45 @@ export interface Task extends Stamped {
   topicId?: number;
   /** revisão espaçada gerada automaticamente (24h, 7d, 30d) */
   reviewOf?: number;
+  /** tarefa de um projeto de desenvolvimento (Profissional › Projetos) */
+  projectId?: number;
+}
+
+/** livro da estante (Pessoal › Leitura) */
+export interface Book extends Stamped {
+  id?: number;
+  title: string;
+  author?: string;
+  totalPages: number;
+  /** página em que parou */
+  currentPage: number;
+  status: 'lendo' | 'fila' | 'lido';
+  /** tema livre (ex.: finanças, emocional) */
+  theme?: string;
+  startedAt?: string;
+  finishedAt?: string;
+  /** páginas lidas em cada dia (YYYY-MM-DD → páginas) */
+  log?: Record<string, number>;
+}
+
+export type DevFolder = 'pessoal' | 'empresa' | 'vaga';
+export type DevStatus = 'ideia' | 'andamento' | 'pausado' | 'concluido';
+
+/** projeto como desenvolvedora (Profissional › Projetos); as tarefas são Task com projectId */
+export interface DevProject extends Stamped {
+  id?: number;
+  title: string;
+  folder: DevFolder;
+  status: DevStatus;
+  /** o que é / para quem */
+  summary?: string;
+  /** tecnologias */
+  stack?: string[];
+  repoUrl?: string;
+  liveUrl?: string;
+  /** pasta "vaga": a vaga ou o requisito que o projeto prova */
+  target?: string;
+  deadline?: string;
 }
 
 export interface PostponeEntry {
@@ -124,6 +163,8 @@ export interface Goal extends Stamped {
   kpi?: boolean;
   /** como medir: true = pelas tarefas ligadas (concluídas ÷ total); false = por valor (atual e alvo) */
   byTasks?: boolean;
+  /** meta calculada sozinha pela Leitura: páginas lidas HOJE ou livros terminados NESTE MÊS (o progresso recomeça a cada dia/mês) */
+  auto?: 'pagesToday' | 'booksMonth';
   /** trilha de estudos ligada à meta (pelas tarefas) */
   trackId?: number;
   /** true = todas as tarefas da trilha contam (inclusive as que forem criadas depois); senão, só as escolhidas */
@@ -250,8 +291,10 @@ export interface Settings extends Stamped {
   city: { name: string; lat: number; lon: number };
   /** quantas ocorrências em 30 dias tornam um imprevisto "recorrente" */
   recurrenceThreshold: number;
-  /** horas por semana disponíveis para planejar (padrão 80) */
+  /** (antigo) horas por semana para planejar; hoje a base é sempre a semana real de 168h */
   weekCapacityH?: number;
+  /** notificações marcadas como lidas (chaves) */
+  readNotes?: string[];
   googleClientId?: string;
   /** menu lateral recolhido no desktop (« / ») */
   sideCollapsed?: boolean;

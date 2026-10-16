@@ -55,8 +55,10 @@ export function sum(r: Record<string, number>): number {
 }
 
 /** minutos por semana que a pessoa considera disponíveis para planejar (configurável em Personalizar) */
-export function capacityMin(s: { weekCapacityH?: number }): number {
-  return (s.weekCapacityH ?? 80) * 60;
+/** a semana real: segunda a domingo, 7 dias × 24h = 168h. "Planejado" e "para planejar" partem sempre daqui. */
+export const WEEK_HOURS = 168;
+export function capacityMin(_s?: unknown): number {
+  return WEEK_HOURS * 60;
 }
 
 export function goalPct(g: Goal): number {

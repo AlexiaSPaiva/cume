@@ -52,7 +52,7 @@ export function emptyData(over: Partial<import('../../src/lib/data').Data> = {})
     settings: defaultSettings('Teste'), tasks: [], plans: [], imprevistos: [], objectives: [], goals: [], events: [], docs: [],
     attachments: [], suggestionStates: [], suggestions: [], clients: [], projects: [], entries: [], txs: [],
     records: [], metrics: [], metricEntries: [], snapshots: [],
-    tracks: [], subjects: [], topics: [], questionLogs: [], mockExams: [], trackDates: [], articleNotes: [], journal: [],
+    tracks: [], subjects: [], topics: [], questionLogs: [], mockExams: [], trackDates: [], articleNotes: [], journal: [], books: [], devProjects: [],
     ...over,
   };
 }
