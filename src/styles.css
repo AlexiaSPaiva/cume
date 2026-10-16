@@ -1204,3 +1204,13 @@ img.file-preview { height: auto; max-height: 60vh; object-fit: contain; backgrou
 .quick-done.punch { flex-wrap: wrap; align-items: flex-end; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
 .quick-done.punch > b { flex-basis: 100%; }
 .quick-done.punch .field { margin: 0; }
+
+/* Planejamento: tarefas sem dia marcado */
+.noday { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 1023.98px) { .noday { grid-template-columns: 1fr; } }
+.noday-col { min-width: 0; }
+.noday-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border: 1px solid #262f4b; border-radius: 8px; background: #161d35; }
+.noday-t { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1; text-align: left; font-size: 0.8125rem; cursor: pointer; color: inherit; }
+.noday-t span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.noday-pick { width: auto; min-width: 0; padding: 4px 6px; font-size: 0.75rem; }
+@media (pointer: coarse) { .noday-pick { min-height: 44px; font-size: 1rem; } }

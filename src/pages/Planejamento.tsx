@@ -7,11 +7,10 @@ import { AreaDot, AreaTag, Bar, Empty, Icon, Stat, Stats } from '../components/u
 import { AREAS, AREA, zeroByArea } from '../lib/areas';
 import { useData } from '../lib/data';
 import { db } from '../lib/db';
-import { addDays, ddmm, DOW_LONG, DOW_SHORT, dur, parse, today, weekDays, weekStart } from '../lib/dates';
+import { addDays, ddmm, DOW_LONG, DOW_SHORT, dur, parse, today, weekStart } from '../lib/dates';
 import { planHours } from '../lib/derive';
 import { impsForWeek, occurrencesForWeek, plannedByArea, sum, capacityMin } from '../lib/week';
-import { TaskMenu } from '../components/ItemMenu';
-import type { AreaId, WeekPlan } from '../lib/types';
+import type { AreaId, Task, WeekPlan } from '../lib/types';
 import { rescheduleTask } from '../lib/tasks';
 import { Link } from 'react-router-dom';
 import { studyMinutesWeek, TRACK_TYPES } from '../lib/study';
@@ -23,7 +22,6 @@ export function Planejamento() {
   const ui = useUI();
   const cur = weekStart(today());
   const next = addDays(cur, 7);
-  const [over, setOver] = useState<string | null>(null);
 
   const curPlanned = plannedByArea(occurrencesForWeek(tasks, cur));
   const nextOcc = occurrencesForWeek(tasks, next);
@@ -78,7 +76,7 @@ export function Planejamento() {
         <Stat k="Horas planejadas" v={`${plannedH}h`} s={`de ${capH}h possíveis`} />
         <Stat k="Horas livres" v={`${Math.max(0, capH - plannedH)}h`} s="para respirar" />
         <Stat k="Estudo planejado" v={`${Math.round(studyNext / 6) / 10}h`.replace('.', ',')} s={`em ${new Set(nextOcc.filter((o) => o.task.trackId != null).map((o) => o.task.trackId)).size} trilhas · Cronograma`} />
-        <Stat k="Backlog" v={backlog.length} s="itens para encaixar" />
+        <Stat k="Sem dia marcado" v={backlog.length} s="tarefas para encaixar" />
       </Stats>
 
       <SuggestionBanner />
@@ -138,43 +136,7 @@ export function Planejamento() {
           </div>
         </Card>
 
-        <div className="list" style={{ gap: 16 }}>
-          <Card title="Backlog">
-            <div className="list">
-              {backlog.map((t) => (
-                <div key={t.id} className="tcard soft" draggable onDragStart={(e) => e.dataTransfer.setData('task', String(t.id))}
-                  onClick={() => ui.openTask(t)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && ui.openTask(t)}>
-                  <div className="row"><b className="grow">{t.title}</b><span className="faint small"><span className="only-mouse">arraste para um dia</span><span className="only-touch">toque para escolher o dia</span></span><TaskMenu t={t} /></div>
-                  <span className="row" style={{ gap: 6 }}><AreaTag area={t.area} />{(t.postponedCount ?? 0) > 0 && <span className="tag bad">adiada {t.postponedCount}x</span>}</span>
-                </div>
-              ))}
-              {backlog.length === 0 && <Empty action={{ label: '+ Nova tarefa', run: () => ui.openTask({ status: 'andamento' }) }}>Backlog vazio: tudo já tem dia marcado.</Empty>}
-              <div className="row" style={{ gap: 4, flexWrap: 'wrap' }}>
-                {weekDays(next).map((d) => (
-                  <div key={d} className="tag" style={{ padding: '8px 9px', outline: over === d ? '2px dashed var(--accent)' : undefined, flex: 1, textAlign: 'center' }}
-                    onDragOver={(e) => { e.preventDefault(); setOver(d); }} onDragLeave={() => setOver(null)}
-                    onDrop={(e) => { e.preventDefault(); setOver(null); const id = Number(e.dataTransfer.getData('task')); if (id) schedule(id, d); }}>
-                    {DOW_SHORT[parse(d).getDay()]}<br />{d.slice(8)}
-                  </div>
-                ))}
-              </div>
-              <button className="add-link" onClick={() => ui.openTask({ status: 'afazer' })}>+ item no backlog</button>
-            </div>
-          </Card>
-
-          <Card title="Reservas para imprevistos">
-            <div className="list">
-              {buffers.map((b) => (
-                <button key={b.id} className="plain row small" style={{ display: 'flex', gap: 9, cursor: 'pointer' }} onClick={() => ui.openTask(b)}>
-                  <Icon name="repeat" size={13} /><span className="grow" style={{ flex: 1 }}>{b.title}</span>
-                  <span className="muted">{b.repeatDays?.map((x) => DOW_SHORT[x]).join(', ')} {b.start} · {dur(b.durationMin ?? 0)}</span>
-                </button>
-              ))}
-              {buffers.length === 0 && <Empty>Quando um imprevisto se repetir {settings.recurrenceThreshold}x em 30 dias, a sugestão de reserva aparece aqui.</Empty>}
-            </div>
-          </Card>
-
-          <Card title="Fechamento da semana">
+        <Card title="Fechamento da semana">
             <div className="list" style={{ gap: 12 }}>
               <div className="row" style={{ alignItems: 'flex-start' }}><span className="dotc" style={{ background: 'var(--ok)', width: 12, height: 12, marginTop: 3 }} />
                 <div><b>Avançou</b><div className="muted small">{done.length ? done.slice(0, 3).map((t) => t.title).join(', ') : 'nada concluído ainda'}</div></div></div>
@@ -184,8 +146,23 @@ export function Planejamento() {
                 <div><b>Imprevistos</b><div className="muted small">{dur(curImps.reduce((a, i) => a + i.durationMin, 0))} fora do plano</div></div></div>
             </div>
           </Card>
-        </div>
+
+        {buffers.length > 0 && (
+          <Card title="Reservas para imprevistos">
+            <div className="list">
+              {buffers.map((b) => (
+                <button key={b.id} className="plain row small" style={{ display: 'flex', gap: 9, cursor: 'pointer' }} onClick={() => ui.openTask(b)}>
+                  <Icon name="repeat" size={13} /><span className="grow" style={{ flex: 1 }}>{b.title}</span>
+                  <span className="muted">{b.repeatDays?.map((x) => DOW_SHORT[x]).join(', ')} {b.start} · {dur(b.durationMin ?? 0)}</span>
+                </button>
+              ))}
+            </div>
+          </Card>
+        )}
       </div>
+
+      <NoDay tasks={backlog} onSchedule={schedule} />
+
       <div className="row small muted"><AreaDot area="academica" /> As horas por área são a sua meta para a semana; os blocos agendados aparecem na Agenda e em Minha semana.</div>
     </Page>
   );
@@ -218,6 +195,77 @@ function StudyWeek({ next }: { next: string }) {
       </div>
       <Link to="/area/academica/cronograma?foco=1" className="btn gold big" style={{ marginTop: 12, textDecoration: 'none' }}>Abrir planejamento de estudos ›</Link>
       <p className="muted small" style={{ textAlign: 'center', margin: '6px 0 0' }}>abre o Cronograma em modo foco · ✕ volta para cá</p>
+    </Card>
+  );
+}
+
+/**
+ * Tarefas sem dia marcado, separadas pelo que pede atenção: com prazo (as atrasadas primeiro), adiadas e sem prazo.
+ * Cada linha tem "Marcar dia" (hoje até o domingo da semana que vem): funciona igual no computador e no celular.
+ */
+function NoDay({ tasks, onSchedule }: { tasks: Task[]; onSchedule: (id: number, day: string) => void }) {
+  const ui = useUI();
+  const t0 = today();
+  const [showAll, setShowAll] = useState<Record<string, boolean>>({});
+  const end = addDays(weekStart(t0), 13);
+  const days: string[] = [];
+  for (let d = t0; d <= end; d = addDays(d, 1)) days.push(d);
+  const dayLabel = (d: string) => (d === t0 ? 'Hoje' : d === addDays(t0, 1) ? 'Amanhã' : `${DOW_SHORT[parse(d).getDay()]} ${ddmm(d)}`);
+
+  const groups: { key: string; title: string; hint: string; items: Task[] }[] = [
+    { key: 'prazo', title: 'Com prazo', hint: 'escolha um dia antes do prazo',
+      items: tasks.filter((t) => t.status !== 'adiada' && t.deadline).sort((a, b) => a.deadline!.localeCompare(b.deadline!)) },
+    { key: 'adiada', title: 'Adiadas', hint: 'voltam para a semana quando você marcar o dia',
+      items: tasks.filter((t) => t.status === 'adiada') },
+    { key: 'livre', title: 'Sem prazo', hint: 'para quando sobrar tempo',
+      items: tasks.filter((t) => t.status !== 'adiada' && !t.deadline) },
+  ];
+
+  return (
+    <Card wide title={<>Sem dia marcado · <span className="muted" style={{ fontSize: '1.0625rem' }}>no planejamento de domingo, dê um dia para o que importa</span></>}>
+      {tasks.length === 0 ? (
+        <Empty action={{ label: '+ Nova tarefa', run: () => ui.openTask({ status: 'afazer' }) }}>Tudo já tem dia marcado.</Empty>
+      ) : (
+        <div className="noday">
+          {groups.map((g) => {
+            const limit = showAll[g.key] ? g.items.length : 8;
+            return (
+              <section key={g.key} className="noday-col">
+                <div className="row"><b>{g.title}</b><span className="tag">{g.items.length}</span></div>
+                <span className="faint small">{g.hint}</span>
+                <div className="list" style={{ gap: 6, marginTop: 8 }}>
+                  {g.items.slice(0, limit).map((t) => {
+                    const overdue = !!t.deadline && t.deadline < t0;
+                    return (
+                      <div key={t.id} className="noday-row">
+                        <button className="plain noday-t" onClick={() => ui.openTask(t)} title={t.title}>
+                          <AreaDot area={t.area} /> <span>{t.title}</span>
+                        </button>
+                        <span className="row" style={{ gap: 6 }}>
+                          {t.deadline && <span className={`tag ${overdue ? 'bad' : ''}`}>{overdue ? 'venceu ' : 'até '}{ddmm(t.deadline)}</span>}
+                          {(t.postponedCount ?? 0) > 0 && <span className="tag bad">adiada {t.postponedCount}x</span>}
+                          <select className="input noday-pick" value="" aria-label={`Marcar dia para ${t.title}`}
+                            onChange={(e) => e.target.value && onSchedule(t.id!, e.target.value)}>
+                            <option value="">Marcar dia</option>
+                            {days.map((d) => <option key={d} value={d}>{dayLabel(d)}{t.deadline && d > t.deadline ? ' (depois do prazo)' : ''}</option>)}
+                          </select>
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {g.items.length === 0 && <span className="faint small">nada aqui</span>}
+                  {g.items.length > 8 && (
+                    <button className="add-link" onClick={() => setShowAll({ ...showAll, [g.key]: !showAll[g.key] })}>
+                      {showAll[g.key] ? 'mostrar menos' : `ver todas (${g.items.length})`}
+                    </button>
+                  )}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
+      <button className="add-link" style={{ marginTop: 10 }} onClick={() => ui.openTask({ status: 'afazer' })}>+ tarefa sem dia</button>
     </Card>
   );
 }
