@@ -51,3 +51,26 @@ create policy "arquivos: trocar os seus" on storage.objects for update to authen
   using (bucket_id = 'arquivos' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "arquivos: apagar os seus" on storage.objects for delete to authenticated
   using (bucket_id = 'arquivos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+
+-- lembretes no celular: link secreto de calendário (webcal) que o app do celular assina.
+-- A função só devolve tarefas e eventos de quem tem o token (32+ caracteres); nada mais é exposto.
+create table if not exists public.feeds (
+  user_id uuid primary key default auth.uid() references auth.users on delete cascade,
+  token text not null unique,
+  created_at timestamptz not null default now()
+);
+alter table public.feeds enable row level security;
+drop policy if exists "feed: o seu" on public.feeds;
+create policy "feed: o seu" on public.feeds for all to authenticated
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+revoke all on public.feeds from anon;
+
+create or replace function public.feed_rows(t text) returns table (tbl text, data jsonb)
+language sql stable security definer set search_path = public as $$
+  select r.tbl, r.data from public.rows r
+  join public.feeds f on f.user_id = r.user_id
+  where length(t) >= 32 and f.token = t and not r.deleted and r.tbl in ('tasks', 'events');
+$$;
+revoke execute on function public.feed_rows(text) from public;
+grant execute on function public.feed_rows(text) to anon, authenticated;

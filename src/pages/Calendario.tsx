@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Page } from '../components/Layout';
 import { Card } from '../components/Card';
+import { PhoneCalendar } from '../components/PhoneCalendar';
 import { useUI } from '../components/Overlays';
 import { AreaDot, Empty, Icon, Stat, Stats } from '../components/ui';
 import { AREAS, AREA } from '../lib/areas';
@@ -79,6 +80,7 @@ export function Calendario() {
           </Card>
         </div>
       </div>
+      <PhoneCalendar />
     </Page>
   );
 }
