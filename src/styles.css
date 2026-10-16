@@ -1201,3 +1201,6 @@ img.file-preview { height: auto; max-height: 60vh; object-fit: contain; backgrou
 .quick-done .btn { min-height: 44px; }
 .blk.done { opacity: .55; }
 .blk.done .blk-t { text-decoration: line-through; }
+.quick-done.punch { flex-wrap: wrap; align-items: flex-end; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.quick-done.punch > b { flex-basis: 100%; }
+.quick-done.punch .field { margin: 0; }

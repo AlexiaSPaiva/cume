@@ -152,6 +152,7 @@ export function TaskForm({ task, onDone }: { task?: Partial<Task>; onDone: () =>
         </label>
       )}
       <label className="check"><input type="checkbox" checked={!!t.soft} onChange={(e) => set({ soft: e.target.checked })} /> Bloco livre / descanso (aparece tracejado)</label>
+      {!!t.repeatDays?.length && <label className="check"><input type="checkbox" checked={!!t.clock} onChange={(e) => set({ clock: e.target.checked })} /> Registrar ponto (chegada e saída reais) · gera o gráfico de pontualidade</label>}
       <div className="actions" style={{ alignItems: 'center' }}>
         <button className="btn gold" type="submit">{editing ? 'Pronto' : 'Criar tarefa'}</button>
         {!editing && <button className="btn" type="button" onClick={discard}>{model.hasDraft ? 'Descartar rascunho' : 'Cancelar'}</button>}

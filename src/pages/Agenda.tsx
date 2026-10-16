@@ -178,7 +178,8 @@ export function Agenda() {
                   {hoursList.map((m) => <div key={m} className="ag-line" style={{ top: (m - FROM) * PX }} />)}
                   {laid.map((it) => {
                     const top = (Math.max(FROM, it.s) - FROM) * PX;
-                    const h = Math.max(MIN_H, (Math.min(TO, it.e) - Math.max(FROM, it.s)) * PX - 2);
+                    // o que fica por cima de um bloco maior ganha 2 linhas de altura no mínimo, para o nome ser lido
+                    const h = Math.max(it.top ? 32 : MIN_H, (Math.min(TO, it.e) - Math.max(FROM, it.s)) * PX - 2);
                     // camada de cima: deixa uma faixa à esquerda para a cor do bloco de baixo aparecer
                     const x0 = it.head ? 50 : it.top ? 8 : 0;
                     const w = (it.head ? 50 : it.top ? 92 : 100) / it.lanes;

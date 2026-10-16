@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { Page } from '../components/Layout';
 import { Card } from '../components/Card';
 import { useUI } from '../components/Overlays';
+import { PunctualityCard } from '../components/PunctualityCard';
 import { Bar, Empty, Modal, RhythmLine, Stat, Stats } from '../components/ui';
 import { AREA, AREAS } from '../lib/areas';
 import { useData } from '../lib/data';
@@ -128,6 +129,7 @@ export function AreaPanel() {
           </div>
           <span className={`tag ${sum.focusLabel.startsWith('abaixo') ? 'bad' : sum.focusLabel.startsWith('acima') ? 'warn' : 'ok'}`} style={{ marginTop: 14 }}>{sum.focusLabel}</span>
         </Card>
+        {area === 'profissional' && <PunctualityCard tasks={d.tasks} />}
         <Card title="Prazos">
           <div className="list">
             {deadlines.slice(0, 6).map((x, i) => (
