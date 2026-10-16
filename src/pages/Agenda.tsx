@@ -12,9 +12,13 @@ import type { Imprevisto } from '../lib/types';
 import { rescheduleTask } from '../lib/tasks';
 import { mix } from '../lib/color';
 
-const FROM = 7 * 60;
-const TO = 23 * 60;
-const PX = 0.6; // px por minuto
+// faixa padrão; a grade estica sozinha quando a semana tem algo antes das 7h ou depois das 23h
+const DEFAULT_FROM = 7 * 60;
+const DEFAULT_TO = 23 * 60;
+const PX = 0.8; // px por minuto
+const MIN_H = 18; // altura mínima de um bloco (px)
+/** minutos que um bloco ocupa NA TELA: um bloco de 10 min aparece com a altura mínima e não pode encostar no vizinho */
+const MIN_VIS = Math.ceil(MIN_H / PX);
 
 type Item = { kind: 'task'; o: Occurrence; s: number; e: number } | { kind: 'imp'; i: Imprevisto; s: number; e: number };
 
@@ -44,14 +48,18 @@ function lanes(items: Item[]): (Item & { lane: number; lanes: number })[] {
 
 type Laid = Item & { lane: number; lanes: number; top: boolean };
 
-/** o bloco mais longo ocupa a coluna inteira; o que conflita com ele fica centralizado por cima */
+/**
+ * Bloco "contêiner" (ex.: trabalho 9h–16h) ocupa a coluna inteira e o que acontece dentro dele fica por cima,
+ * sem cobrir o título dele. Blocos que se chocam de igual para igual (mesmo horário, tamanhos parecidos) ficam lado a lado.
+ */
 function layers(items: Item[]): Laid[] {
   const ranked = [...items].sort((a, b) => (b.e - b.s) - (a.e - a.s) || a.s - b.s);
   const base: Item[] = [];
   const over: Item[] = [];
-  for (const it of ranked) ([...base, ...over].some((b) => b.s < it.e && it.s < b.e) ? over : base).push(it);
+  const inside = (b: Item, it: Item) => b.e - b.s >= 2 * (it.e - it.s) && it.s >= b.s + 30 && it.e <= b.e;
+  for (const it of ranked) (base.some((b) => inside(b, it)) ? over : base).push(it);
   return [
-    ...base.map((it) => ({ ...it, lane: 0, lanes: 1, top: false })),
+    ...lanes(base).map((it) => ({ ...it, top: false })),
     ...lanes(over).map((it) => ({ ...it, top: true })),
   ];
 }
@@ -75,6 +83,12 @@ export function Agenda() {
   const rest = occ.filter((o) => o.task.soft || /lazer|descanso|livre/i.test(o.task.title)).length;
 
   const days = view === 'semana' ? weekDays(ws) : [day];
+  const timed = [
+    ...occ.filter((o) => days.includes(o.date) && o.start).map((o) => [toMin(o.start!), toMin(o.start!) + o.durationMin]),
+    ...imps.filter((i) => days.includes(i.date) && i.start).map((i) => [toMin(i.start), toMin(i.start) + i.durationMin]),
+  ];
+  const FROM = Math.min(DEFAULT_FROM, ...timed.map(([s]) => Math.floor(s / 60) * 60));
+  const TO = Math.min(24 * 60, Math.max(DEFAULT_TO, ...timed.map(([, e]) => Math.ceil(e / 60) * 60)));
   const hoursList = Array.from({ length: (TO - FROM) / 60 + 1 }, (_, i) => FROM + i * 60);
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
 
@@ -147,8 +161,8 @@ export function Agenda() {
             {days.map((d) => {
               // imprevistos entram na mesma divisão em colunas: ficam ao lado dos blocos, nunca por cima
               const items: Item[] = [
-                ...occ.filter((o) => o.date === d && o.start).map((o) => ({ kind: 'task' as const, o, s: toMin(o.start!), e: toMin(o.start!) + Math.max(15, o.durationMin) })),
-                ...imps.filter((i) => i.date === d && i.start).map((i) => ({ kind: 'imp' as const, i, s: toMin(i.start), e: toMin(i.start) + Math.max(15, i.durationMin) })),
+                ...occ.filter((o) => o.date === d && o.start).map((o) => ({ kind: 'task' as const, o, s: toMin(o.start!), e: toMin(o.start!) + Math.max(MIN_VIS, o.durationMin) })),
+                ...imps.filter((i) => i.date === d && i.start).map((i) => ({ kind: 'imp' as const, i, s: toMin(i.start), e: toMin(i.start) + Math.max(MIN_VIS, i.durationMin) })),
               ];
               const laid = layers(items);
               return (
@@ -161,10 +175,10 @@ export function Agenda() {
                   {hoursList.map((m) => <div key={m} className="ag-line" style={{ top: (m - FROM) * PX }} />)}
                   {laid.map((it) => {
                     const top = (Math.max(FROM, it.s) - FROM) * PX;
-                    const h = Math.max(16, (Math.min(TO, it.e) - Math.max(FROM, it.s)) * PX - 2);
-                    // camada de cima: faixa central (10%–90%) dividida entre os conflitos
-                    const x0 = it.top ? 10 : 0;
-                    const w = (it.top ? 80 : 100) / it.lanes;
+                    const h = Math.max(MIN_H, (Math.min(TO, it.e) - Math.max(FROM, it.s)) * PX - 2);
+                    // camada de cima: deixa uma faixa à esquerda para a cor do bloco de baixo aparecer
+                    const x0 = it.top ? 8 : 0;
+                    const w = (it.top ? 92 : 100) / it.lanes;
                     // coluna estreita (2+ conflitos ao mesmo tempo na semana): letra menor e sem quebrar palavra no meio
                     const narrow = view === 'semana' && it.lanes >= 2;
                     // o texto cabe no bloco: blocos curtos = 1 linha com "…"; maiores = quantas linhas couberem
