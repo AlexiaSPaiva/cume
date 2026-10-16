@@ -15,8 +15,8 @@ import { mix } from '../lib/color';
 // faixa padrão; a grade estica sozinha quando a semana tem algo antes das 7h ou depois das 23h
 const DEFAULT_FROM = 7 * 60;
 const DEFAULT_TO = 23 * 60;
-const PX = 0.8; // px por minuto
-const MIN_H = 18; // altura mínima de um bloco (px)
+const PX = 1; // px por minuto
+const MIN_H = 15; // altura mínima de um bloco (px): 15 min, então blocos curtos em sequência não se chocam
 /** minutos que um bloco ocupa NA TELA: um bloco de 10 min aparece com a altura mínima e não pode encostar no vizinho */
 const MIN_VIS = Math.ceil(MIN_H / PX);
 

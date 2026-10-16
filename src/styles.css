@@ -1184,7 +1184,7 @@ img.file-preview { height: auto; max-height: 60vh; object-fit: contain; backgrou
 /* Agenda: o título do bloco nunca passa da borda (cortado no meio parecia bloco por cima de bloco) */
 .blk { line-height: 14px; display: flex; flex-direction: column; justify-content: flex-start; }
 .blk-t { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-.blk.tiny { padding: 0 6px; justify-content: center; }
+.blk.tiny { padding: 0 6px; justify-content: center; line-height: 1; }
 .blk.tiny .blk-t { display: block; white-space: nowrap; text-overflow: ellipsis; font-size: 0.625rem; }
 /* objetivo medido por uma trilha: os índices (tempo, acertos, simulados, edital) */
 .obj-track { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; }
