@@ -10,9 +10,10 @@ import { restore, softDelete } from '../lib/trash';
 import { DocForm, ImprevistoForm, SuggestionForm, TaskForm } from './forms';
 import { Modal } from './ui';
 import { PostponeForm, RescheduleForm } from './Reschedule';
+import { QuickDone } from './QuickDone';
 
 type Open =
-  | { kind: 'task'; task?: Partial<Task> }
+  | { kind: 'task'; task?: Partial<Task>; day?: string }
   | { kind: 'imp'; imp?: Partial<Imprevisto> }
   | { kind: 'doc' }
   | { kind: 'suggest'; s: RecurringSuggestion }
@@ -22,7 +23,8 @@ type Open =
   | null;
 
 interface UI {
-  openTask(task?: Partial<Task>): void;
+  /** `day`: o dia clicado na Agenda (nas tarefas semanais, é esse dia que fica marcado como feito) */
+  openTask(task?: Partial<Task>, day?: string): void;
   openImprevisto(imp?: Partial<Imprevisto>): void;
   openDoc(): void;
   openSuggestion(s: RecurringSuggestion): void;
@@ -74,7 +76,7 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   const ui: UI = {
-    openTask: (task) => setOpen({ kind: 'task', task }),
+    openTask: (task, day) => setOpen({ kind: 'task', task, day }),
     openImprevisto: (imp) => setOpen({ kind: 'imp', imp }),
     openDoc: () => setOpen({ kind: 'doc' }),
     openSuggestion: (s) => setOpen({ kind: 'suggest', s }),
@@ -93,6 +95,7 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
       {children}
       {open?.kind === 'task' && (
         <Modal title={open.task?.id ? 'Editar tarefa' : 'Nova tarefa'} onClose={close}>
+          {open.task?.id != null && <QuickDone task={open.task as Task} day={open.day} onDone={close} />}
           <TaskForm task={open.task} onDone={close} />
         </Modal>
       )}

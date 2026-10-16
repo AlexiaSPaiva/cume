@@ -1195,3 +1195,9 @@ img.file-preview { height: auto; max-height: 60vh; object-fit: contain; backgrou
 .obj-ind .row > .grow { flex: none; overflow: visible; }
 .obj-ind .row > .muted { flex: 1; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .study-links { display: flex; flex-direction: column; gap: 6px; }
+
+/* concluir com um toque (janela da tarefa) */
+.quick-done { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
+.quick-done .btn { min-height: 44px; }
+.blk.done { opacity: .55; }
+.blk.done .blk-t { text-decoration: line-through; }

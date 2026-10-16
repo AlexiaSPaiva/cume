@@ -46,21 +46,24 @@ function lanes(items: Item[]): (Item & { lane: number; lanes: number })[] {
   return out;
 }
 
-type Laid = Item & { lane: number; lanes: number; top: boolean };
+type Laid = Item & { lane: number; lanes: number; top: boolean; head?: boolean };
 
 /**
- * Bloco "contêiner" (ex.: trabalho 9h–16h) ocupa a coluna inteira e o que acontece dentro dele fica por cima,
- * sem cobrir o título dele. Blocos que se chocam de igual para igual (mesmo horário, tamanhos parecidos) ficam lado a lado.
+ * Bloco "contêiner" (ex.: trabalho 9h–16h) ocupa a coluna inteira e o que acontece dentro dele fica por cima.
+ * O que começa junto com ele ("cabeça") vai para a metade direita, para o título do contêiner continuar visível.
+ * Blocos que se chocam de igual para igual (tamanhos parecidos) ficam lado a lado.
  */
 function layers(items: Item[]): Laid[] {
   const ranked = [...items].sort((a, b) => (b.e - b.s) - (a.e - a.s) || a.s - b.s);
   const base: Item[] = [];
   const over: Item[] = [];
-  const inside = (b: Item, it: Item) => b.e - b.s >= 2 * (it.e - it.s) && it.s >= b.s + 30 && it.e <= b.e;
+  const inside = (b: Item, it: Item) => b.e - b.s >= 2 * (it.e - it.s) && it.s >= b.s && it.e <= b.e;
   for (const it of ranked) (base.some((b) => inside(b, it)) ? over : base).push(it);
+  const isHead = (it: Item) => base.some((b) => inside(b, it) && it.s < b.s + 30);
   return [
     ...lanes(base).map((it) => ({ ...it, top: false })),
-    ...lanes(over).map((it) => ({ ...it, top: true })),
+    ...lanes(over.filter((it) => !isHead(it))).map((it) => ({ ...it, top: true })),
+    ...lanes(over.filter(isHead)).map((it) => ({ ...it, top: true, head: true })),
   ];
 }
 
@@ -177,10 +180,10 @@ export function Agenda() {
                     const top = (Math.max(FROM, it.s) - FROM) * PX;
                     const h = Math.max(MIN_H, (Math.min(TO, it.e) - Math.max(FROM, it.s)) * PX - 2);
                     // camada de cima: deixa uma faixa à esquerda para a cor do bloco de baixo aparecer
-                    const x0 = it.top ? 8 : 0;
-                    const w = (it.top ? 92 : 100) / it.lanes;
+                    const x0 = it.head ? 50 : it.top ? 8 : 0;
+                    const w = (it.head ? 50 : it.top ? 92 : 100) / it.lanes;
                     // coluna estreita (2+ conflitos ao mesmo tempo na semana): letra menor e sem quebrar palavra no meio
-                    const narrow = view === 'semana' && it.lanes >= 2;
+                    const narrow = view === 'semana' && (it.lanes >= 2 || !!it.head);
                     // o texto cabe no bloco: blocos curtos = 1 linha com "…"; maiores = quantas linhas couberem
                     const tiny = h < 26;
                     const showTime = h >= 46 && !narrow;
@@ -198,14 +201,14 @@ export function Agenda() {
                     const t = it.o.task;
                     const c = AREA[t.area].color;
                     return (
-                      <button key={`${t.id}-${d}`} className={`blk ${tiny ? 'tiny' : ''} ${narrow ? 'narrow' : ''} ${t.soft || t.status === 'adiada' ? 'soft' : ''} ${t.bufferFor ? 'buffer' : ''}`}
+                      <button key={`${t.id}-${d}`} className={`blk ${tiny ? 'tiny' : ''} ${narrow ? 'narrow' : ''} ${t.soft || t.status === 'adiada' ? 'soft' : ''} ${t.bufferFor ? 'buffer' : ''} ${it.o.done ? 'done' : ''}`}
                         draggable
                         onDragStart={(e) => {
                           e.dataTransfer.setData('task', String(t.id));
                           e.dataTransfer.setData('grab', String(e.clientY - e.currentTarget.getBoundingClientRect().top));
                         }}
-                        onClick={() => ui.openTask(t)}
-                        title={`${t.title} · ${it.o.start} · ${dur(it.o.durationMin)}`}
+                        onClick={() => ui.openTask(t, d)}
+                        title={`${t.title} · ${it.o.start} · ${dur(it.o.durationMin)}${it.o.done ? ' · feita' : ''}`}
                         style={{
                           ...pos,
                           background: mix(c, 30, '#141b33'), borderColor: mix(c, 55, 'transparent'),
